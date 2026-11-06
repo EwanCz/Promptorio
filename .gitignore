@@ -1,2 +1,28 @@
-/.env
-/node_modules
+# Godot 4+ specific ignores
+.godot/
+/android/
+
+# Exports
+export/
+export_presets.cfg
+*.apk
+*.aab
+*.exe
+*.pck
+*.zip
+
+# Secrets
+.env
+.env.*
+!.env.example
+settings.cfg
+
+# Editors / OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Claude Code local settings
+.claude/settings.local.json
