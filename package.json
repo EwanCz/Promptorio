@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "@axis/sdk": "^0.33.1"
+  }
+}
