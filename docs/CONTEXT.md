@@ -71,8 +71,9 @@ Machine (Node2D, machine.gd)
 - `LLMProvider` (base class, `scripts/llm/providers/llm_provider.gd`) defines:
   - `build_request(system_prompt: String, state: Dictionary, tools: Array) -> Dictionary` returns `{url, headers, body}`
   - `parse_response(body: Dictionary) -> Array[Dictionary]` returns a normalized list of `{name, args}` tool calls
-- Implementations: `AnthropicProvider` first; `OpenAICompatProvider` second if time allows. Nothing outside `scripts/llm/providers/` knows provider formats.
-- Machines expose their tool schemas via `get_tool_schemas()` (e.g. `set_speed(value: 0..1)`, `set_cooling(on: bool)`). `apply_tool_call(name, args)` is the only way LLM output touches a machine.
+  - `build_check_request()` returns the free key-check GET (list models), and `config_error()` returns a message when the provider's relay base URL is unusable (see "Provider base URL")
+- Implementations: `AnthropicProvider` (Messages API), `OpenAIProvider` (Responses API) and `MockProvider` (offline, deterministic). `Settings.provider` is `mock`, `anthropic` or `openai`. Nothing outside `scripts/llm/providers/` knows provider formats. Neither real provider has been run against its live API: tests use scripted responses.
+- Machines expose their tool schemas via `get_tool_schemas()` (the shared `set_enabled(on: bool)` plus one tool per machine type, e.g. `set_mine_ticks(ticks: 5..100)` on the Miner and `set_cooling(on: bool)` on the Smelter; the full list is in `docs/PLAN.md`, "AI tool inventory"). `apply_tool_call(name, args)` is the only way LLM output touches a machine.
 
 ### Chip triggers
 Each `ChipComponent` (one chip, one prompt) requests a decision on: fixed timer, state threshold (temp > X), events (input empty / output full / error), manual "Ask chip now" button. All go through one method, `request_decision(reason: String)`, which enforces the per-chip cooldown and the "one request in flight per chip" rule.
@@ -148,7 +149,7 @@ Env: `GODOT` (godot binary, default `godot`), `TEST_TIMEOUT` (seconds, default 1
 ## Features
 
 ### LLM
-The llm system is linked via the `LLMManager`. It store multiple LLMProvider for claude/openai/... .
+The llm system is linked via the `LLMManager`. It stores the providers (`mock`, `anthropic`, `openai`), one `LLMProvider` each.
 It help to call the models via a `request_decision` function. It can be take the message + the related tools.
 The request_decision get a list of tools to call with arguments. It save the machine which made the chat-call to call the functions related to the machine (ex: prompt ask to make a axe. The llm will ask to call the tool "make" with the param axe on the machine which called it).
 > [!Warning]
