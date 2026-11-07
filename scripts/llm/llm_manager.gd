@@ -7,7 +7,7 @@ signal decision_received(requester_id: int, tool_calls: Array[Dictionary])
 signal decision_failed(requester_id: int, reason: String)
 
 const MAX_RETRIES: int = 3
-const BACKOFF_BASE: float = 1.0
+var backoff_base: float = 1.0
 
 var _queue: Array[Dictionary] = []
 var _in_flight: int = 0
@@ -48,7 +48,7 @@ func _run(job: Dictionary) -> void:
 				break
 			if outcome["status"] != 429 or attempt == MAX_RETRIES:
 				break
-			await get_tree().create_timer(BACKOFF_BASE * pow(2.0, attempt)).timeout
+			await get_tree().create_timer(backoff_base * pow(2.0, attempt)).timeout
 			if not _requester_alive(job["requester_id"]):
 				break
 	_in_flight -= 1
@@ -74,21 +74,13 @@ func _execute(provider: LLMProvider, job: Dictionary) -> Dictionary:
 			return _outcome([], "requester removed", 0)
 		return _outcome(provider.parse_response(request["body"]), "", 200)
 
-	var http: HTTPRequest = _acquire()
-	http.timeout = Settings.request_timeout
-	var headers: PackedStringArray = PackedStringArray(request["headers"])
-	var err: Error = http.request(request["url"], headers, HTTPClient.METHOD_POST, JSON.stringify(request["body"]))
-	if err != OK:
-		_release(http)
-		return _outcome([], "request failed to start (error %d)" % err, 0)
-	var response: Array = await http.request_completed
-	_release(http)
+	var response: Dictionary = await _send(request)
 	if not _requester_alive(job["requester_id"]):
 		return _outcome([], "requester removed", 0)
 
-	var result: int = response[0]
-	var status: int = response[1]
-	var raw: PackedByteArray = response[3]
+	var result: int = response["result"]
+	var status: int = response["status"]
+	var raw: PackedByteArray = response["body"]
 	if result != HTTPRequest.RESULT_SUCCESS:
 		return _outcome([], "network error (result %d)" % result, 0)
 	if status != 200:
@@ -97,6 +89,21 @@ func _execute(provider: LLMProvider, job: Dictionary) -> Dictionary:
 	if typeof(parsed) != TYPE_DICTIONARY:
 		return _outcome([], "invalid JSON response", status)
 	return _outcome(provider.parse_response(parsed), "", status)
+
+
+## The only place that touches HTTPRequest; tests override it with scripted responses.
+## Returns {result: int, status: int, body: PackedByteArray}.
+func _send(request: Dictionary) -> Dictionary:
+	var http: HTTPRequest = _acquire()
+	http.timeout = Settings.request_timeout
+	var headers: PackedStringArray = PackedStringArray(request["headers"])
+	var err: Error = http.request(request["url"], headers, HTTPClient.METHOD_POST, JSON.stringify(request["body"]))
+	if err != OK:
+		_release(http)
+		return {"result": HTTPRequest.RESULT_CANT_CONNECT, "status": 0, "body": PackedByteArray()}
+	var response: Array = await http.request_completed
+	_release(http)
+	return {"result": response[0], "status": response[1], "body": response[3]}
 
 
 func _outcome(calls: Array, error: String, status: int) -> Dictionary:
