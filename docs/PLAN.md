@@ -21,6 +21,7 @@ Architecture and async HTTP rules live in `CLAUDE.md`.
 - `GameState`: `TICK_RATE`, `GRID_SIZE`, `CELL_SIZE`, `tick_count`, `money`, `can_place(cell)`, `register_machine(machine, cell) -> bool`, `unregister_machine(cell)`, `get_machine_at(cell)`, `get_machines()`, `cell_to_world(cell)`, `world_to_cell(pos)`, `add_money(amount)`.
 - `EventBus` signals: `tick_fired(tick)`, `machine_registered/unregistered(machine, cell)`, `machine_selected(machine)`, `money_changed(amount)`, `chip_log_added(machine, message)`, `settings_changed`.
 - `Settings`: `api_key`, `provider` (`"mock"` for now), `model`, `max_concurrency`, `request_timeout`, `chip_cooldown`, `max_tokens`, `save_settings()`.
+- Tests: `godot --headless -s tests/smoke_autoloads.gd` (exit code 1 on failure, takes ~15 s). Backs up and restores `user://settings.cfg`. Run it before touching the autoloads.
 - Headless gotcha: after adding a new `class_name` script, run `godot --headless --import` once to refresh the class cache, otherwise it fails to parse. `godot --headless --quit` still errors until a main scene exists.
 
 ## Phase 1 — Parallel tracks (h4–20)
