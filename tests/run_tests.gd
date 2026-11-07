@@ -27,6 +27,11 @@ func _initialize() -> void:
 		var test: RefCounted = script.new()
 		test.set("tree", self)
 		var methods: Array[String] = _find_test_methods(test)
+		if methods.is_empty():
+			print("== %s" % file_name)
+			print("  FAIL no test methods found")
+			total_failures += 1
+			continue
 		for method: String in methods:
 			print("== %s :: %s" % [file_name, method])
 			var checks_before: int = test.get("checks")
