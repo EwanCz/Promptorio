@@ -21,6 +21,7 @@ EventBus="*res://scripts/core/event_bus.gd"
 Settings="*res://scripts/core/settings.gd"
 GameState="*res://scripts/core/game_state/game_state.gd"
 LLMManager="*res://scripts/llm/llm_manager.gd"
+ChipRegistry="*res://scripts/chip/chip_registry.gd"
 
 [display]
 

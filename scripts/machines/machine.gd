@@ -4,6 +4,7 @@ extends Node2D
 ## apply_tool_call() is the only way LLM output touches a machine.
 
 signal tool_applied(tool_name: String, args: Dictionary)
+signal chip_decision_applied(chip_id: int, reason: String, applied: int)
 
 enum Status { NORMAL, DOWN, OVERHEATING }
 
@@ -13,6 +14,39 @@ var machine_id: int = 0
 var cell: Vector2i = Vector2i.ZERO
 var status: Status = Status.NORMAL
 var enabled: bool = true
+
+## Chips running on this machine, in attach order. Each is a ChipComponent child.
+var chips: Array[ChipComponent] = []
+
+
+## Adds a ChipComponent child running the registry chip. Null for an unknown id or a chip already attached.
+func attach_chip(chip_id: int, timeout_ticks: int = ChipComponent.DEFAULT_TIMEOUT) -> ChipComponent:
+	var chip: ChipRessource = ChipRegistry.get_from_id(chip_id)
+	if chip == null or get_chip(chip_id) != null:
+		return null
+	var component: ChipComponent = ChipComponent.new()
+	component.chip = chip
+	component.set_timeout(timeout_ticks)
+	component.decision_applied.connect(_on_chip_decision_applied.bind(chip_id))
+	add_child(component)
+	chips.append(component)
+	return component
+
+
+func detach_chip(chip_id: int) -> void:
+	var component: ChipComponent = get_chip(chip_id)
+	if component == null:
+		return
+	chips.erase(component)
+	component.queue_free()
+
+
+## Null if the chip is not attached.
+func get_chip(chip_id: int) -> ChipComponent:
+	for component: ChipComponent in chips:
+		if component.chip.id == chip_id:
+			return component
+	return null
 
 
 func get_tool_schemas() -> Array:
@@ -54,6 +88,10 @@ func apply_tool_call(tool_name: String, args: Dictionary) -> bool:
 
 func log_chip(message: String) -> void:
 	EventBus.chip_log_added.emit(self, message)
+
+
+func _on_chip_decision_applied(reason: String, applied: int, chip_id: int) -> void:
+	chip_decision_applied.emit(chip_id, reason, applied)
 
 
 func _apply(tool_name: String, args: Dictionary) -> void:
