@@ -81,7 +81,7 @@ State sent with a request (`get_state()`): `type`, `enabled`, `status`, plus Min
 
 ### Grid and camera (track B, done)
 - [x] `GridMap2D` (`scripts/world/grid_map_2d.gd`, `TileMapLayer` in `World`): ground and minesite tiles from `data/tilesets/factory_tileset.tres` (100 px atlas tiles, layer scaled to `CELL_SIZE` 64), hover highlight (green/red from `can_place(type, cell)` for the machine being placed: a Miner shows free ordinary cells as invalid and free minesites as valid; every other type may use minesites; with nothing selected it is the plain free-cell rule), signals `cell_hovered(cell)` / `cell_clicked(cell)`, `get_hovered_cell(world_pos)`, `is_minesite(cell)`, `can_place(type, cell)`, `set_placement_type(type)`. `Placement` calls `GridMap2D.can_place` for both the highlight and the placement itself, so they always agree (bounds, occupancy, miners only on minesites). Tested in `tests/test_grid_map.gd`.
-- [x] `FactoryCamera` (`scripts/world/camera.gd`): wheel zoom at cursor (0.4-2.0), middle-drag / arrow-key pan, clamped to the grid.
+- [x] `FactoryCamera` (`scripts/world/camera.gd`): wheel zoom at cursor (0.4-2.0), middle-drag / arrow-key pan, clamped to the grid. It starts fitted to the whole grid (`fit_to_grid()`) and refits on resize until the first zoom or pan; the zoom floor drops below 0.4 when the fit needs it (`tests/test_camera.gd`).
 
 ### Bar and popups (track C)
 - [x] `BarPanel` (`scripts/ui/bar_panel.gd`): one tab per child of `Pages` (title from the node name), Settings button.
