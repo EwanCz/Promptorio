@@ -55,6 +55,8 @@ UI rules:
 - Opening `ChipPage` pauses the game (`get_tree().paused = true`, popup `process_mode = PROCESS_MODE_ALWAYS`). Closing resumes it.
 - `MachineTooltip` shows: machine id, type, connected chips with their prompt and timeout, "add chip" (picks a chip from the registry), "log" button, current action (miner: production rate; smelter/assembler: consumed resource and time remaining), state (normal/down/overheating).
 - Chips live in a registry (`ChipRegistry` `Resource`, saved as `.tres`; each chip holds its name, description and prompt text). `Bar`, `ChipPage` and the tooltip read and write it; none of them talk to `LLMManager`.
+- A chip is a `Resource`. A machine's chip holds a reference to the same chip resource stored in the registry, not a copy. Editing a chip in the registry updates every connected chip at once.
+- Player edits are saved to `user://chip_registry.tres`. The default registry ships in `data/chip_registry.tres` (`res://` is read-only in exported builds) and is loaded only when no user copy exists.
 - UI reads machine state through `GameState` and `EventBus` signals (calls down, signals up). Mouse input on the Bar uses `mouse_filter` so clicks never reach the map beneath, and map clicks only count inside `FactoryView`.
 
 Machine scene (`scenes/machines/machine.tscn`, base; Miner/Smelter/Assembler inherit it):
