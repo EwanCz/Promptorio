@@ -52,9 +52,31 @@ Architecture and async HTTP rules live in `CLAUDE.md`.
 - [x] `Miner`: 1 ore / `mine_ticks` (20), stalls while its output is blocked. `CraftMachine` (base of `Smelter` and `Assembler`): per-item input stock capped at 10, `Recipe` resource (`data/recipes/smelt.tres`: 1 ore -> ingot in 20 ticks; `assemble.tres`: 2 ingots -> part in 30 ticks), blocked output stalls it. `Collector` accepts everything and sells it (`PRICES`: ore 1, ingot 3, part 10; hardcoded, marked `shortcut:`). `Conveyor` holds one item and moves it on after 5 ticks.
 - [x] Conveyor behavior: a conveyor is an ordinary placed machine with a facing direction. On each 10 Hz simulation tick it advances its held item; after 5 ticks it tries to deliver that item to the machine in the adjacent cell it faces. If the cell is empty or the machine refuses the item, it keeps the item and retries on later ticks. A conveyor accepts only one item at a time. Machines can also pass items directly to an adjacent machine, so conveyors are optional links rather than automatic belts between every machine.
 - [x] Smelter temperature: working +0.6/tick, idle -0.3/tick, `set_cooling(on)` an extra -0.7/tick, floor 20. `OVERHEATING` at 100 (back to `NORMAL` at 80), explodes at 150: `DOWN`, stock lost, `EventBus.machine_exploded`. Without a chip a busy smelter explodes after ~22 s; `set_cooling(true)` or `set_enabled(false)` keeps it stable (the demo fail/win state). `get_tool_schemas()` exposes `set_enabled` and `set_cooling`.
-- [x] Placement (`Placement`, `scripts/world/placement.gd`, node in `World`): Input Map actions (physical-key defaults, layout independent) `select_miner` / `select_smelter` / `select_assembler` / `select_collector` / `select_conveyor` (`1`-`5`), `rotate_placement` (`R`, facing right, down, left, up) and `cancel_placement` (`Esc`) drive it; `Main` forwards them to `Placement.handle_input()`; left click on a grid cell places. Refuses out-of-grid, occupied cells, and miners off a minesite. A Collector is placed at the map center on start. Machines unregister themselves from `GameState` when freed. `Placement.select(type)` / `place(type, cell)` are the hooks for the Bar's BuildPage (track C).
-- Prototype conveyor controls: trigger `select_conveyor` (`5`) to select a conveyor, `rotate_placement` (`R`) to rotate its output direction clockwise, then left-click a free grid cell to place it. The direction and whether it holds an item are shown in its status label. The BuildPage is not wired to placement yet.
-- Follow-ups assigned to Track C: paid placement, machine removal/rotation, Build page and tooltip action details are specified under "Bar and popups" below. The hover highlight still does not show the minesite rule; chip-to-LLM wiring remains in Phase 2.
+- [x] Placement (`Placement`, `scripts/world/placement.gd`, node in `World`): Input Map actions (physical-key defaults, layout independent) `select_miner` / `select_smelter` / `select_assembler` / `select_conveyor` (`1`, `2`, `3`, `5`), `rotate_placement` (`R`, facing right, down, left, up) and `cancel_placement` (`Esc`) drive it; `Main` forwards them to `Placement.handle_input()`; left click on a grid cell places. Refuses out-of-grid, occupied cells, and miners off a minesite. The Collector is placed at the map center on start and is not selectable: no action, no Build page entry, and `select` / `try_place` refuse it. Machines unregister themselves from `GameState` when freed. `Placement.select(type)` is what both the shortcuts and the Build page call; `place(type, cell)` applies the rules without cost and `try_place(type, cell)` adds the `COSTS` charge (once, only on success; emits `placement_rejected(reason)` otherwise).
+- Prototype conveyor controls: trigger `select_conveyor` (`5`) to select a conveyor, `rotate_placement` (`R`) to rotate its output direction clockwise, then left-click a free grid cell to place it. The direction and whether it holds an item are shown in its status label. The Build page selects the same types through `Placement.select`.
+- Paid placement, machine removal/rotation, the Build page and the tooltip actions are track C and are done (see "Bar and popups" below). The hover highlight still does not show the minesite rule; chip-to-LLM wiring remains in Phase 2.
+
+### AI tool inventory (as implemented)
+What `get_tool_schemas()` returns today. Only `Machine` (base) and `Smelter` define tools; `Miner`, `Assembler`, `Conveyor` and `Collector` add none. Every argument is required, and a missing or wrongly typed value rejects the whole call (logged to the ChipLog, machine unchanged). A chip can be attached to any machine, including a conveyor or the Collector, so every machine type is listed.
+
+| Tool | Args | Origin | Effect |
+|------|------|--------|--------|
+| `set_enabled` | `on: boolean` | inherited from `Machine`, on every machine | Sets `enabled` (reported as `enabled` in the state sent to the LLM). See the per-machine effect below. |
+| `set_cooling` | `on: boolean` | `Smelter` only | Sets `cooling`: an extra -0.7 °/tick (see Smelter temperature above). Reported as `temperature` and `cooling` in the state. |
+
+| Machine | Tools | What `set_enabled(false)` does |
+|---------|-------|--------------------------------|
+| Miner | `set_enabled` | Stops mining progress. An ore already held is still pushed on. |
+| Smelter | `set_enabled`, `set_cooling` | Starts no new craft and pauses a running one (progress is kept, `true` resumes it). A finished output is still pushed on and input is still accepted. It counts as idle, so it cools -0.3/tick. |
+| Assembler | `set_enabled` | Same as the Smelter without the temperature. |
+| Conveyor | `set_enabled` | Nothing. `enabled` is stored and reported, but conveyor logic never reads it, so it keeps moving items. |
+| Collector | `set_enabled` | Nothing. Same as the Conveyor; it keeps selling. |
+
+Design gaps:
+- No tool takes a number or an integer yet (the `number`/`integer` clamping in `apply_tool_call` is only exercised by a test machine). No speed, recipe or rotation control exists for the LLM.
+- `set_enabled` is a no-op on `Conveyor` and `Collector`, yet it is advertised to their chips. Either hide it there or give `enabled` a meaning (also an open question: conveyor AI is post-MVP).
+- The Assembler has no machine-specific control, so an assembler chip can only switch it on and off.
+- `get_state()` sends `type`, `enabled`, `status` plus per-type fields; there is no tool to read more.
 
 ### Grid and camera (track B, done)
 - [x] `GridMap2D` (`scripts/world/grid_map_2d.gd`, `TileMapLayer` in `World`): ground and minesite tiles from `data/tilesets/factory_tileset.tres` (100 px atlas tiles, layer scaled to `CELL_SIZE` 64), hover highlight (green/red from `GameState.can_place`), signals `cell_hovered(cell)` / `cell_clicked(cell)`, `get_hovered_cell(world_pos)`, `is_minesite(cell)`. Placement (`Placement`, see Simulation below) enforces bounds, occupancy and the minesite rule for miners through `GameState.can_place` and `is_minesite`.
@@ -66,14 +88,14 @@ Architecture and async HTTP rules live in `CLAUDE.md`.
 - [x] `ChipPage` popup: edit/save/remove, pauses the game while open. `ChipRegistry.update()` and `EventBus.chip_updated` were added for it.
 - [x] `MachineTooltip`: id, type, state, chips (prompt preview, timeout in ticks, remove), add chip from the registry, Log button. Opens through `EventBus.machine_selected`, which `main.gd` emits on `GridMap2D.cell_clicked`; a second click or an empty cell closes it.
 - [x] `ChipLog` (last 200 lines per machine from `chip_log_added`) and `SettingsDialog` (key, provider, model).
-- [ ] Build page: list Miner / Smelter / Assembler / Conveyor and their prices; show current money and disable unaffordable choices. Selecting a machine enters placement mode; valid placement charges once, invalid placement charges nothing. The fixed map-center Collector is not buildable.
-- [ ] Machine interaction: tooltip can rotate a placed output machine and remove a placed machine. Removal unregisters/frees the machine, discards its stock and attached chips, frees its cell, and gives no refund. The fixed Collector cannot be removed. Rebuilding uses the normal price and placement validation.
-- [ ] Tooltip current action: Miner production rate and blocked output; CraftMachine recipe, stock, progress/time remaining and blocked output; Conveyor facing and held item; Collector sales. Smelter also shows temperature/cooling. State is shown separately as normal/down/overheating.
-- [ ] Build/machine action feedback: selected build type is visible, placement mode can be canceled with Escape, invalid placement and insufficient money are communicated, and machine tooltip actions do not click through to the world.
+- [x] Build page: list Miner / Smelter / Assembler / Conveyor and their prices; show current money and disable unaffordable choices. Selecting a machine enters placement mode; valid placement charges once, invalid placement charges nothing. The fixed map-center Collector is not buildable.
+- [x] Machine interaction: tooltip can rotate a placed output machine and remove a placed machine. Removal unregisters/frees the machine, discards its stock and attached chips, frees its cell, and gives no refund. The fixed Collector cannot be removed. Rebuilding uses the normal price and placement validation.
+- [x] Tooltip current action: Miner production rate and blocked output; CraftMachine recipe, stock, progress/time remaining and blocked output; Conveyor facing and held item; Collector sales. Smelter also shows temperature/cooling. State is shown separately as normal/down/overheating.
+- [x] Build/machine action feedback: selected build type is visible, placement mode can be canceled with Escape, invalid placement and insufficient money are communicated, and machine tooltip actions do not click through to the world.
 
 ## Phase 2 — Integration (h20–32)
-- [ ] `ChipComponent` wired to `LLMManager`: timer, threshold, event and manual triggers, per-chip cooldown, one request in flight per chip
-- [ ] Each machine exposes `get_tool_schemas()` and `apply_tool_call()` (validates and clamps all LLM args)
+- [ ] `ChipComponent` wired to `LLMManager`: timer, threshold, event and manual triggers, per-chip cooldown, one request in flight per chip. Done so far: timer trigger, cooldown, one in flight, answer applied through `apply_tool_call`. Missing: threshold, event and manual ("Ask chip now") triggers.
+- [x] Each machine exposes `get_tool_schemas()` and `apply_tool_call()` (validates and clamps all LLM args). Inventory under "AI tool inventory"; only `set_enabled` (all) and `set_cooling` (Smelter) exist.
 - [ ] Full loop on the mock provider, then on the real API
 
 ## Phase 3 — Game feel and demo (h32–42)
