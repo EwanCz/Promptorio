@@ -3,6 +3,7 @@ extends Node
 
 @onready var _bar: BarPanel = %Bar
 @onready var _grid: GridMap2D = %GridMap2D
+@onready var _build_page: BuildPage = %BuildPage
 @onready var _registry_page: ChipRegistryPage = %ChipRegistryPage
 @onready var _chip_page: ChipPage = %ChipPage
 @onready var _tooltip: MachineTooltip = %MachineTooltip
@@ -13,6 +14,7 @@ extends Node
 
 func _ready() -> void:
 	_grid.cell_clicked.connect(_on_cell_clicked)
+	_build_page.setup(_placement)
 	_registry_page.chip_requested.connect(_chip_page.open)
 	_tooltip.log_requested.connect(_chip_log.show_machine)
 	_bar.settings_requested.connect(_settings_dialog.open)

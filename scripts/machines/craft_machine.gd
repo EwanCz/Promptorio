@@ -31,6 +31,32 @@ func get_state() -> Dictionary:
 	return super.get_state().merged({"stock": stock, "working": is_working()})
 
 
+func get_action_text() -> String:
+	if recipe == null:
+		return "No recipe"
+	var state: String = "idle"
+	if _output != "":
+		state = "output blocked"
+	elif is_working():
+		state = "working, %d ticks left" % progress
+	return "%s -> %s\nStock: %s\n%s" % [_items_text(recipe.inputs), recipe.output, _items_text(stock), state]
+
+
+func clear_contents() -> void:
+	stock.clear()
+	progress = 0
+	_output = ""
+
+
+func _items_text(items: Dictionary) -> String:
+	if items.is_empty():
+		return "empty"
+	var parts: PackedStringArray = []
+	for item: String in items:
+		parts.append("%d %s" % [int(items[item]), item])
+	return ", ".join(parts)
+
+
 func _tick() -> void:
 	if _output != "":
 		if _push(_output):
