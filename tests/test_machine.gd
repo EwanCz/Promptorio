@@ -1,5 +1,7 @@
 extends "res://tests/test_case.gd"
 
+const SpeedMachine: GDScript = preload("res://tests/support/speed_machine.gd")
+
 var _machine: Machine
 var _logs: Array[String] = []
 
@@ -39,10 +41,16 @@ func test_missing_arg_rejected() -> void:
 
 
 func test_numbers_are_clamped() -> void:
-	var prop: Dictionary = {"type": "number", "minimum": 0.0, "maximum": 1.0}
-	check_eq(_machine._sanitize(prop, 5), 1.0, "clamped high")
-	check_eq(_machine._sanitize(prop, -3.0), 0.0, "clamped low")
-	check_eq(_machine._sanitize(prop, "x"), null, "string rejected")
+	var speedy: Machine = SpeedMachine.new()
+	check(speedy.apply_tool_call("set_speed", {"value": 5, "level": 9}), "out-of-range call accepted")
+	check_eq(speedy.speed, 1.0, "number clamped high")
+	check_eq(speedy.level, 3, "integer clamped high")
+	speedy.apply_tool_call("set_speed", {"value": -3.0, "level": -4})
+	check_eq(speedy.speed, 0.0, "number clamped low")
+	check_eq(speedy.level, 1, "integer clamped low")
+	check(not speedy.apply_tool_call("set_speed", {"value": "fast", "level": 2}), "string rejected for number")
+	check_eq(speedy.speed, 0.0, "state unchanged after rejection")
+	speedy.free()
 
 
 func test_state_is_compact() -> void:
