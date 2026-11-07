@@ -69,15 +69,34 @@ func test_prompt_timeout_fires_request() -> void:
 
 
 func test_machine_freed_while_pending_is_safe() -> void:
-	_chip.request_decision("manual")
+	var llm: Node = autoload("LLMManager")
+	var chip_id: int = _chip.get_instance_id()
+	var delivered: Array[int] = []
+	var on_received: Callable = func(id: int, _calls: Array[Dictionary]) -> void:
+		if id == chip_id:
+			delivered.append(id)
+	llm.decision_received.connect(on_received)
+	check(_chip.request_decision("manual"), "request sent")
 	_chip.decision_applied.disconnect(_on_applied)
 	_machine.free()
-	await wait_seconds(2.0)
+	await wait_until(func() -> bool: return llm._in_flight == 0, 3.0)
+	llm.decision_received.disconnect(on_received)
+	check_eq(llm._in_flight, 0, "LLMManager released the slot")
+	check_eq(delivered.size(), 0, "nothing delivered to a freed chip")
 	_machine = Machine.new()
 	_chip = ChipComponent.new()
 	_machine.add_child(_chip)
 	_chip.decision_applied.connect(_on_applied)
-	check(true, "no crash after freeing a pending machine")
+
+
+func test_timer_fires_at_exact_timeout() -> void:
+	_chip.add_prompt("fast", "Be quick", 1.0)
+	for i: int in _tick_rate() - 1:
+		autoload("EventBus").tick_fired.emit(i)
+	check(not _chip.pending, "not fired one tick early")
+	autoload("EventBus").tick_fired.emit(0)
+	check(_chip.pending, "fired on the exact timeout tick")
+	await wait_until(func() -> bool: return not _chip.pending)
 
 
 func _tick_rate() -> int:
