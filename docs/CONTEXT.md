@@ -15,8 +15,8 @@ Roadmap, phases, decisions and risks: see `docs/PLAN.md`. Read it before startin
   - Ressources are spawned from a miner on the map it will then be transfer via the conveyor to tranform them in smelter/assembler or directly to a collector to sell them.
 - AI-controllable loop in each machine.
   - A machine can have multiple AI chips. Each chip is its own brain: it has exactly one prompt and its own timeout (ex: a maintenance chip, a production chip).
-  - Each chip's prompt comes from a registry.
-- Prompt editor with option to create/update/remove prompt to a registry (Prompt Registry page + Prompt Page popup, see `docs/UI.md`).
+  - Each chip is defined in the chip registry (`ChipRegistry`): name, description and its prompt text. A machine's `ChipComponent` runs a chip taken from it.
+- Chip editor with option to create/update/remove chips in the registry (Chip Registry page + Chip Page popup, see `docs/UI.md`).
 - UI information on click per machine (Machine tooltip, see `docs/UI.md`).
 
 ## Architecture
@@ -43,18 +43,18 @@ Main (Node)
 │        ├─ PageTabs (TabBar / HBox of page markers at the top)
 │        └─ Pages (each page a Control, only one visible)
 │           ├─ BuildPage          (list of buildable machines + money cost)
-│           └─ PromptRegistryPage (list of prompt names, "new prompt" button on top)
+│           └─ ChipRegistryPage (list of chip names, "new chip" button on top)
 └─ UI (CanvasLayer, popups over everything)
-   ├─ PromptPage      (popup, centered; name, description, message; edit/save/remove)
+   ├─ ChipPage        (popup, centered; name, description, message; edit/save/remove)
    ├─ MachineTooltip  (opens on machine click, closes on second click)
    ├─ ChipLog         (log page opened from the tooltip)
    └─ SettingsDialog
 ```
 UI rules:
 - UI is `Control` nodes only, laid out with anchors and Containers (`HBox/VBox/Margin`), never hand-placed pixels. One shared `Theme` resource on the root.
-- Opening `PromptPage` pauses the game (`get_tree().paused = true`, popup `process_mode = PROCESS_MODE_ALWAYS`). Closing resumes it.
-- `MachineTooltip` shows: machine id, type, connected chips with their prompt and timeout, "add chip" (picks a prompt from the registry), "log" button, current action (miner: production rate; smelter/assembler: consumed resource and time remaining), state (normal/down/overheating).
-- Prompts live in a registry (`PromptRegistry` `Resource`, saved as `.tres`). `Bar`, `PromptPage` and the tooltip read and write it; none of them talk to `LLMManager`.
+- Opening `ChipPage` pauses the game (`get_tree().paused = true`, popup `process_mode = PROCESS_MODE_ALWAYS`). Closing resumes it.
+- `MachineTooltip` shows: machine id, type, connected chips with their prompt and timeout, "add chip" (picks a chip from the registry), "log" button, current action (miner: production rate; smelter/assembler: consumed resource and time remaining), state (normal/down/overheating).
+- Chips live in a registry (`ChipRegistry` `Resource`, saved as `.tres`; each chip holds its name, description and prompt text). `Bar`, `ChipPage` and the tooltip read and write it; none of them talk to `LLMManager`.
 - UI reads machine state through `GameState` and `EventBus` signals (calls down, signals up). Mouse input on the Bar uses `mouse_filter` so clicks never reach the map beneath, and map clicks only count inside `FactoryView`.
 
 Machine scene (`scenes/machines/machine.tscn`, base; Miner/Smelter/Assembler inherit it):
