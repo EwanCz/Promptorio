@@ -1,0 +1,47 @@
+[gd_scene format=3]
+
+[node name="Main" type="Node"]
+
+[node name="Game" type="HBoxContainer" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 0
+
+[node name="FactoryView" type="SubViewportContainer" parent="Game"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 4.0
+stretch = true
+
+[node name="SubViewport" type="SubViewport" parent="Game/FactoryView"]
+handle_input_locally = false
+size = Vector2i(1024, 720)
+render_target_update_mode = 4
+
+[node name="World" type="Node2D" parent="Game/FactoryView/SubViewport"]
+
+[node name="Machines" type="Node2D" parent="Game/FactoryView/SubViewport/World"]
+
+[node name="Camera2D" type="Camera2D" parent="Game/FactoryView/SubViewport/World"]
+anchor_mode = 0
+
+[node name="Bar" type="PanelContainer" parent="Game"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 1.0
+mouse_filter = 0
+
+[node name="VBoxContainer" type="VBoxContainer" parent="Game/Bar"]
+layout_mode = 2
+
+[node name="PageTabs" type="TabBar" parent="Game/Bar/VBoxContainer"]
+layout_mode = 2
+
+[node name="Pages" type="Control" parent="Game/Bar/VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="UI" type="CanvasLayer" parent="."]

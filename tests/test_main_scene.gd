@@ -1,0 +1,13 @@
+extends "res://tests/test_case.gd"
+
+
+func test_main_scene_layout() -> void:
+	var main: Node = load("res://scenes/main.tscn").instantiate()
+	check(main.get_node_or_null("Game/FactoryView/SubViewport/World/Machines") != null, "world has Machines")
+	check(main.get_node_or_null("Game/FactoryView/SubViewport/World/Camera2D") != null, "world has Camera2D")
+	check(main.get_node_or_null("Game/Bar/VBoxContainer/PageTabs") != null, "bar has PageTabs")
+	check(main.get_node_or_null("UI") is CanvasLayer, "UI layer exists")
+	var factory: Control = main.get_node("Game/FactoryView")
+	var bar: Control = main.get_node("Game/Bar")
+	check_eq(factory.size_flags_stretch_ratio / bar.size_flags_stretch_ratio, 4.0, "factory:bar is 80:20")
+	main.free()
