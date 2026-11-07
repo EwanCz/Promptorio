@@ -15,8 +15,6 @@ var _received: Dictionary = {}
 var _failed: Dictionary = {}
 var _saved_provider: String = ""
 var _saved_concurrency: int = 4
-var _on_received: Callable = func(id: int, calls: Array[Dictionary]) -> void: _received[id] = calls
-var _on_failed: Callable = func(id: int, reason: String) -> void: _failed[id] = reason
 
 
 func before_each() -> void:
@@ -37,6 +35,14 @@ func after_each() -> void:
 	_llm.decision_failed.disconnect(_on_failed)
 	_settings.provider = _saved_provider
 	_settings.max_concurrency = _saved_concurrency
+
+
+func _on_received(id: int, calls: Array[Dictionary]) -> void:
+	_received[id] = calls
+
+
+func _on_failed(id: int, reason: String) -> void:
+	_failed[id] = reason
 
 
 func test_mock_returns_normalized_call() -> void:
