@@ -8,7 +8,7 @@ Roadmap, phases, decisions and risks: see `docs/PLAN.md`. Read it before startin
 
 ## Scope (MVP)
 - Machines: Miner -> Smelter -> Assembler -> Collector. Conveyors are plain, hardcoded logic (AI on conveyors is post-MVP).
-- Ressource: (Coal/Silver/Redstone/etc...).
+- Items: (Coal/Silver/Redstone/etc...).
   - Fuze them in a Assembler which take one or more different ressources.
   - Each assembler take any ressources with a max stock size in each assembler.
   - The IA will be prompted the ressource to build then will by itself check in the stockage if can be built. If the ressource can be made. Consume them then start a assemble event on for the ressource be build.
@@ -138,9 +138,10 @@ Env: `GODOT` (godot binary, default `godot`), `TEST_TIMEOUT` (seconds, default 1
 
 ### LLM
 The llm system is linked via the `LLMManager`. It store multiple LLMProvider for claude/codex/... .
-LLMProvider is a interface to call external llm.
-It help to call the models via a `chat` function. It can be take the message + the related tools.
-The chat return a list of tools to call with arguments. The machine will add the call to the eventBus, when timeout is finish it will call the chat with the prompt on the chip and the list of tools on the machine then call the tools once the chat have returned which to use. Remove the event in EventBus when the chip is removed from the machine
+It help to call the models via a `request_decision` function. It can be take the message + the related tools.
+The request_decision get a list of tools to call with arguments. It save the machine which made the chat-call to call the functions related to the machine (ex: prompt ask to make a axe. The llm will ask to call the tool "make" with the param axe on the machine which called it).
+> [!Warning]
+> Complete
 
 ### SIM
 Need to build the map by making a x/y grid of square tile where machine can be place on.
