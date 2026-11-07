@@ -126,15 +126,16 @@ func test_smelter_cooler_manages_heat_with_cooling_and_pauses_only_in_an_emergen
 	var prompt: String = _smelter_cooler(_registry.get_all()).prompt
 	check(prompt.contains("set_cooling") and prompt.contains("on=true") and prompt.contains("on=false"), "cooling on and off")
 	check(prompt.contains("set_emergency_stop") and prompt.contains("emergency_stop is true"), "the emergency pause and its own resume")
-	check(prompt.contains("another chip paused") and prompt.contains("leave it disabled"), "another chip's pause is left alone")
+	check(prompt.contains("state does not say why it was disabled") and prompt.contains("keep it disabled"), "unknown pauses are left alone without assuming their cause")
 	check(prompt.contains("never set_enabled"), "it does not use the plain pause")
-	var cool_on: int = 60
-	var cool_off: int = 40
-	for number: int in [cool_on, cool_off, int(Smelter.SAFE_AT)]:
+	var cool_on: int = 100
+	var cool_off: int = 70
+	var emergency_stop_at: int = 130
+	for number: int in [cool_on, cool_off, emergency_stop_at, int(Smelter.SAFE_AT)]:
 		check(prompt.contains(str(number)), "prompt states %d" % number)
-	check(prompt.contains("status is \"overheating\""), "the pause is tied to OVERHEATING (100)")
+	check(prompt.contains("temperature is 130 or higher") and not prompt.contains("status is \"overheating\""), "emergency stop is delayed beyond the OVERHEATING status")
 	check(prompt.contains("Never pause for routine temperature control"), "no routine pausing")
-	check(cool_off < cool_on and cool_on < Smelter.OVERHEAT_AT, "cooling has a gap and starts before the emergency")
+	check(cool_off < cool_on and cool_on == Smelter.OVERHEAT_AT and emergency_stop_at < Smelter.EXPLODE_AT, "cooling starts at overheating and emergency stop precedes explosion")
 	_restore_path()
 
 
@@ -222,6 +223,13 @@ Check the state in this order and call at most one tool:
 - If temperature is 60 or higher and cooling is false, call set_cooling with on=true.
 - If temperature is 40 or lower and cooling is true, call set_cooling with on=false.
 - Otherwise do nothing. Never pause for routine temperature control; the gap between 60 and 40 stops cooling from toggling every turn."""
+const OLD_COOLER_V4: String = """You control a Smelter. Working heats it up, and it explodes if it gets too hot. Cooling is the normal way to manage the heat, but crafts take twice as long while it is on, so use it only when needed. Stopping is for emergencies only, and it is done with set_emergency_stop, never set_enabled.
+Check the state in this order and call at most one tool:
+- If status is "overheating" and enabled is true, call set_emergency_stop with on=true (emergency pause).
+- If emergency_stop is true and temperature is 80 or lower, call set_emergency_stop with on=false (resume). Only resume your own emergency stop: if enabled is false but emergency_stop is false, another chip paused the smelter on purpose, so leave it disabled.
+- If temperature is 60 or higher and cooling is false, call set_cooling with on=true.
+- If temperature is 40 or lower and cooling is true, call set_cooling with on=false.
+- Otherwise do nothing. Never pause for routine temperature control; the gap between 60 and 40 stops cooling from toggling every turn."""
 
 
 func _save_user_library(smelter_prompt: String, smelter_name: String = "Smelter Cooler") -> void:
@@ -243,7 +251,7 @@ func _save_user_library(smelter_prompt: String, smelter_name: String = "Smelter 
 func test_outdated_starter_prompt_is_replaced_and_saved() -> void:
 	_use_tmp_path()
 	var shipped: String = _smelter_cooler(_registry.get_all()).prompt
-	for old: String in [OLD_COOLER_V1, OLD_COOLER_V2, OLD_COOLER_V3]:
+	for old: String in [OLD_COOLER_V1, OLD_COOLER_V2, OLD_COOLER_V3, OLD_COOLER_V4]:
 		_save_user_library(old)
 		_registry.load_registry()
 		check_eq(_registry.get_from_id(2).prompt, shipped, "unedited older prompt upgraded")
