@@ -1,6 +1,6 @@
 class_name MockProvider
 extends LLMProvider
-## Offline provider: picks a random tool and random in-range args after a random delay.
+## Offline provider: deterministic canned answer (first tool, fixed args) after a random delay.
 
 
 func requires_network() -> bool:
@@ -20,13 +20,13 @@ func parse_response(body: Dictionary) -> Array[Dictionary]:
 	var tools: Array = body.get("tools", [])
 	if tools.is_empty():
 		return calls
-	var chosen: Dictionary = tools.pick_random()
+	var chosen: Dictionary = tools[0]
 	var schema: Dictionary = chosen.get("input_schema", {})
-	calls.append({"name": chosen.get("name", ""), "args": _random_args(schema)})
+	calls.append({"name": chosen.get("name", ""), "args": _canned_args(schema)})
 	return calls
 
 
-func _random_args(schema: Dictionary) -> Dictionary:
+func _canned_args(schema: Dictionary) -> Dictionary:
 	var args: Dictionary = {}
 	var props: Dictionary = schema.get("properties", {})
 	for key: String in props:
@@ -34,9 +34,9 @@ func _random_args(schema: Dictionary) -> Dictionary:
 		var kind: String = prop.get("type", "")
 		match kind:
 			"boolean":
-				args[key] = randf() < 0.5
+				args[key] = true
 			"integer":
-				args[key] = randi_range(int(prop.get("minimum", 0)), int(prop.get("maximum", 1)))
+				args[key] = int(prop.get("minimum", 0))
 			"number":
-				args[key] = randf_range(float(prop.get("minimum", 0.0)), float(prop.get("maximum", 1.0)))
+				args[key] = (float(prop.get("minimum", 0.0)) + float(prop.get("maximum", 1.0))) / 2.0
 	return args

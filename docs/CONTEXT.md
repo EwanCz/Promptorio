@@ -132,7 +132,7 @@ Env: `GODOT` (godot binary, default `godot`), `TEST_TIMEOUT` (seconds, default 1
 - Never store a lambda in a member variable of a test (it captures `self`, creating a reference cycle that leaks and prints "ObjectDB instances were leaked" at exit). Use a method for signal handlers, or a local lambda inside the test. A clean run prints no leak warnings.
 - Test through public methods and signals, not private `_members`, unless there is no other way (the LLM queue tests read `_in_flight` / `_queue`).
 - New `class_name` scripts need a class-cache refresh; `tests/run.sh` does it, a bare `godot --headless -s` does not.
-- Not covered yet: the real HTTP path (timeouts, non-200, bad JSON, 429 backoff). Add tests with the `AnthropicProvider`.
+- The real HTTP path is tested offline by replaying scripted responses through `LLMManager._send()` (`tests/test_llm_http.gd`, `tests/support/scripted_llm_manager.gd`). A real network round-trip is still untested.
 
 ## Features
 
