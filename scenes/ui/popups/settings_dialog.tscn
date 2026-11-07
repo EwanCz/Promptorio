@@ -47,6 +47,19 @@ unique_name_in_owner = true
 layout_mode = 2
 secret = true
 
+[node name="BaseUrl" type="VBoxContainer" parent="Margin/VBox/Credentials"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="BaseUrlLabel" type="Label" parent="Margin/VBox/Credentials/BaseUrl"]
+layout_mode = 2
+text = "Base URL (optional, for an Anthropic-compatible relay)"
+
+[node name="BaseUrlEdit" type="LineEdit" parent="Margin/VBox/Credentials/BaseUrl"]
+unique_name_in_owner = true
+layout_mode = 2
+placeholder_text = "https://api.anthropic.com"
+
 [node name="ModelLabel" type="Label" parent="Margin/VBox/Credentials"]
 layout_mode = 2
 text = "Model"

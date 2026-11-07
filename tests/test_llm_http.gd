@@ -13,6 +13,8 @@ var _saved_provider: String = ""
 var _saved_key: String = ""
 var _saved_env_path: String = ""
 var _saved_debug: String = ""
+var _saved_editor_run: bool = true
+var _saved_base_url: String = ""
 var _checks: Array[Array] = []
 
 
@@ -25,6 +27,10 @@ func before_each() -> void:
 	_settings.api_key = "k"
 	_settings.env_path = "user://missing.env"
 	_settings.load_env()
+	_saved_editor_run = _settings.editor_run
+	_settings.editor_run = false
+	_saved_base_url = _settings.anthropic_base_url
+	_settings.anthropic_base_url = ""
 	_saved_debug = OS.get_environment("PROMPTORIO_DEBUG_LLM")
 	OS.unset_environment("PROMPTORIO_DEBUG_LLM")
 	_llm = ScriptedManager.new()
@@ -48,6 +54,8 @@ func after_each() -> void:
 	_settings.provider = _saved_provider
 	_settings.api_key = _saved_key
 	_settings.env_path = _saved_env_path
+	_settings.editor_run = _saved_editor_run
+	_settings.anthropic_base_url = _saved_base_url
 	_settings.load_env()
 	if _saved_debug == "":
 		OS.unset_environment("PROMPTORIO_DEBUG_LLM")

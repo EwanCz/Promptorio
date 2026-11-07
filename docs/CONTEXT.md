@@ -90,6 +90,11 @@ Each `ChipComponent` (one chip, one prompt) requests a decision on: fixed timer,
 10. Secrets: the API key comes only from `Settings` (player-entered in UI, or a dev `.env` read by `Settings` in the editor). Never hardcode, log, or print it. `.env` is dev-only and must stay out of git and out of exports. Check `.gitignore` before committing.
 11. Add a `mock` provider (canned responses, random latency) so the game and UI can be developed and demoed with no network or key.
 
+### Anthropic base URL (relay)
+The Anthropic requests go to `https://api.anthropic.com` unless a relay origin is configured. Resolution order (`Settings.get_anthropic_base_url()`): the Base URL saved from the Settings dialog (`user://settings.cfg`, any build), then the `ANTHROPIC_BASE_URL` process variable, then `ANTHROPIC_BASE_URL` in `.env`. The last two apply in editor runs only; exported builds ignore them. Blank means the official endpoint.
+- The value is an https origin (`https://relay.example.com`, optional port): no path, query, credentials or IPv6 literal. Trailing slashes are trimmed, then `/v1/messages` (chat) and `/v1/models?limit=1` (key check) are appended. Both paths use it.
+- `AnthropicProvider.config_error()` rejects anything else, so `LLMManager` fails the request (or the key check reports "could not verify") before sending, and the key never goes to a malformed or plain-http target. The message does not repeat the value. The URL is never logged.
+
 ### LLM diagnostics (opt-in, local)
 By default a failed HTTP call reaches the ChipLog as `HTTP <status> (<error type>)` only, because a provider's message can echo part of the key. To see the message while debugging, launch the editor (or the project from it) with `PROMPTORIO_DEBUG_LLM=1`, e.g. `PROMPTORIO_DEBUG_LLM=1 godot --editor`; the log line becomes `HTTP 400 (invalid_request_error): <message>`.
 - Limits: only the exact value `1` enables it, and only when `OS.has_feature("editor")`, so exported builds ignore it. It adds the provider's error `message` for non-200 answers and nothing else; no headers, request body or raw response body is ever logged, and a non-JSON body adds nothing.

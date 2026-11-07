@@ -60,6 +60,8 @@ Show machine state independently from current action: normal, down, or overheati
 ### Settings dialog
 Open Settings from the Bar. Offer `mock`, `anthropic`, and `codex` providers. For providers that use credentials, show that provider's API key field and model picker; mask the key while editing. The `mock` provider needs neither. Save writes through `Settings.save_settings()` and closes the dialog; Close dismisses without saving pending edits. If the provider's key comes from `.env` (`Settings.get_key_source()`), the key field stays empty and its placeholder says so; saving never copies the `.env` key to disk, and saving an empty field falls back to it. Never print or log the key.
 
+When `anthropic` is selected, an optional "Base URL" field (blank by default) lets the player use an Anthropic-compatible relay; it is saved with the other settings and takes precedence over the editor-only `ANTHROPIC_BASE_URL` environment/.env overrides (see "Anthropic base URL" in `CLAUDE.md`). A malformed value is not blocked in the dialog: the Bar's key status reports that the base URL is invalid and nothing is sent.
+
 ### API key status
 At the top of the Bar (above the page tabs), a colored `KeyStatus` panel reports the state of the selected provider's key. It is hidden for `mock`, which needs no key. States:
 - Orange, "No active API key": neither a saved key nor a `.env` one (`Settings.needs_api_key()`).

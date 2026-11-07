@@ -39,6 +39,9 @@ func check_key() -> void:
 	var provider: LLMProvider = _make_provider()
 	if provider == null or not provider.requires_network() or Settings.get_api_key(Settings.provider) == "":
 		return
+	if provider.config_error() != "":
+		EventBus.key_checked.emit("error", provider.config_error())
+		return
 	var response: Dictionary = await _send(provider.build_check_request())
 	if id != _key_check_id:
 		return
@@ -93,6 +96,8 @@ func _run(job: Dictionary) -> void:
 func _execute(provider: LLMProvider, job: Dictionary) -> Dictionary:
 	if provider.requires_network() and Settings.get_api_key(Settings.provider) == "":
 		return _outcome([], "no API key (set one in Settings or .env)", 0)
+	if provider.config_error() != "":
+		return _outcome([], provider.config_error(), 0)
 	var request: Dictionary = provider.build_request(job["system_prompt"], job["state"], job["tools"])
 	if not provider.requires_network():
 		await get_tree().create_timer(provider.simulated_latency()).timeout

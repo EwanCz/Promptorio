@@ -170,6 +170,38 @@ func test_settings_dialog_saves_per_provider() -> void:
 		DirAccess.remove_absolute(settings.PATH)
 
 
+func test_settings_dialog_edits_the_anthropic_base_url() -> void:
+	var settings: Node = autoload("Settings")
+	var backup: Array = [settings.anthropic_base_url, settings.provider]
+	var had_file: bool = FileAccess.file_exists(settings.PATH)
+	var file_backup: String = FileAccess.get_file_as_string(settings.PATH) if had_file else ""
+	var dialog: SettingsDialog = _spawn("res://scenes/ui/popups/settings_dialog.tscn")
+	var providers: OptionButton = dialog.get_node("%ProviderPicker")
+	var box: Control = dialog.get_node("%BaseUrl")
+	var edit: LineEdit = dialog.get_node("%BaseUrlEdit")
+	settings.anthropic_base_url = ""
+	dialog.open()
+	providers.select(SettingsDialog.PROVIDERS.find("codex"))
+	providers.item_selected.emit(providers.selected)
+	check(not box.visible, "no base URL field for codex")
+	providers.select(SettingsDialog.PROVIDERS.find("anthropic"))
+	providers.item_selected.emit(providers.selected)
+	check(box.visible and edit.text == "", "blank by default for anthropic")
+	edit.text = "  https://relay.example.com/  "
+	(dialog.get_node("%SaveButton") as Button).pressed.emit()
+	check_eq(settings.anthropic_base_url, "https://relay.example.com/", "saved trimmed")
+	check_eq(settings.get_anthropic_base_url(), "https://relay.example.com", "resolved without the trailing slash")
+	dialog.open()
+	check_eq(edit.text, "https://relay.example.com/", "reopened with the saved value")
+	settings.anthropic_base_url = backup[0]
+	settings.provider = backup[1]
+	if had_file:
+		var file: FileAccess = FileAccess.open(settings.PATH, FileAccess.WRITE)
+		file.store_string(file_backup)
+	else:
+		DirAccess.remove_absolute(settings.PATH)
+
+
 func test_settings_dialog_uses_the_env_key_without_saving_it() -> void:
 	var settings: Node = autoload("Settings")
 	var backup: Array = [settings.api_key, settings.provider, settings.model, settings.env_path]

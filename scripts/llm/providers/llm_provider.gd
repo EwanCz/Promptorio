@@ -15,6 +15,11 @@ func simulated_latency() -> float:
 	return 0.0
 
 
+## A clear message when the provider is misconfigured and nothing may be sent, else "".
+func config_error() -> String:
+	return ""
+
+
 func build_request(_system_prompt: String, _state: Dictionary, _tools: Array) -> Dictionary:
 	return {"url": "", "headers": [], "body": {}}
 

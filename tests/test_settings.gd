@@ -18,6 +18,7 @@ func before_each() -> void:
 		"api_key": _settings.api_key,
 		"provider": _settings.provider,
 		"model": _settings.model,
+		"anthropic_base_url": _settings.anthropic_base_url,
 		"codex_api_key": _settings.codex_api_key,
 		"codex_model": _settings.codex_model,
 		"max_concurrency": _settings.max_concurrency,
@@ -45,7 +46,9 @@ func test_save_and_load_round_trip() -> void:
 	_settings.api_key = "test-key"
 	_settings.provider = "test-provider"
 	_settings.max_concurrency = 3
+	_settings.anthropic_base_url = "https://relay.example.com"
 	_settings.save_settings()
+	_settings.anthropic_base_url = ""
 	_settings.api_key = ""
 	_settings.provider = "mock"
 	_settings.max_concurrency = 1
@@ -53,6 +56,7 @@ func test_save_and_load_round_trip() -> void:
 	check_eq(_settings.api_key, "test-key", "api_key round-trips")
 	check_eq(_settings.provider, "test-provider", "provider round-trips")
 	check_eq(_settings.max_concurrency, 3, "max_concurrency round-trips")
+	check_eq(_settings.anthropic_base_url, "https://relay.example.com", "anthropic_base_url round-trips")
 
 
 func test_load_clamps_out_of_range_values() -> void:

@@ -1,16 +1,24 @@
 extends "res://tests/test_case.gd"
 
 var _saved_key: String = ""
+var _saved_editor_run: bool = true
+var _saved_base_url: String = ""
 var _heard: Array = []
 
 
 func before_each() -> void:
 	_saved_key = autoload("Settings").api_key
+	_saved_editor_run = autoload("Settings").editor_run
+	autoload("Settings").editor_run = false
+	_saved_base_url = autoload("Settings").anthropic_base_url
+	autoload("Settings").anthropic_base_url = ""
 	_heard.clear()
 
 
 func after_each() -> void:
 	autoload("Settings").api_key = _saved_key
+	autoload("Settings").editor_run = _saved_editor_run
+	autoload("Settings").anthropic_base_url = _saved_base_url
 
 
 func test_build_request() -> void:

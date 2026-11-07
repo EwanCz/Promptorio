@@ -6,6 +6,8 @@ const PATH: String = "user://settings.cfg"
 const SECTION: String = "llm"
 ## .env variable holding each provider's key.
 const ENV_VARS: Dictionary = {"anthropic": "ANTHROPIC_API_KEY", "codex": "OPENAI_API_KEY"}
+## Optional dev override of the Anthropic origin, from the process environment or .env.
+const BASE_URL_VAR: String = "ANTHROPIC_BASE_URL"
 ## Models offered per provider in the settings dialog.
 const MODELS: Dictionary = {
 	"anthropic": ["claude-haiku-5-5", "claude-sonnet-5-5", "claude-opus-5-5"],
@@ -15,6 +17,8 @@ const MODELS: Dictionary = {
 var api_key: String = ""
 var provider: String = "mock"
 var model: String = "claude-haiku-5-5"
+## Optional Anthropic-compatible relay origin entered in the Settings dialog. Blank: official endpoint.
+var anthropic_base_url: String = ""
 var codex_api_key: String = ""
 var codex_model: String = "gpt-6.1-terra"
 var max_concurrency: int = 4
@@ -23,6 +27,9 @@ var chip_cooldown: float = 5.0
 var max_tokens: int = 300
 ## Dev key file at the project root. Tests point it elsewhere.
 var env_path: String = "res://.env"
+
+## Whether dev-only overrides (the Anthropic base URL) apply. Tests flip it to act like an export.
+var editor_run: bool = OS.has_feature("editor")
 
 var _env: Dictionary = {}
 
@@ -38,6 +45,17 @@ func _ready() -> void:
 func get_api_key(provider_name: String) -> String:
 	var saved: String = get_saved_api_key(provider_name)
 	return saved if saved != "" else _get_env_key(provider_name)
+
+
+## Anthropic relay origin, trailing slashes trimmed: the saved in-game setting, then (editor runs only)
+## the process environment, then .env. "" means the official endpoint. Not validated here (see AnthropicProvider).
+func get_anthropic_base_url() -> String:
+	var value: String = anthropic_base_url.strip_edges()
+	if value == "" and editor_run:
+		value = OS.get_environment(BASE_URL_VAR).strip_edges()
+		if value == "":
+			value = str(_env.get(BASE_URL_VAR, "")).strip_edges()
+	return value.rstrip("/")
 
 
 ## Only the key entered in the Settings dialog (what the dialog edits and what is saved to disk).
@@ -84,6 +102,7 @@ func load_settings() -> void:
 	api_key = cfg.get_value(SECTION, "api_key", api_key)
 	provider = cfg.get_value(SECTION, "provider", provider)
 	model = cfg.get_value(SECTION, "model", model)
+	anthropic_base_url = cfg.get_value(SECTION, "anthropic_base_url", anthropic_base_url)
 	codex_api_key = cfg.get_value(SECTION, "codex_api_key", codex_api_key)
 	codex_model = cfg.get_value(SECTION, "codex_model", codex_model)
 	max_concurrency = clampi(cfg.get_value(SECTION, "max_concurrency", max_concurrency), 1, 16)
@@ -116,6 +135,7 @@ func save_settings() -> void:
 	cfg.set_value(SECTION, "api_key", api_key)
 	cfg.set_value(SECTION, "provider", provider)
 	cfg.set_value(SECTION, "model", model)
+	cfg.set_value(SECTION, "anthropic_base_url", anthropic_base_url)
 	cfg.set_value(SECTION, "codex_api_key", codex_api_key)
 	cfg.set_value(SECTION, "codex_model", codex_model)
 	cfg.set_value(SECTION, "max_concurrency", max_concurrency)
