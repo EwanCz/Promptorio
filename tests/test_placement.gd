@@ -4,10 +4,13 @@ var _main: Node
 var _placement: Placement
 var _grid: GridMap2D
 var _game: Node
+var _saved_money: int = 0
 
 
 func before_each() -> void:
 	_game = autoload("GameState")
+	_saved_money = _game.money
+	_game.money = 1000
 	_main = load("res://scenes/main.tscn").instantiate()
 	tree.root.add_child(_main)
 	_placement = _main.get_node("Game/FactoryView/SubViewport/World/Placement")
@@ -15,6 +18,7 @@ func before_each() -> void:
 
 
 func after_each() -> void:
+	_game.money = _saved_money
 	_main.free()
 
 
@@ -57,6 +61,50 @@ func test_click_places_the_selected_type() -> void:
 	check_eq(_placement.selected, "", "unknown selection clears it")
 
 
+func test_collector_is_not_buildable() -> void:
+	_placement.select("collector")
+	check_eq(_placement.selected, "", "collector cannot be selected")
+	check(_placement.place("collector", Vector2i(8, 8)) == null, "collector cannot be placed")
+	check(not InputMap.has_action("select_collector"), "no collector shortcut")
+
+
+func test_placement_charges_the_catalog_cost_once() -> void:
+	for type: String in MachineCatalog.BUILDABLE:
+		var before: int = _game.money
+		var cell: Vector2i = GridMap2D.MINESITES[0] if type == "miner" else Vector2i(8, 8)
+		var machine: Machine = _placement.place(type, cell)
+		check(machine != null, "%s placed" % type)
+		check_eq(_game.money, before - MachineCatalog.cost(type), "%s charged its cost once" % type)
+		machine.free()
+
+
+func test_rejected_placement_charges_nothing() -> void:
+	var rejections: Array[String] = []
+	var on_rejected: Callable = func(reason: String) -> void: rejections.append(reason)
+	_placement.placement_rejected.connect(on_rejected)
+	_placement.place("conveyor", Vector2i(8, 8))
+	var money: int = _game.money
+	var count: int = _game.get_machines().size()
+	check(_placement.place("conveyor", Vector2i(8, 8)) == null, "occupied refused")
+	check(_placement.place("conveyor", Vector2i(-1, 0)) == null, "outside refused")
+	check(_placement.place("miner", Vector2i(9, 9)) == null, "miner off minesite refused")
+	_game.money = MachineCatalog.cost("smelter") - 1
+	check(_placement.place("smelter", Vector2i(10, 10)) == null, "unaffordable refused")
+	check_eq(_game.money, MachineCatalog.cost("smelter") - 1, "money unchanged by refusals")
+	_game.money = money
+	check_eq(_game.get_machines().size(), count, "registry unchanged by refusals")
+	check_eq(rejections.size(), 4, "each refusal is reported")
+	_placement.placement_rejected.disconnect(on_rejected)
+
+
+func test_selection_stays_after_placement() -> void:
+	_placement.select("conveyor")
+	_grid.cell_clicked.emit(Vector2i(8, 8))
+	_grid.cell_clicked.emit(Vector2i(9, 8))
+	check_eq(_placement.selected, "conveyor", "selection kept for several placements")
+	check(_game.get_machine_at(Vector2i(9, 8)) != null, "second machine placed")
+
+
 func test_rotation_is_applied_to_new_machines() -> void:
 	var seen: Array[Vector2i] = []
 	for i: int in 4:
@@ -71,7 +119,6 @@ const BINDINGS: Dictionary = {
 	"select_miner": KEY_1,
 	"select_smelter": KEY_2,
 	"select_assembler": KEY_3,
-	"select_collector": KEY_4,
 	"select_conveyor": KEY_5,
 	"rotate_placement": KEY_R,
 	"cancel_placement": KEY_ESCAPE,
@@ -112,7 +159,7 @@ func test_actions_select_rotate_and_cancel() -> void:
 
 func test_each_select_action_picks_its_machine() -> void:
 	var expected: Dictionary = {"select_miner": "miner", "select_smelter": "smelter", "select_assembler": "assembler",
-		"select_collector": "collector", "select_conveyor": "conveyor"}
+		"select_conveyor": "conveyor"}
 	for action: String in expected:
 		_main._unhandled_input(_action(action))
 		check_eq(_placement.selected, expected[action], "%s -> %s" % [action, expected[action]])

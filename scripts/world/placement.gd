@@ -1,7 +1,11 @@
 class_name Placement
 extends Node
-## Minimal build flow: pick a type (select_* actions), rotate_placement, cancel_placement, click a grid cell to place it.
-## Rules: inside the grid, free cell, miners only on minesites. Places the Collector at the map center.
+## Build flow: pick a type (Build page or select_* actions), rotate_placement, cancel_placement, click a grid cell to place it.
+## Rules: inside the grid, free cell, miners only on minesites, enough money (charged once, on success).
+## Places the free Collector at the map center.
+
+signal selection_changed(type: String)
+signal placement_rejected(reason: String)
 
 const SCENES: Dictionary = {
 	"miner": preload("res://scenes/machines/miner.tscn"),
@@ -10,12 +14,11 @@ const SCENES: Dictionary = {
 	"collector": preload("res://scenes/machines/collector.tscn"),
 	"conveyor": preload("res://scenes/machines/conveyor.tscn"),
 }
-## Input Map action -> machine type. Bindings live in project.godot (physical keys 1-5).
+## Input Map action -> machine type. Bindings live in project.godot (physical keys 1-5; 4 is unused, the Collector is not buildable).
 const SELECT_ACTIONS: Dictionary = {
 	"select_miner": "miner",
 	"select_smelter": "smelter",
 	"select_assembler": "assembler",
-	"select_collector": "collector",
 	"select_conveyor": "conveyor",
 }
 
@@ -30,7 +33,7 @@ var _next_id: int = 1
 
 func _ready() -> void:
 	grid.cell_clicked.connect(_on_cell_clicked)
-	place("collector", GameState.GRID_SIZE / 2)
+	_spawn("collector", GameState.GRID_SIZE / 2)
 
 
 ## Handles the placement actions from the Input Map. True if the event was one of them.
@@ -48,8 +51,10 @@ func handle_input(event: InputEvent) -> bool:
 	return false
 
 
+## Only buildable types can be selected; anything else clears the selection.
 func select(type: String) -> void:
-	selected = type if SCENES.has(type) else ""
+	selected = type if MachineCatalog.is_buildable(type) else ""
+	selection_changed.emit(selected)
 
 
 ## Clockwise: right, down, left, up.
@@ -57,13 +62,30 @@ func rotate_facing() -> void:
 	facing = Vector2i(-facing.y, facing.x)
 
 
-## Returns the new machine, or null if the type is unknown or the cell is out of bounds, taken,
-## or (for a miner) not a minesite.
+## Returns the new machine and charges its cost, or null (nothing charged, `placement_rejected` emitted)
+## if the type is not buildable, the cell is out of bounds or taken, a miner is off a minesite,
+## or there is not enough money.
 func place(type: String, cell: Vector2i) -> Machine:
-	if not SCENES.has(type) or not GameState.can_place(cell):
-		return null
+	if not MachineCatalog.is_buildable(type):
+		return _reject("Cannot build that")
+	if not GameState.can_place(cell):
+		return _reject("Cell is occupied or outside the grid")
 	if type == "miner" and not grid.is_minesite(cell):
-		return null
+		return _reject("Miners go on minesites only")
+	var cost: int = MachineCatalog.cost(type)
+	if GameState.money < cost:
+		return _reject("Not enough money (%d needed)" % cost)
+	var machine: Machine = _spawn(type, cell)
+	GameState.add_money(-cost)
+	return machine
+
+
+func _reject(reason: String) -> Machine:
+	placement_rejected.emit(reason)
+	return null
+
+
+func _spawn(type: String, cell: Vector2i) -> Machine:
 	var machine: Machine = (SCENES[type] as PackedScene).instantiate() as Machine
 	machine.cell = cell
 	machine.facing = facing

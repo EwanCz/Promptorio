@@ -7,6 +7,10 @@ func test_main_scene_layout() -> void:
 	check(main.get_node_or_null("Game/FactoryView/SubViewport/World/GridMap2D") is TileMapLayer, "world has GridMap2D")
 	check(main.get_node_or_null("Game/FactoryView/SubViewport/World/Camera2D") != null, "world has Camera2D")
 	check(main.get_node_or_null("Game/Bar/VBoxContainer/PageTabs") != null, "bar has PageTabs")
+	var box: Node = main.get_node("Game/Bar/VBoxContainer")
+	check_eq(box.get_child(0).name, &"PageTabs", "page tabs are at the top")
+	check_eq(box.get_child(box.get_child_count() - 1).name, &"SettingsButton", "Settings button is at the bottom")
+	check_eq([tabs.get_tab_title(0), tabs.get_tab_title(1)], ["Build", "Chip Registry"], "Build and Chip Registry tabs side by side")
 	check(main.get_node_or_null("UI") is CanvasLayer, "UI layer exists")
 	check(main.get_node_or_null("Game/Bar/VBoxContainer/Pages/ChipRegistryPage") != null, "bar has the chip registry page")
 	for popup_name: String in ["ChipPage", "MachineTooltip", "ChipLog", "SettingsDialog"]:
