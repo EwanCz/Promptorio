@@ -103,7 +103,34 @@ scenes/   machines/, ui/ (bar, pages, popups), world/
 scripts/  core/, llm/ (providers/), machines/, ui/
 data/     machine and recipe resources (.tres)
 assets/   art, audio
+tests/    headless test suite (see Testing)
 ```
+
+## Testing
+Every feature ships with tests, and every bug fix ships with a test that fails without the fix. Run the whole suite before every commit and before saying a task is done.
+
+```
+tests/run.sh              # whole suite (refreshes the class cache, exit 1 on any failure)
+tests/run.sh llm          # only test files whose name contains "llm"
+```
+Env: `GODOT` (godot binary, default `godot`), `TEST_TIMEOUT` (seconds, default 120).
+
+### Writing a test
+- One file per feature: `tests/test_<feature>.gd`, starting with `extends "res://tests/test_case.gd"`. The runner finds it automatically.
+- Every method named `test_*` is a test. It may `await` (coroutines are fine). Optional `before_each()` / `after_each()` hooks do setup and cleanup.
+- Helpers from `test_case.gd`: `check(cond, label)`, `check_eq(actual, expected, label)`, `autoload("Name")`, `await wait_until(callable, timeout)`, `await wait_seconds(s)`.
+- A test with zero checks fails (an aborted test must not look green). `tests/run.sh` also fails on any `SCRIPT ERROR` in the output.
+- Example: `tests/test_game_state.gd` (simple), `tests/test_llm_manager.gd` (async with signals).
+
+### Rules and gotchas
+- Tests are headless, with no scene and no display. Autoloads are available through `autoload("Name")`; bare identifiers like `GameState` do not compile in test scripts. Test scene-based code by instantiating the scene from code.
+- Never use the network or a real API key. Use `Settings.provider = "mock"`.
+- Real time only: headless frames are uncapped, so never count frames for timeouts (`wait_until` / `wait_seconds` already use real time).
+- Leave no global state behind. Disconnect any signals you connect, restore any `Settings` / `GameState` value you change, and free any node you create (`after_each()`). `test_settings.gd` shows how to back up and restore `user://settings.cfg`.
+- Never store a lambda in a member variable of a test (it captures `self`, creating a reference cycle that leaks and prints "ObjectDB instances were leaked" at exit). Use a method for signal handlers, or a local lambda inside the test. A clean run prints no leak warnings.
+- Test through public methods and signals, not private `_members`, unless there is no other way (the LLM queue tests read `_in_flight` / `_queue`).
+- New `class_name` scripts need a class-cache refresh; `tests/run.sh` does it, a bare `godot --headless -s` does not.
+- Not covered yet: the real HTTP path (timeouts, non-200, bad JSON, 429 backoff). Add tests with the `AnthropicProvider`.
 
 ## Features
 
@@ -126,5 +153,6 @@ Information in docs/UI.md search any information related to UI in this file.
 ## Workflow
 - Branch per feature, small commits (conventional commits, e.g. `feat(llm): add queue`). Don't commit directly to `main` for features. Never commit `.env` or keys.
 - Don't edit `project.godot` or `.tscn` by hand unless necessary. If you must, keep changes minimal. Scenes merge badly, so tell the team which scene you're touching.
-- Before saying a task is done, run the project headless if possible (`godot --headless --quit`) to catch parse errors, and say if something was not run or tested.
+- Before saying a task is done, run `tests/run.sh` (and the project headless with `godot --headless --quit` once a main scene exists) to catch parse errors and regressions, and say if something was not run or tested.
+- New or changed behavior needs a test in `tests/` in the same commit (see Testing).
 - When unsure about an architecture decision, ask rather than inventing a new pattern.
