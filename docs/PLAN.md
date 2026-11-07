@@ -6,6 +6,7 @@ Living document. Update it when scope or decisions change, and tick items off as
 - **LLM:** provider-agnostic adapter (`LLMProvider`). Anthropic first, OpenAI-compatible if time allows, plus a mock provider.
 - **API key:** player-entered in a settings UI, stored in `user://settings.cfg`. `.env` is dev-only and never exported or committed.
 - **Chip triggers:** fixed timer, state thresholds, events (input empty / output full / error), and a manual "Ask chip now" button.
+- **Simulation clock:** physics-driven, with elapsed-time catch-up at 10 Hz; paused time is excluded.
 - **Team and scope:** 2-3 devs, one tight loop (Miner -> Smelter -> Assembler) with a visible win/fail state. Conveyors are plain logic. AI on conveyors and logistics nodes is post-MVP.
 
 Architecture and async HTTP rules live in `CLAUDE.md`.

@@ -69,3 +69,12 @@ func test_tick_rate() -> void:
 	_bus.tick_fired.disconnect(on_tick)
 	check(ticks[0] >= 8 and ticks[0] <= 12, "about 10 ticks in 1 s (got %d)" % ticks[0])
 	check_eq(_game_state.tick_count - start, ticks[0], "tick_count matches emitted signals")
+
+
+func test_clock_catches_up_after_stall() -> void:
+	var start: int = _game_state.tick_count
+	var previous_accumulator: float = _game_state._tick_accumulator
+	_game_state._tick_accumulator = 0.0
+	_game_state._advance_clock(0.55)
+	check_eq(_game_state.tick_count - start, 5, "a long interval emits every elapsed tick")
+	_game_state._tick_accumulator = previous_accumulator

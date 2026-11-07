@@ -9,15 +9,23 @@ var tick_count: int = 0
 var money: int = 0
 
 var _machines: Dictionary = {}
-var _tick_timer: Timer
+var _last_tick_time_usec: int = 0
+var _tick_accumulator: float = 0.0
 
 
 func _ready() -> void:
-	_tick_timer = Timer.new()
-	_tick_timer.wait_time = 1.0 / TICK_RATE
-	_tick_timer.timeout.connect(_on_tick)
-	add_child(_tick_timer)
-	_tick_timer.start()
+	_last_tick_time_usec = Time.get_ticks_usec()
+
+
+func _physics_process(_delta: float) -> void:
+	var now: int = Time.get_ticks_usec()
+	_advance_clock(float(now - _last_tick_time_usec) / 1000000.0)
+	_last_tick_time_usec = now
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_UNPAUSED:
+		_last_tick_time_usec = Time.get_ticks_usec()
 
 
 func is_in_grid(cell: Vector2i) -> bool:
@@ -65,6 +73,10 @@ func add_money(amount: int) -> void:
 	EventBus.money_changed.emit(money)
 
 
-func _on_tick() -> void:
-	tick_count += 1
-	EventBus.tick_fired.emit(tick_count)
+func _advance_clock(elapsed: float) -> void:
+	_tick_accumulator += elapsed
+	var interval: float = 1.0 / TICK_RATE
+	while _tick_accumulator >= interval:
+		_tick_accumulator -= interval
+		tick_count += 1
+		EventBus.tick_fired.emit(tick_count)

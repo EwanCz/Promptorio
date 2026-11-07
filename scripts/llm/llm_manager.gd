@@ -31,6 +31,8 @@ func request_decision(requester_id: int, system_prompt: String, state: Dictionar
 func _pump() -> void:
 	while not _queue.is_empty() and _in_flight < Settings.max_concurrency:
 		var job: Dictionary = _queue.pop_front()
+		if not _requester_alive(job["requester_id"]):
+			continue
 		_in_flight += 1
 		_run(job)
 
@@ -41,11 +43,18 @@ func _run(job: Dictionary) -> void:
 	if provider != null:
 		for attempt: int in range(MAX_RETRIES + 1):
 			outcome = await _execute(provider, job)
+			if not _requester_alive(job["requester_id"]):
+				break
 			if outcome["status"] != 429 or attempt == MAX_RETRIES:
 				break
 			await get_tree().create_timer(BACKOFF_BASE * pow(2.0, attempt)).timeout
+			if not _requester_alive(job["requester_id"]):
+				break
 	_in_flight -= 1
 	var id: int = job["requester_id"]
+	if not _requester_alive(id):
+		_pump()
+		return
 	if outcome["error"] == "":
 		var calls: Array[Dictionary] = []
 		calls.assign(outcome["calls"])
@@ -59,6 +68,8 @@ func _execute(provider: LLMProvider, job: Dictionary) -> Dictionary:
 	var request: Dictionary = provider.build_request(job["system_prompt"], job["state"], job["tools"])
 	if not provider.requires_network():
 		await get_tree().create_timer(provider.simulated_latency()).timeout
+		if not _requester_alive(job["requester_id"]):
+			return _outcome([], "requester removed", 0)
 		return _outcome(provider.parse_response(request["body"]), "", 200)
 
 	var http: HTTPRequest = _acquire()
@@ -70,6 +81,8 @@ func _execute(provider: LLMProvider, job: Dictionary) -> Dictionary:
 		return _outcome([], "request failed to start (error %d)" % err, 0)
 	var response: Array = await http.request_completed
 	_release(http)
+	if not _requester_alive(job["requester_id"]):
+		return _outcome([], "requester removed", 0)
 
 	var result: int = response[0]
 	var status: int = response[1]
@@ -86,6 +99,11 @@ func _execute(provider: LLMProvider, job: Dictionary) -> Dictionary:
 
 func _outcome(calls: Array, error: String, status: int) -> Dictionary:
 	return {"calls": calls, "error": error, "status": status}
+
+
+func _requester_alive(id: int) -> bool:
+	var requester: Object = instance_from_id(id)
+	return is_instance_valid(requester) and requester is Node and requester.is_inside_tree() and not requester.is_queued_for_deletion()
 
 
 func _make_provider() -> LLMProvider:
