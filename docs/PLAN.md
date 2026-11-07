@@ -19,7 +19,7 @@ Architecture and async HTTP rules live in `CLAUDE.md`.
 | Dev | Track |
 |---|---|
 | A (LLM) | `LLMProvider` base, `MockProvider`, `AnthropicProvider`, `HTTPRequest` pool, queue, timeout, 429 backoff, signals |
-| B (Sim) | Grid placement, fixed-rate tick, Miner/Smelter/Assembler logic, smelter temperature model, explosion fail state |
+| B (Sim) | Grid placement, fixed-rate tick, Miner/Smelter/Assembler/Collector logic, smelter temperature model, explosion fail state |
 | C (UI) | Build bar, prompt editor popup, settings dialog (key, provider, model), chip decision log |
 
 ## Phase 2 — Integration (h20–32)
