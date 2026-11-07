@@ -150,14 +150,14 @@ func test_rotate_is_clockwise_and_keeps_stock() -> void:
 func test_tooltip_destroy_and_rotate_buttons() -> void:
 	var conveyor: Conveyor = _placement.place("conveyor", Vector2i(8, 8))
 	_main.get_node("%GridMap2D").cell_clicked.emit(Vector2i(8, 8))
-	check(_tooltip.visible, "tooltip opens on click")
+	check(_tooltip.is_open(), "tooltip opens on click")
 	check(_tooltip.get_node("%RotateButton").visible, "conveyor can rotate")
 	check(_tooltip.get_node("%DestroyButton").visible, "conveyor can be destroyed")
 	check((_tooltip.get_node("%ActionLabel") as Label).text.begins_with("Facing"), "conveyor action shown")
 	_tooltip.get_node("%RotateButton").pressed.emit()
 	check_eq(conveyor.facing, Vector2i.DOWN, "rotate button rotates")
 	_tooltip.get_node("%DestroyButton").pressed.emit()
-	check(not _tooltip.visible, "tooltip closes")
+	check(not _tooltip.is_open(), "tooltip closes")
 	check(_game.get_machine_at(Vector2i(8, 8)) == null, "machine destroyed")
 
 
@@ -183,7 +183,7 @@ func test_destroyed_machine_closes_its_open_tooltip() -> void:
 	var conveyor: Conveyor = _placement.place("conveyor", Vector2i(8, 8))
 	_tooltip.open(conveyor)
 	conveyor.destroy()
-	check(not _tooltip.visible, "tooltip closes when the machine goes away")
+	check(not _tooltip.is_open(), "tooltip closes when the machine goes away")
 
 
 func test_popups_consume_mouse_input() -> void:

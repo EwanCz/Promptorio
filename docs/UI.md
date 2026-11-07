@@ -21,8 +21,12 @@ The different page are:
 ## Chip Page
 When a chip is clicked in the chip registry page. The game is paused and a popup happear at the center of the screen. It will contain the name of the selected chip, its description and its prompt. The prompt is what the llm receive. From this page we can edit/save/remove a chip.
 
-## Machine tooltop
-When clicked on a machine a tooltip opens. Clicking the same machine or an empty cell closes it. Show machine id, type, state, current action, connected chips with prompt preview and timeout, an add-chip picker from the registry, and a log button.
+## Machine tooltip
+The Bar is split in two halves of equal height, with the Settings button below them at the very bottom:
+- Top half: the page tabs (Build / Chip Registry) and the current page inside a scroll container, so a long list scrolls instead of growing the Bar.
+- Bottom half: the machine tooltip, a panel of the Bar (not a popup over the map). It shows "Click a machine to see its details." until a machine is clicked. Clicking the same machine or an empty cell goes back to that hint. The details scroll when they do not fit. Show machine id, type, state, current action, connected chips with prompt preview and timeout (chip rows wrap to the narrow Bar), an add-chip picker from the registry, a log button, and the Rotate and Destroy actions.
+
+The tooltip hides with the rest of the Bar (`E`).
 
 ### Build page and economy
 Start with 100 money. These are MVP prices, kept together in the machine catalog used by both the Build page and placement:
@@ -37,7 +41,7 @@ Start with 100 money. These are MVP prices, kept together in the machine catalog
 The Collector at the map center is provided for free and cannot be built or removed. The Build page always shows current money and each buildable machine's cost. Disable choices the player cannot afford. Selecting an affordable machine enters placement mode but does not charge money. Charge exactly once only when the machine is successfully placed. Invalid cells, occupied cells, miners placed off minesites, or insufficient money must leave both money and the machine registry unchanged. Keep the selected type active after a successful placement so the player can place several; `cancel_placement` (default Escape) exits placement mode. Show which type is selected and give clear feedback when placement is rejected.
 
 ### Machine actions
-The machine tooltip provides the actions that apply to an existing machine:
+The machine tooltip panel provides the actions that apply to an existing machine:
 - Rotate output: rotate `facing` clockwise (right, down, left, up) for Miner, Smelter, Assembler, and Conveyor. The Collector has no facing and shows no rotate action. Rotation changes where future output is sent; it does not alter stored items. The `rotate_placement` action (default R) rotates the next machine during placement; it also rotates the machine whose tooltip is open, so one press turns both the selected machine and the next placement (same as the Rotate button, nothing happens for the Collector).
 - Remove: immediately free the machine's grid cell and remove it from the scene. Discard its stock, held item, and attached chips; do not refund its purchase price. Do not offer removal for the fixed Collector. The freed cell can be rebuilt using normal placement checks and cost.
 

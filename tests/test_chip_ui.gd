@@ -95,17 +95,17 @@ func test_tooltip_toggle_and_chips() -> void:
 	var bus: Node = autoload("EventBus")
 	var chip: ChipRessource = _add("ui_tip", "prompt text")
 	bus.machine_selected.emit(machine)
-	check(tooltip.visible, "selecting a machine opens the tooltip")
+	check(tooltip.is_open(), "selecting a machine opens the tooltip")
 	check_eq((tooltip.get_node("%TypeLabel") as Label).text, "Type: machine", "type shown")
 	check_eq((tooltip.get_node("%StatusLabel") as Label).text, "State: normal", "state shown")
 	(tooltip.get_node("%AddButton") as Button).pressed.emit()
 	check_eq(machine.chips.size(), 1, "add chip attaches the picked chip")
 	check_eq(tooltip.get_node("%ChipsList").get_child_count(), 1, "attached chip listed")
 	var row: Node = tooltip.get_node("%ChipsList").get_child(0)
-	var main_row: Node = row.get_child(0)
-	(main_row.get_child(1) as SpinBox).value = 7
+	var main_row: Node = row.get_child(1)
+	(main_row.get_child(0) as SpinBox).value = 7
 	check_eq(machine.chips[0].timeout, 7, "timeout edited from the tooltip")
-	(main_row.get_child(2) as Button).pressed.emit()
+	(main_row.get_child(1) as Button).pressed.emit()
 	check_eq(machine.chips.size(), 0, "remove button detaches the chip")
 	var logged: Array = []
 	var on_log: Callable = func(m: Machine) -> void: logged.append(m)
@@ -114,10 +114,10 @@ func test_tooltip_toggle_and_chips() -> void:
 	check_eq(logged, [machine], "log button requests the machine log")
 	tooltip.log_requested.disconnect(on_log)
 	bus.machine_selected.emit(machine)
-	check(not tooltip.visible, "selecting the same machine closes the tooltip")
+	check(not tooltip.is_open(), "selecting the same machine closes the tooltip")
 	bus.machine_selected.emit(machine)
 	bus.machine_selected.emit(null)
-	check(not tooltip.visible, "an empty cell closes the tooltip")
+	check(not tooltip.is_open(), "an empty cell closes the tooltip")
 	check(chip != null, "chip fixture exists")
 
 
@@ -252,9 +252,9 @@ func test_tooltip_ask_now_and_threshold() -> void:
 	settings.chip_cooldown = 0.0
 	autoload("EventBus").machine_selected.emit(machine)
 	var box: Node = tooltip.get_node("%ChipsList").get_child(0)
-	(box.get_child(0).get_child(3) as Button).pressed.emit()
+	(box.get_child(1).get_child(2) as Button).pressed.emit()
 	check(machine.chips[0].pending, "Ask now sends a request")
-	var watch: Node = box.get_child(1)
+	var watch: Node = box.get_child(2)
 	var keys: OptionButton = watch.get_child(1) as OptionButton
 	var index: int = -1
 	for i: int in keys.item_count:

@@ -76,34 +76,38 @@ unique_name_in_owner = true
 layout_mode = 2
 autowrap_mode = 3
 
-[node name="PageTabs" type="HFlowContainer" parent="Game/Bar/VBoxContainer"]
+[node name="TopHalf" type="VBoxContainer" parent="Game/Bar/VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+size_flags_stretch_ratio = 1.0
+
+[node name="PageTabs" type="HFlowContainer" parent="Game/Bar/VBoxContainer/TopHalf"]
 unique_name_in_owner = true
 layout_mode = 2
 
-[node name="Pages" type="Control" parent="Game/Bar/VBoxContainer"]
-unique_name_in_owner = true
+[node name="PageScroll" type="ScrollContainer" parent="Game/Bar/VBoxContainer/TopHalf"]
 layout_mode = 2
 size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="Pages" type="MarginContainer" parent="Game/Bar/VBoxContainer/TopHalf/PageScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
 
 [node name="UI" type="CanvasLayer" parent="."]
 
-[node name="BuildPage" parent="Game/Bar/VBoxContainer/Pages" instance=ExtResource("13_build")]
+[node name="BuildPage" parent="Game/Bar/VBoxContainer/TopHalf/PageScroll/Pages" instance=ExtResource("13_build")]
 unique_name_in_owner = true
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
+layout_mode = 2
 
-[node name="ChipRegistryPage" parent="Game/Bar/VBoxContainer/Pages" instance=ExtResource("7_registry")]
+[node name="ChipRegistryPage" parent="Game/Bar/VBoxContainer/TopHalf/PageScroll/Pages" instance=ExtResource("7_registry")]
 unique_name_in_owner = true
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
+layout_mode = 2
+
+[node name="MachineTooltip" parent="Game/Bar/VBoxContainer" instance=ExtResource("9_tooltip")]
+unique_name_in_owner = true
+layout_mode = 2
 
 [node name="SettingsButton" type="Button" parent="Game/Bar/VBoxContainer"]
 unique_name_in_owner = true
@@ -111,9 +115,6 @@ layout_mode = 2
 text = "Settings"
 
 [node name="ChipPage" parent="UI" instance=ExtResource("8_chip_page")]
-unique_name_in_owner = true
-
-[node name="MachineTooltip" parent="UI" instance=ExtResource("9_tooltip")]
 unique_name_in_owner = true
 
 [node name="ChipLog" parent="UI" instance=ExtResource("10_log")]
