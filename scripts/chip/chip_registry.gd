@@ -23,6 +23,21 @@ func add(chip_name: String, prompt: String, desc: String = "") -> ChipRessource:
 	return chip
 
 
+## Edits a chip in place. Returns false for an unknown id, an empty name, or a name used by another chip.
+func update(chip_id: int, chip_name: String, desc: String, prompt: String) -> bool:
+	var chip: ChipRessource = _chips.get(chip_id)
+	if chip == null or chip_name == "":
+		return false
+	for existing: ChipRessource in _chips.values():
+		if existing != chip and existing.name == chip_name:
+			return false
+	chip.name = chip_name
+	chip.description = desc
+	chip.prompt = prompt
+	EventBus.chip_updated.emit(chip)
+	return true
+
+
 ## Returns true if the id existed.
 func remove(chip_id: int) -> bool:
 	var chip: ChipRessource = _chips.get(chip_id)

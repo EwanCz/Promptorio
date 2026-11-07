@@ -50,6 +50,15 @@ Architecture and async HTTP rules live in `CLAUDE.md`.
 - [x] `GridMap2D` (`scripts/world/grid_map_2d.gd`, `TileMapLayer` in `World`): ground and minesite tiles from `data/tilesets/factory_tileset.tres` (100 px atlas tiles, layer scaled to `CELL_SIZE` 64), hover highlight (green/red from `GameState.can_place`), signals `cell_hovered(cell)` / `cell_clicked(cell)`, `get_hovered_cell(world_pos)`, `is_minesite(cell)`. Placing machines is still done through `GameState.register_machine`; the minesite rule is not enforced yet.
 - [x] `FactoryCamera` (`scripts/world/camera.gd`): wheel zoom at cursor (0.4-2.0), middle-drag / arrow-key pan, clamped to the grid.
 
+### Bar and popups (track C)
+- [x] `BarPanel` (`scripts/ui/bar_panel.gd`): one tab per child of `Pages` (title from the node name), Settings button.
+- [x] Chip Registry page (`ChipRegistryPage`): list of chips + `new chip` (blank draft, `name = "Blank"`, saved only on Save).
+- [x] `ChipPage` popup: edit/save/remove, pauses the game while open. `ChipRegistry.update()` and `EventBus.chip_updated` were added for it.
+- [x] `MachineTooltip`: id, type, state, chips (prompt preview, timeout in ticks, remove), add chip from the registry, Log button. Opens through `EventBus.machine_selected`, which `main.gd` emits on `GridMap2D.cell_clicked`; a second click or an empty cell closes it.
+- [x] `ChipLog` (last 200 lines per machine from `chip_log_added`) and `SettingsDialog` (key, provider, model).
+- [ ] Build page: blocked, no buildable machine or cost exists yet.
+- [ ] Tooltip "current action" line (production rate, consumed resource, time remaining): blocked until machine subclasses expose it.
+
 ## Phase 2 — Integration (h20–32)
 - [ ] `ChipComponent` wired to `LLMManager`: timer, threshold, event and manual triggers, per-chip cooldown, one request in flight per chip
 - [ ] Each machine exposes `get_tool_schemas()` and `apply_tool_call()` (validates and clamps all LLM args)

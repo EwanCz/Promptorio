@@ -45,3 +45,24 @@ func test_remove() -> void:
 	check(_registry.get_from_id(id) == null, "gone from registry")
 	check(not _registry.remove(id), "second remove reports false")
 	check(_add("reg_rm") != null, "name reusable after removal")
+
+
+func test_update_edits_in_place_and_emits() -> void:
+	var chip: ChipRessource = _add("reg_up", "old", "d")
+	var seen: Array[ChipRessource] = []
+	var on_updated: Callable = func(c: ChipRessource) -> void: seen.append(c)
+	autoload("EventBus").chip_updated.connect(on_updated)
+	check(_registry.update(chip.id, "reg_up2", "new desc", "new prompt"), "update succeeds")
+	check_eq([chip.name, chip.description, chip.prompt], ["reg_up2", "new desc", "new prompt"], "fields changed")
+	check_eq(seen, [chip], "chip_updated emitted with the chip")
+	check(_registry.update(chip.id, "reg_up2", "", ""), "keeping its own name is allowed")
+	autoload("EventBus").chip_updated.disconnect(on_updated)
+
+
+func test_update_refuses_bad_input() -> void:
+	var first: ChipRessource = _add("reg_u1")
+	var second: ChipRessource = _add("reg_u2")
+	check(not _registry.update(second.id, "reg_u1", "", ""), "name of another chip refused")
+	check(not _registry.update(first.id, "", "", ""), "empty name refused")
+	check(not _registry.update(99999, "x", "", ""), "unknown id refused")
+	check_eq(second.name, "reg_u2", "refused update changes nothing")

@@ -8,6 +8,9 @@ func test_main_scene_layout() -> void:
 	check(main.get_node_or_null("Game/FactoryView/SubViewport/World/Camera2D") != null, "world has Camera2D")
 	check(main.get_node_or_null("Game/Bar/VBoxContainer/PageTabs") != null, "bar has PageTabs")
 	check(main.get_node_or_null("UI") is CanvasLayer, "UI layer exists")
+	check(main.get_node_or_null("Game/Bar/VBoxContainer/Pages/ChipRegistryPage") != null, "bar has the chip registry page")
+	for popup_name: String in ["ChipPage", "MachineTooltip", "ChipLog", "SettingsDialog"]:
+		check(main.get_node_or_null("UI/" + popup_name) != null, "UI has " + popup_name)
 	var factory: Control = main.get_node("Game/FactoryView")
 	var bar: Control = main.get_node("Game/Bar")
 	check_eq(factory.size_flags_stretch_ratio / bar.size_flags_stretch_ratio, 4.0, "factory:bar is 80:20")

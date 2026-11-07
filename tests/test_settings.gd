@@ -16,6 +16,8 @@ func before_each() -> void:
 		"api_key": _settings.api_key,
 		"provider": _settings.provider,
 		"model": _settings.model,
+		"codex_api_key": _settings.codex_api_key,
+		"codex_model": _settings.codex_model,
 		"max_concurrency": _settings.max_concurrency,
 		"request_timeout": _settings.request_timeout,
 		"chip_cooldown": _settings.chip_cooldown,
@@ -67,3 +69,17 @@ func test_settings_changed_signal() -> void:
 	_settings.save_settings()
 	autoload("EventBus").settings_changed.disconnect(on_changed)
 	check_eq(count[0], 1, "save_settings emits settings_changed once")
+
+
+func test_codex_key_and_model_round_trip() -> void:
+	check_eq(_settings.get_api_key("mock"), "", "mock has no key")
+	_settings.set_provider_config("codex", "ck", "gpt-6-luna")
+	_settings.set_provider_config("anthropic", "ak", "claude-opus-5-5")
+	check_eq([_settings.get_api_key("codex"), _settings.get_model("codex")], ["ck", "gpt-6-luna"], "codex config read back")
+	check_eq([_settings.api_key, _settings.model], ["ak", "claude-opus-5-5"], "anthropic config kept apart")
+	_settings.save_settings()
+	_settings.codex_api_key = ""
+	_settings.codex_model = ""
+	_settings.load_settings()
+	check_eq([_settings.codex_api_key, _settings.codex_model], ["ck", "gpt-6-luna"], "codex config persisted")
+	check(_settings.MODELS["codex"].has("gpt-6.1-terra"), "gpt-6.1-terra is offered")
