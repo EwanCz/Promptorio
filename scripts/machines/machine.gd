@@ -63,6 +63,42 @@ func get_chip(chip_id: int) -> ChipComponent:
 	return null
 
 
+## False for the fixed Collector.
+func is_removable() -> bool:
+	return true
+
+
+## False for machines with no output direction (the Collector).
+func can_rotate() -> bool:
+	return true
+
+
+## Clockwise: right, down, left, up. Only changes where future output goes.
+func rotate_facing() -> void:
+	facing = Vector2i(-facing.y, facing.x)
+
+
+## One line for the tooltip: what the machine is doing right now. Subclasses override.
+func get_action_text() -> String:
+	return ""
+
+
+## Discards everything the machine holds (stock, held item, attached chips), frees its grid cell
+## immediately and removes it from the scene. False if the machine is fixed.
+func destroy() -> bool:
+	if not is_removable():
+		return false
+	clear_contents()
+	for component: ChipComponent in chips.duplicate():
+		detach_chip(component.chip.id)
+	if GameState.get_machine_at(cell) == self:
+		GameState.unregister_machine(cell)
+	if get_parent() != null:
+		get_parent().remove_child(self)
+	queue_free()
+	return true
+
+
 ## Takes one item from an upstream machine. True if accepted. Machines that take nothing keep the default.
 func receive(_item: String) -> bool:
 	return false
@@ -112,6 +148,11 @@ func apply_tool_call(tool_name: String, args: Dictionary) -> bool:
 
 func log_chip(message: String) -> void:
 	EventBus.chip_log_added.emit(self, message)
+
+
+## Drops the machine's stock and held items. Subclasses with contents override.
+func clear_contents() -> void:
+	pass
 
 
 ## Simulation step, called once per GameState tick unless the machine is DOWN. Override in subclasses.

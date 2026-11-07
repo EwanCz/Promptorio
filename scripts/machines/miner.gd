@@ -40,6 +40,15 @@ func get_events() -> Array[String]:
 	return events
 
 
+func get_action_text() -> String:
+	return "Mining 1 %s every %d ticks%s" % [ITEM, mine_ticks, " (output blocked)" if _held != "" else ""]
+
+
+func clear_contents() -> void:
+	_held = ""
+	_progress = 0
+
+
 func _tick() -> void:
 	if _held != "":
 		if _push(_held):

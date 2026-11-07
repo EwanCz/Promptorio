@@ -27,6 +27,10 @@ func get_state() -> Dictionary:
 	return super.get_state().merged({"temperature": roundi(temperature), "cooling": cooling})
 
 
+func get_action_text() -> String:
+	return "%s\nTemperature: %d°, cooling %s" % [super.get_action_text(), roundi(temperature), "on" if cooling else "off"]
+
+
 func _apply(tool_name: String, args: Dictionary) -> void:
 	if tool_name == "set_cooling":
 		cooling = args["on"]
@@ -55,8 +59,6 @@ func _status_text() -> String:
 
 func _explode() -> void:
 	status = Status.DOWN
-	stock.clear()
-	progress = 0
-	_output = ""
+	clear_contents()
 	log_chip("exploded at %d°" % roundi(temperature))
 	EventBus.machine_exploded.emit(self)

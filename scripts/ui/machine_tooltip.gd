@@ -15,6 +15,9 @@ var _machine: Machine = null
 @onready var _id_label: Label = %IdLabel
 @onready var _type_label: Label = %TypeLabel
 @onready var _status_label: Label = %StatusLabel
+@onready var _action_label: Label = %ActionLabel
+@onready var _rotate_button: Button = %RotateButton
+@onready var _destroy_button: Button = %DestroyButton
 @onready var _chips_list: VBoxContainer = %ChipsList
 @onready var _picker: OptionButton = %ChipPicker
 @onready var _add_button: Button = %AddButton
@@ -28,6 +31,9 @@ func _ready() -> void:
 	EventBus.chip_registered.connect(_on_registry_changed)
 	EventBus.chip_removed.connect(_on_registry_changed)
 	EventBus.chip_updated.connect(_on_registry_changed)
+	EventBus.machine_unregistered.connect(_on_machine_unregistered)
+	_rotate_button.pressed.connect(_on_rotate_pressed)
+	_destroy_button.pressed.connect(_on_destroy_pressed)
 	_add_button.pressed.connect(_on_add_pressed)
 	_log_button.pressed.connect(_on_log_pressed)
 
@@ -36,6 +42,8 @@ func open(machine: Machine) -> void:
 	_machine = machine
 	_id_label.text = "Machine #%d" % machine.machine_id
 	_type_label.text = "Type: %s" % machine.machine_type
+	_rotate_button.visible = machine.can_rotate()
+	_destroy_button.visible = machine.is_removable()
 	visible = true
 	_refresh_status()
 	_refresh_chips()
@@ -48,6 +56,8 @@ func close() -> void:
 
 func _refresh_status() -> void:
 	_status_label.text = "State: %s" % Machine.Status.keys()[_machine.status].to_lower()
+	_action_label.text = _machine.get_action_text()
+	_action_label.visible = _action_label.text != ""
 
 
 func _refresh_chips() -> void:
@@ -132,6 +142,22 @@ func _on_tick(_tick: int) -> void:
 		close()
 		return
 	_refresh_status()
+
+
+func _on_machine_unregistered(machine: Node, _cell: Vector2i) -> void:
+	if machine == _machine:
+		close()
+
+
+func _on_rotate_pressed() -> void:
+	_machine.rotate_facing()
+	_refresh_status()
+
+
+func _on_destroy_pressed() -> void:
+	var machine: Machine = _machine
+	close()
+	machine.destroy()
 
 
 func _on_registry_changed(_chip: Resource) -> void:
