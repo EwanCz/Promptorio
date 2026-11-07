@@ -221,14 +221,43 @@ func test_head_to_tail_still_flows_and_the_collector_never_blocks() -> void:
 	check(left_collector.sold >= 1, "yet the miner still delivers to it")
 
 
-func test_cooling_keeps_smelter_stable() -> void:
+func test_cooling_slows_the_rise_compared_with_cooling_off() -> void:
+	_put("collector", Vector2i(1, 0))
+	_put("collector", Vector2i(5, 0))
+	var plain: Machine = _put("smelter", Vector2i(1, 1), Vector2i.UP)
+	var cooled: Machine = _put("smelter", Vector2i(5, 1), Vector2i.UP)
+	cooled.apply_tool_call("set_cooling", {"on": true})
+	for i: int in 100:
+		plain.receive("ore")
+		cooled.receive("ore")
+		_ticks(1)
+	check(plain.temperature > Smelter.AMBIENT + 20.0, "the uncooled smelter heats up")
+	check(cooled.temperature > Smelter.AMBIENT + 5.0, "cooling does not stop the heating")
+	check(cooled.temperature < plain.temperature, "cooling on rises slower than cooling off")
+
+
+func test_continuous_cooling_during_production_still_explodes() -> void:
 	_put("collector", Vector2i(1, 0))
 	var smelter: Machine = _put("smelter", Vector2i(1, 1), Vector2i.UP)
 	smelter.apply_tool_call("set_cooling", {"on": true})
-	_feed(smelter, 800)
-	check_eq(smelter.status, Machine.Status.NORMAL, "cooling on: still normal")
-	check(smelter.temperature < Smelter.OVERHEAT_AT, "temperature stays under the limit")
-	check(_exploded.is_empty(), "no explosion")
+	var saw_overheat: Array[bool] = [false]
+	_feed(smelter, 1000, func(m: Machine) -> bool:
+		saw_overheat[0] = saw_overheat[0] or m.status == Machine.Status.OVERHEATING
+		return m.status == Machine.Status.DOWN)
+	check(saw_overheat[0], "passes through OVERHEATING first")
+	check_eq(smelter.status, Machine.Status.DOWN, "cooling alone does not keep it stable")
+	check_eq(_exploded, [smelter], "machine_exploded emitted once")
+
+
+func test_cooling_while_idle_speeds_recovery() -> void:
+	var slow: Machine = _put("smelter", Vector2i(9, 9))
+	var quick: Machine = _put("smelter", Vector2i(10, 9))
+	slow.temperature = 90.0
+	quick.temperature = 90.0
+	quick.apply_tool_call("set_cooling", {"on": true})
+	_ticks(30)
+	check(quick.temperature < slow.temperature, "idle with cooling cools faster than idle without")
+	check(slow.temperature < 90.0, "idle without cooling still cools")
 
 
 func test_disabling_an_overheating_smelter_recovers() -> void:
