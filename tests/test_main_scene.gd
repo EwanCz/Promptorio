@@ -4,6 +4,7 @@ extends "res://tests/test_case.gd"
 func test_main_scene_layout() -> void:
 	var main: Node = load("res://scenes/main.tscn").instantiate()
 	check(main.get_node_or_null("Game/FactoryView/SubViewport/World/Machines") != null, "world has Machines")
+	check(main.get_node_or_null("Game/FactoryView/SubViewport/World/GridMap2D") is TileMapLayer, "world has GridMap2D")
 	check(main.get_node_or_null("Game/FactoryView/SubViewport/World/Camera2D") != null, "world has Camera2D")
 	check(main.get_node_or_null("Game/Bar/VBoxContainer/PageTabs") != null, "bar has PageTabs")
 	check(main.get_node_or_null("UI") is CanvasLayer, "UI layer exists")
