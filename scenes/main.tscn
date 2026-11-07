@@ -4,6 +4,13 @@
 [ext_resource type="Script" path="res://scripts/world/grid_map_2d.gd" id="2_grid"]
 [ext_resource type="Script" path="res://scripts/world/camera.gd" id="3_camera"]
 [ext_resource type="Script" path="res://scripts/ui/main.gd" id="4_main"]
+[ext_resource type="Script" path="res://scripts/ui/bar_panel.gd" id="5_bar"]
+[ext_resource type="Theme" path="res://data/ui/theme.tres" id="6_theme"]
+[ext_resource type="PackedScene" path="res://scenes/ui/pages/chip_registry_page.tscn" id="7_registry"]
+[ext_resource type="PackedScene" path="res://scenes/ui/popups/chip_page.tscn" id="8_chip_page"]
+[ext_resource type="PackedScene" path="res://scenes/ui/popups/machine_tooltip.tscn" id="9_tooltip"]
+[ext_resource type="PackedScene" path="res://scenes/ui/popups/chip_log.tscn" id="10_log"]
+[ext_resource type="PackedScene" path="res://scenes/ui/popups/settings_dialog.tscn" id="11_settings"]
 
 [node name="Main" type="Node"]
 script = ExtResource("4_main")
@@ -15,6 +22,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_constants/separation = 0
+theme = ExtResource("6_theme")
 
 [node name="FactoryView" type="SubViewportContainer" parent="Game"]
 layout_mode = 2
@@ -30,6 +38,7 @@ render_target_update_mode = 4
 [node name="World" type="Node2D" parent="Game/FactoryView/SubViewport"]
 
 [node name="GridMap2D" type="TileMapLayer" parent="Game/FactoryView/SubViewport/World"]
+unique_name_in_owner = true
 tile_set = ExtResource("1_tileset")
 script = ExtResource("2_grid")
 
@@ -45,15 +54,44 @@ layout_mode = 2
 size_flags_horizontal = 3
 size_flags_stretch_ratio = 1.0
 mouse_filter = 0
+script = ExtResource("5_bar")
 
 [node name="VBoxContainer" type="VBoxContainer" parent="Game/Bar"]
 layout_mode = 2
 
 [node name="PageTabs" type="TabBar" parent="Game/Bar/VBoxContainer"]
+unique_name_in_owner = true
 layout_mode = 2
 
 [node name="Pages" type="Control" parent="Game/Bar/VBoxContainer"]
+unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 3
 
 [node name="UI" type="CanvasLayer" parent="."]
+
+[node name="ChipRegistryPage" parent="Game/Bar/VBoxContainer/Pages" instance=ExtResource("7_registry")]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="SettingsButton" type="Button" parent="Game/Bar/VBoxContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Settings"
+
+[node name="ChipPage" parent="UI" instance=ExtResource("8_chip_page")]
+unique_name_in_owner = true
+
+[node name="MachineTooltip" parent="UI" instance=ExtResource("9_tooltip")]
+unique_name_in_owner = true
+
+[node name="ChipLog" parent="UI" instance=ExtResource("10_log")]
+unique_name_in_owner = true
+
+[node name="SettingsDialog" parent="UI" instance=ExtResource("11_settings")]
+unique_name_in_owner = true

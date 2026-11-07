@@ -114,6 +114,8 @@ func _make_provider() -> LLMProvider:
 			return MockProvider.new()
 		"anthropic":
 			return AnthropicProvider.new()
+		"codex":
+			return CodexProvider.new()
 	return null
 
 
