@@ -1,0 +1,17 @@
+extends Node
+## Global signals only. No logic.
+
+@warning_ignore("unused_signal")
+signal tick_fired(tick: int)
+@warning_ignore("unused_signal")
+signal machine_registered(machine: Node, cell: Vector2i)
+@warning_ignore("unused_signal")
+signal machine_unregistered(machine: Node, cell: Vector2i)
+@warning_ignore("unused_signal")
+signal machine_selected(machine: Node)
+@warning_ignore("unused_signal")
+signal money_changed(amount: int)
+@warning_ignore("unused_signal")
+signal chip_log_added(machine: Node, message: String)
+@warning_ignore("unused_signal")
+signal settings_changed
