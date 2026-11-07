@@ -16,8 +16,8 @@ Roadmap, phases, decisions and risks: see `docs/PLAN.md`. Read it before startin
 - AI-controllable loop in each machine.
   - Can have multiple prompt per machine with a unique timeout. (ex: prompt for maintenance, prompt for production).
   - Prompt come from a registry.
-- Prompt editor with to create/update/remove prompt to a registry.
-- UI information on click per machine.
+- Prompt editor with option to create/update/remove prompt to a registry (Prompt Registry page + Prompt Page popup, see `docs/UI.md`).
+- UI information on click per machine (Machine tooltip, see `docs/UI.md`).
 
 ## Architecture
 
@@ -28,15 +28,35 @@ Roadmap, phases, decisions and risks: see `docs/PLAN.md`. Read it before startin
 - `EventBus` (`scripts/core/event_bus.gd`): global signals only. No logic.
 
 ### Scene / node layout
+Screen split (see `docs/UI.md`): Factory View 80% left, Bar 20% right. The world is rendered in a `SubViewport` so the camera and the 80% region stay independent of the UI.
 ```
-Main (Node2D)
-├─ World (Node2D)
-│  ├─ GridMap2D        (TileMapLayer for ground + placement validation)
-│  └─ Machines (Node2D) (children are Machine scenes)
-├─ UI (CanvasLayer)
-│  ├─ BuildBar, PromptEditor (popup), ChipLog, SettingsDialog
-└─ Camera2D
+Main (Node)
+├─ Game (HBoxContainer, full rect)
+│  ├─ FactoryView (SubViewportContainer, stretch, size_flags_stretch_ratio 4)
+│  │  └─ SubViewport
+│  │     └─ World (Node2D)
+│  │        ├─ GridMap2D        (TileMapLayer: ground, minesites, placement validation)
+│  │        ├─ Machines (Node2D) (children are Machine scenes; Collector at map center)
+│  │        └─ Camera2D          (zoom in/out, pan x/y; camera.gd)
+│  └─ Bar (PanelContainer, size_flags_stretch_ratio 1)
+│     └─ VBoxContainer
+│        ├─ PageTabs (TabBar / HBox of page markers at the top)
+│        └─ Pages (each page a Control, only one visible)
+│           ├─ BuildPage          (list of buildable machines + money cost)
+│           └─ PromptRegistryPage (list of prompt names, "new prompt" button on top)
+└─ UI (CanvasLayer, popups over everything)
+   ├─ PromptPage      (popup, centered; name, description, message; edit/save/remove)
+   ├─ MachineTooltip  (opens on machine click, closes on second click)
+   ├─ ChipLog         (log page opened from the tooltip)
+   └─ SettingsDialog
 ```
+UI rules:
+- UI is `Control` nodes only, laid out with anchors and Containers (`HBox/VBox/Margin`), never hand-placed pixels. One shared `Theme` resource on the root.
+- Opening `PromptPage` pauses the game (`get_tree().paused = true`, popup `process_mode = PROCESS_MODE_ALWAYS`). Closing resumes it.
+- `MachineTooltip` shows: machine id, type, connected prompts with their timeout, "add prompt" (picks from the registry), "log" button, current action (miner: production rate; smelter/assembler: consumed resource and time remaining), state (normal/down/overheating).
+- Prompts live in a registry (`PromptRegistry` `Resource`, saved as `.tres`). `Bar`, `PromptPage` and the tooltip read and write it; none of them talk to `LLMManager`.
+- UI reads machine state through `GameState` and `EventBus` signals (calls down, signals up). Mouse input on the Bar uses `mouse_filter` so clicks never reach the map beneath, and map clicks only count inside `FactoryView`.
+
 Machine scene (`scenes/machines/machine.tscn`, base; Miner/Smelter/Assembler inherit it):
 ```
 Machine (Node2D, machine.gd)
@@ -79,7 +99,7 @@ Machine (Node2D, machine.gd)
 
 ## Project layout
 ```
-scenes/   machines/, ui/, world/
+scenes/   machines/, ui/ (bar, pages, popups), world/
 scripts/  core/, llm/ (providers/), machines/, ui/
 data/     machine and recipe resources (.tres)
 assets/   art, audio

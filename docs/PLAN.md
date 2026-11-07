@@ -12,7 +12,7 @@ Architecture and async HTTP rules live in `CLAUDE.md`.
 
 ## Phase 0 — Foundations (h0–4, everyone)
 - [ ] Autoloads: `EventBus`, `GameState`, `Settings`, `LLMManager`
-- [ ] `Main` scene and base `Machine` scene with `ChipComponent`
+- [ ] `Main` scene (HBox split: FactoryView 80% / Bar 20%, `UI` CanvasLayer for popups) and base `Machine` scene with `ChipComponent`
 - [ ] Agree on the tool-call schema and state JSON format (then freeze the base `Machine` scene)
 
 ## Phase 1 — Parallel tracks (h4–20)
@@ -20,7 +20,7 @@ Architecture and async HTTP rules live in `CLAUDE.md`.
 |---|---|
 | A (LLM) | `LLMProvider` base, `MockProvider`, `AnthropicProvider`, `HTTPRequest` pool, queue, timeout, 429 backoff, signals |
 | B (Sim) | Grid placement, fixed-rate tick, Miner/Smelter/Assembler/Collector logic, smelter temperature model, explosion fail state |
-| C (UI) | Build bar, prompt editor popup, settings dialog (key, provider, model), chip decision log |
+| C (UI) | 80/20 split (Factory View + camera, Bar with Build / Prompt Registry pages), Prompt Page popup (pauses game), machine tooltip, settings dialog (key, provider, model), chip decision log. Spec in `docs/UI.md` |
 
 ## Phase 2 — Integration (h20–32)
 - [ ] `ChipComponent` wired to `LLMManager`: timer, threshold, event and manual triggers, per-chip cooldown, one request in flight per chip
