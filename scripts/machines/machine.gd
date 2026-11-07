@@ -9,22 +9,31 @@ signal chip_decision_applied(chip_id: int, reason: String, applied: int)
 enum Status { NORMAL, DOWN, OVERHEATING }
 
 @export var machine_type: String = "machine"
+## Art seen from the front: used for every facing except up. Unset on the bare base machine.
+@export var front_texture: Texture2D
+## Art seen from behind, used while facing up. Machines without one keep the front art.
+@export var back_texture: Texture2D
 
 var machine_id: int = 0
 var cell: Vector2i = Vector2i.ZERO
 var status: Status = Status.NORMAL
 var enabled: bool = true
-## Cell the machine hands its output to (miners, craft machines, conveyors).
-var facing: Vector2i = Vector2i.RIGHT
+## Cell the machine hands its output to (miners, craft machines, conveyors). Setting it redraws the sprite.
+var facing: Vector2i = Vector2i.RIGHT:
+	set(value):
+		facing = value
+		_update_sprite()
 
 ## Chips running on this machine, in attach order. Each is a ChipComponent child.
 var chips: Array[ChipComponent] = []
 
 @onready var _label: Label = get_node_or_null("StatusLabel") as Label
+@onready var _sprite: Sprite2D = get_node_or_null("Sprite2D") as Sprite2D
 
 
 func _ready() -> void:
 	EventBus.tick_fired.connect(_on_tick)
+	_update_sprite()
 
 
 func _exit_tree() -> void:
@@ -158,6 +167,14 @@ func clear_contents() -> void:
 ## Simulation step, called once per GameState tick unless the machine is DOWN. Override in subclasses.
 func _tick() -> void:
 	pass
+
+
+## Picks the sprite for the current facing. Conveyors override it. Runs before _ready too
+## (placement sets facing first), when there is no sprite yet.
+func _update_sprite() -> void:
+	if _sprite == null or front_texture == null:
+		return
+	_sprite.texture = back_texture if facing == Vector2i.UP and back_texture != null else front_texture
 
 
 func _status_text() -> String:

@@ -3,11 +3,12 @@
 [ext_resource type="PackedScene" path="res://scenes/machines/machine.tscn" id="1_machine"]
 [ext_resource type="Script" path="res://scripts/machines/assembler.gd" id="2_script"]
 [ext_resource type="Resource" path="res://data/recipes/assemble.tres" id="3_recipe"]
+[ext_resource type="Texture2D" path="res://assets/tiles/assembler_front.png" id="4_front"]
+[ext_resource type="Texture2D" path="res://assets/tiles/assembler_back.png" id="5_back"]
 
 [node name="Assembler" instance=ExtResource("1_machine")]
 script = ExtResource("2_script")
 machine_type = "assembler"
+front_texture = ExtResource("4_front")
+back_texture = ExtResource("5_back")
 recipe = ExtResource("3_recipe")
-
-[node name="Sprite2D" parent="." index="0"]
-modulate = Color(0.3, 0.6, 0.9, 1)

@@ -101,6 +101,7 @@ Design gaps:
 
 ## Phase 3 — Game feel and demo (h32–42)
 - [ ] Demo scenario with a visible win and fail state (bad prompt -> smelter explodes, good prompt -> stable)
+- [x] Machine art (`assets/tiles/`, 16 px pixel art drawn at x4 = one 64 px cell, nearest filter). `Machine` has `front_texture` / `back_texture` exports and a `facing` setter that redraws: the front art for every facing, the back art while facing up if the machine has one. Smelter and Assembler have both (`smelter_front/back`, `assembler_front/back`), Miner (`miner`) and Collector (`collector_front`) one view. Left and right reuse the front art, there is no side art yet. Conveyor: `up_texture` (`convoyer_up4`) and `side_texture` (`convoyer_side1`) with `flip_h` for left and `flip_v` for down; its frame stays still and the `Belt` sprite scrolls the surface 2 px per tick from the tick number, so all belts stay in phase and the scroll comes back to its first pose every 4 ticks (the art repeats every 8 px; `tests/test_machine_art.gd` checks that). Unused art (left in `assets/Tiles/`): `convoyer_up1/2/3/5`, `convoyer_side2/3` (end caps and half-step variants), `blue_front`. Scenes touched: `machine.tscn` (base sprite, now empty until `_ready`) and the five machine scenes.
 - [ ] Chip activity feedback: "thinking…" indicator, decision bubbles
 - [ ] 2-3 example prompts for first-time players
 
