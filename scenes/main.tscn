@@ -13,6 +13,7 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/popups/settings_dialog.tscn" id="11_settings"]
 [ext_resource type="Script" path="res://scripts/world/placement.gd" id="12_placement"]
 [ext_resource type="PackedScene" path="res://scenes/ui/pages/build_page.tscn" id="13_build"]
+[ext_resource type="PackedScene" path="res://scenes/ui/popups/resources_page.tscn" id="14_resources"]
 
 [node name="Main" type="Node"]
 script = ExtResource("4_main")
@@ -109,6 +110,11 @@ layout_mode = 2
 unique_name_in_owner = true
 layout_mode = 2
 
+[node name="ResourcesButton" type="Button" parent="Game/Bar/VBoxContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Resources"
+
 [node name="SettingsButton" type="Button" parent="Game/Bar/VBoxContainer"]
 unique_name_in_owner = true
 layout_mode = 2
@@ -121,4 +127,7 @@ unique_name_in_owner = true
 unique_name_in_owner = true
 
 [node name="SettingsDialog" parent="UI" instance=ExtResource("11_settings")]
+unique_name_in_owner = true
+
+[node name="ResourcesPage" parent="UI" instance=ExtResource("14_resources")]
 unique_name_in_owner = true

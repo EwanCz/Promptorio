@@ -9,11 +9,11 @@ const SCENES: Dictionary = {
 	"conveyor": "res://scenes/machines/conveyor.tscn",
 }
 const EXPECTED_OWN: Dictionary = {
-	"miner": "set_mine_ticks",
-	"smelter": "set_cooling",
-	"assembler": "set_stock_limit",
-	"collector": "set_accepting",
-	"conveyor": "set_direction",
+	"miner": ["set_mine_ticks", "set_mined_item"],
+	"smelter": ["set_cooling", "set_product", "discard_stock"],
+	"assembler": ["set_stock_limit", "set_product", "discard_stock"],
+	"collector": ["set_accepting"],
+	"conveyor": ["set_direction"],
 }
 
 var _nodes: Array[Node] = []
@@ -48,15 +48,15 @@ func test_every_type_has_the_shared_tool_and_its_own() -> void:
 	for type: String in SCENES:
 		var names: Array[String] = _names(_make(type))
 		check_eq(names[0], "set_enabled", "%s starts with the shared tool" % type)
-		check_eq(names.size(), 2, "%s has the shared tool and one of its own" % type)
-		check(EXPECTED_OWN[type] in names, "%s has %s" % [type, EXPECTED_OWN[type]])
+		check_eq(names.slice(1), EXPECTED_OWN[type], "%s has exactly its own tools after the shared one" % type)
 
 
 func test_own_tools_are_unique_to_their_type() -> void:
 	for type: String in SCENES:
-		for other: String in SCENES:
-			if other != type:
-				check(not EXPECTED_OWN[type] in _names(_make(other)), "%s is not offered on a %s" % [EXPECTED_OWN[type], other])
+		for tool: String in EXPECTED_OWN[type]:
+			for other: String in SCENES:
+				if not tool in EXPECTED_OWN[other]:
+					check(not tool in _names(_make(other)), "%s is not offered on a %s" % [tool, other])
 
 
 func test_own_tool_of_another_type_is_refused() -> void:

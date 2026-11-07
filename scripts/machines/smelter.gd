@@ -26,7 +26,7 @@ func _own_tool_schemas() -> Array:
 		"name": "set_cooling",
 		"description": "Turn the cooling on or off. Cooling only slows the heating while working (it cannot keep a working smelter stable), and speeds up the cooldown while idle.",
 		"input_schema": {"type": "object", "properties": {"on": {"type": "boolean"}}},
-	}]
+	}] + super._own_tool_schemas()
 
 
 func get_state() -> Dictionary:

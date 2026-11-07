@@ -240,11 +240,16 @@ func _find_schema(tool_name: String) -> Dictionary:
 	return {}
 
 
-## Returns the clamped value, or null if the type is wrong.
+## Returns the clamped value, or null if the type is wrong (or a string is not one of the schema's "enum").
 func _sanitize(prop: Dictionary, value: Variant) -> Variant:
 	match prop.get("type", ""):
 		"boolean":
 			return value if typeof(value) == TYPE_BOOL else null
+		"string":
+			if typeof(value) != TYPE_STRING:
+				return null
+			var allowed: Array = prop.get("enum", [])
+			return value if allowed.is_empty() or allowed.has(value) else null
 		"integer":
 			if typeof(value) != TYPE_INT and typeof(value) != TYPE_FLOAT:
 				return null

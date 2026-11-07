@@ -1,12 +1,14 @@
 class_name Miner
 extends Machine
-## Produces one ore every mine_ticks and pushes it forward. Stops while its output is blocked.
+## Mines one unit of its resource every mine_ticks and pushes it forward. Stops while its output is blocked.
+## It mines any resource of the catalog built by "miner" (ore by default): set_mined_item picks it.
 
-const ITEM: String = "ore"
 const MIN_MINE_TICKS: int = 5
 const MAX_MINE_TICKS: int = 100
 
 @export var mine_ticks: int = 20
+## Id of the resource being mined. Changing it only affects the next unit: one already held is pushed on.
+@export var item: String = "ore"
 
 var _progress: int = 0
 var _held: String = ""
@@ -15,15 +17,21 @@ var _blocked: bool = false
 
 
 func get_state() -> Dictionary:
-	return super.get_state().merged({"item": ITEM, "mine_ticks": mine_ticks, "blocked": _blocked})
+	return super.get_state().merged({"item": item, "mine_ticks": mine_ticks, "blocked": _blocked})
 
 
 func _own_tool_schemas() -> Array:
 	return [{
 		"name": "set_mine_ticks",
-		"description": "Set how many ticks the miner needs for one ore. Lower is faster.",
+		"description": "Set how many ticks the miner needs for one unit. Lower is faster.",
 		"input_schema": {"type": "object", "properties": {
 			"ticks": {"type": "integer", "minimum": MIN_MINE_TICKS, "maximum": MAX_MINE_TICKS},
+		}},
+	}, {
+		"name": "set_mined_item",
+		"description": "Choose the resource the miner mines from now on.",
+		"input_schema": {"type": "object", "properties": {
+			"item": {"type": "string", "enum": ItemCatalog.shared().get_built_by_ids("miner")},
 		}},
 	}]
 
@@ -31,6 +39,9 @@ func _own_tool_schemas() -> Array:
 func _apply(tool_name: String, args: Dictionary) -> void:
 	if tool_name == "set_mine_ticks":
 		mine_ticks = args["ticks"]
+		return
+	if tool_name == "set_mined_item":
+		item = args["item"]
 		return
 	super._apply(tool_name, args)
 
@@ -43,7 +54,7 @@ func get_events() -> Array[String]:
 
 
 func get_action_text() -> String:
-	return "Mining 1 %s every %d ticks%s" % [ITEM, mine_ticks, " (output blocked)" if _blocked else ""]
+	return "Mining 1 %s every %d ticks%s" % [item, mine_ticks, " (output blocked)" if _blocked else ""]
 
 
 func clear_contents() -> void:
@@ -63,4 +74,4 @@ func _tick() -> void:
 	_progress += 1
 	if _progress >= mine_ticks:
 		_progress = 0
-		_held = ITEM
+		_held = item

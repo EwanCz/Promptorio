@@ -69,7 +69,7 @@ func test_full_chain_makes_and_sells_parts() -> void:
 	_ticks(400)
 	var collector: Machine = machines[6]
 	check(collector.sold >= 2, "parts reach the collector")
-	check(_game.money >= 2 * Collector.PRICES["part"], "parts sell for the part price")
+	check(_game.money >= 2 * ItemCatalog.shared().price_of("part"), "parts sell for the part price")
 
 
 func test_blocked_output_stalls_and_resumes() -> void:
@@ -92,12 +92,14 @@ func test_disabled_miner_produces_nothing() -> void:
 	check_eq(collector.sold, 0, "nothing mined while disabled")
 
 
-func test_craft_machine_filters_and_caps_input() -> void:
+func test_craft_machine_stores_any_resource_and_caps_each() -> void:
 	var smelter: Machine = _put("smelter", Vector2i(0, 0))
-	check(not smelter.receive("ingot"), "item outside the recipe is refused")
+	check(smelter.receive("ingot"), "a resource the recipe does not use is stored")
+	check(not smelter.receive("not_a_resource"), "something that is not a resource is refused")
 	for i: int in CraftMachine.MAX_STOCK:
 		check(smelter.receive("ore"), "ore %d accepted" % i)
 	check(not smelter.receive("ore"), "stock is capped")
+	check(smelter.receive("wood"), "another resource has its own cap")
 
 
 func test_assembler_needs_all_inputs() -> void:
@@ -339,7 +341,7 @@ func test_deliverable_craft_output_is_never_blocked() -> void:
 func test_craft_failed_delivery_raises_output_full_once_then_again_after_clearing() -> void:
 	var smelter: Machine = _put("smelter", Vector2i(1, 1), Vector2i.UP)
 	smelter.receive("ore")
-	var ticks_to_craft: int = (smelter as Smelter).recipe.ticks + 1
+	var ticks_to_craft: int = (smelter as Smelter).get_product().ticks + 1
 	check_eq(_output_full_rises(smelter, ticks_to_craft), 0, "a finished ingot is not blocked before a delivery attempt")
 	check_eq(_output_full_rises(smelter, 1), 1, "the failed delivery raises it")
 	check(smelter.get_action_text().contains("output blocked"), "action text is blocked")

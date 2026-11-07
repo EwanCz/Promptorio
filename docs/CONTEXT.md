@@ -8,9 +8,9 @@ Roadmap, phases, decisions and risks: see `docs/PLAN.md`. Read it before startin
 
 ## Scope (MVP)
 - Machines: Miner -> Smelter -> Assembler -> Collector. Conveyors are plain, hardcoded logic (AI on conveyors is post-MVP). In the current prototype, select a conveyor with the `select_conveyor` action (default `5`), rotate its direction with `rotate_placement` (default `R`), and place it with a left click on an empty grid cell. It holds one item and attempts to deliver it to the adjacent machine in its facing direction every five 10 Hz ticks; a blocked delivery stays on the conveyor. Adjacent machines can also pass items directly, without a conveyor.
-- Items: (Coal/Silver/Redstone/etc...).
+- Items: (Coal/Silver/Redstone/etc...). They are the resource catalog (`ItemCatalog`, `data/items.tres`, table in `docs/PLAN.md` "Resources"): each has a price, one machine type that builds it and its inputs; the Resources popup (Bar button) lists them all.
   - Fuze them in a Assembler which take one or more different ressources.
-  - Each assembler take any ressources with a max stock size in each assembler.
+  - Each assembler take any ressources with a max stock size in each assembler. Any resource can be stored in any smelter/assembler, needed or not; only the `discard_stock` tool removes it.
   - The IA will be prompted the ressource to build then will by itself check in the stockage if can be built. If the ressource can be made. Consume them then start a assemble event on for the ressource be build.
   - Ressources are spawned from a miner on the map it will then be transfer via the conveyor to tranform them in smelter/assembler or directly to a collector to sell them.
 - AI-controllable loop in each machine.
@@ -52,6 +52,7 @@ Main (Node)
 └─ UI (CanvasLayer, popups over everything)
    ├─ ChipPage        (popup, centered; name, description, message; edit/save/remove)
    ├─ ChipLog         (log page opened from the machine panel)
+   ├─ ResourcesPage   (popup, every resource: machine, needs, ticks, price)
    └─ SettingsDialog
 ```
 UI rules:

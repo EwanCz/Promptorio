@@ -22,7 +22,7 @@ The different page are:
 When a chip is clicked in the chip registry page. The game is paused and a popup happear at the center of the screen. It will contain the name of the selected chip, its description and its prompt. The prompt is what the llm receive. From this page we can edit/save/remove a chip.
 
 ## Machine tooltip
-The Bar is split in two halves of equal height, with the Settings button below them at the very bottom:
+The Bar is split in two halves of equal height, with the Resources and Settings buttons below them (Settings at the very bottom):
 - Top half: the page tabs (Build / Chip Registry) and the current page inside a scroll container, so a long list scrolls instead of growing the Bar.
 - Bottom half: the machine tooltip, a panel of the Bar (not a popup over the map). It shows "Click a machine to see its details." until a machine is clicked. Clicking the same machine or an empty cell goes back to that hint. The details scroll when they do not fit. Show machine id, type, state, current action, connected chips with prompt preview and timeout (chip rows wrap to the narrow Bar), an add-chip picker from the registry, a log button, and the Rotate and Destroy actions.
 
@@ -60,6 +60,9 @@ Show machine state independently from current action: normal, down, or overheati
 - Rotating and removing a placed machine through its tooltip updates routing and the grid registry correctly. The Collector remains fixed.
 - The tooltip shows the current-action fields above and closes on same-machine/empty-cell selection.
 - Page, popup, and tooltip controls consume their mouse input so clicks do not also place or select machines in the world.
+
+### Resources page
+The Resources button of the Bar opens a popup at the center of the screen (it does not pause the game). It lists every resource of the catalog (`data/items.tres`) in a scrollable table: name, the machine that builds it, what it needs (`Mined` for a raw resource, else e.g. `1 Wood + 1 Silver`), the build time in ticks and the price the Collector pays. Close hides it. The table is read from `ItemCatalog` when the popup is created, so a new resource appears without touching the UI. Example chains: wood + silver make a spear (Assembler), a spear + power make a gun, power comes from 2 coal in a Smelter.
 
 ### Settings dialog
 Open Settings from the Bar. Offer `mock`, `anthropic`, and `openai` providers. For providers that use credentials, show that provider's API key field and model picker; mask the key while editing. The `mock` provider needs neither. Save writes through `Settings.save_settings()` and closes the dialog; Close dismisses without saving pending edits. If the provider's key comes from `.env` (`Settings.get_key_source()`), the key field stays empty and its placeholder says so; saving never copies the `.env` key to disk, and saving an empty field falls back to it. Never print or log the key.

@@ -10,7 +10,7 @@ func test_main_scene_layout() -> void:
 	check(main.get_node_or_null("UI") is CanvasLayer, "UI layer exists")
 	check(main.get_node_or_null("Game/Bar/VBoxContainer/TopHalf/PageScroll/Pages/BuildPage") != null, "bar has the build page")
 	check(main.get_node_or_null("Game/Bar/VBoxContainer/TopHalf/PageScroll/Pages/ChipRegistryPage") != null, "bar has the chip registry page")
-	for popup_name: String in ["ChipPage", "ChipLog", "SettingsDialog"]:
+	for popup_name: String in ["ChipPage", "ChipLog", "ResourcesPage", "SettingsDialog"]:
 		check(main.get_node_or_null("UI/" + popup_name) != null, "UI has " + popup_name)
 	var factory: Control = main.get_node("Game/FactoryView")
 	var bar: Control = main.get_node("Game/Bar")
@@ -29,6 +29,7 @@ func test_bar_is_split_into_pages_machine_info_and_settings() -> void:
 	check(top.get_node("PageScroll") is ScrollContainer, "the pages scroll")
 	check(main.get_node("%Pages").get_parent() == top.get_node("PageScroll"), "the pages live in that scroll")
 	check(column.get_child(column.get_child_count() - 1) == main.get_node("%SettingsButton"), "Settings stays at the very bottom")
+	check(info.get_index() < main.get_node("%ResourcesButton").get_index(), "the Resources button sits under the machine info")
 	check(top.get_index() < info.get_index() and info.get_index() < main.get_node("%SettingsButton").get_index(), "pages, then machine info, then Settings")
 	main.free()
 

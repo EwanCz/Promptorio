@@ -1,9 +1,6 @@
 class_name Collector
 extends Machine
-## Accepts every item and sells it for money.
-
-# shortcut: hardcoded prices, move to a Resource when items get more varied.
-const PRICES: Dictionary = {"ore": 1, "ingot": 3, "part": 10}
+## Accepts every resource of the catalog and sells it for its price.
 
 var sold: int = 0
 var earned: int = 0
@@ -11,9 +8,9 @@ var accepting: bool = true
 
 
 func receive(item: String) -> bool:
-	if not accepting:
+	if not accepting or not ItemCatalog.shared().has_item(item):
 		return false
-	var price: int = int(PRICES.get(item, 1))
+	var price: int = ItemCatalog.shared().price_of(item)
 	GameState.add_money(price)
 	sold += 1
 	earned += price
