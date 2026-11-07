@@ -11,6 +11,7 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/popups/machine_tooltip.tscn" id="9_tooltip"]
 [ext_resource type="PackedScene" path="res://scenes/ui/popups/chip_log.tscn" id="10_log"]
 [ext_resource type="PackedScene" path="res://scenes/ui/popups/settings_dialog.tscn" id="11_settings"]
+[ext_resource type="Script" path="res://scripts/world/placement.gd" id="12_placement"]
 
 [node name="Main" type="Node"]
 script = ExtResource("4_main")
@@ -43,6 +44,11 @@ tile_set = ExtResource("1_tileset")
 script = ExtResource("2_grid")
 
 [node name="Machines" type="Node2D" parent="Game/FactoryView/SubViewport/World"]
+
+[node name="Placement" type="Node" parent="Game/FactoryView/SubViewport/World" node_paths=PackedStringArray("grid", "machines")]
+script = ExtResource("12_placement")
+grid = NodePath("../GridMap2D")
+machines = NodePath("../Machines")
 
 [node name="Camera2D" type="Camera2D" parent="Game/FactoryView/SubViewport/World"]
 anchor_mode = 0

@@ -1,5 +1,5 @@
 extends Node
-## Root script: wires the UI pieces together and toggles the Bar with the `toggle_bar` action.
+## Root script: wires the UI pieces together and forwards placement actions.
 
 @onready var _bar: BarPanel = %Bar
 @onready var _grid: GridMap2D = %GridMap2D
@@ -8,6 +8,7 @@ extends Node
 @onready var _tooltip: MachineTooltip = %MachineTooltip
 @onready var _chip_log: ChipLog = %ChipLog
 @onready var _settings_dialog: SettingsDialog = %SettingsDialog
+@onready var _placement: Placement = get_node("Game/FactoryView/SubViewport/World/Placement") as Placement
 
 
 func _ready() -> void:
@@ -20,6 +21,8 @@ func _ready() -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("toggle_bar"):
 		_bar.visible = not _bar.visible
+		get_viewport().set_input_as_handled()
+	elif _placement.handle_input(event):
 		get_viewport().set_input_as_handled()
 
 

@@ -14,9 +14,23 @@ var machine_id: int = 0
 var cell: Vector2i = Vector2i.ZERO
 var status: Status = Status.NORMAL
 var enabled: bool = true
+## Cell the machine hands its output to (miners, craft machines, conveyors).
+var facing: Vector2i = Vector2i.RIGHT
 
 ## Chips running on this machine, in attach order. Each is a ChipComponent child.
 var chips: Array[ChipComponent] = []
+
+@onready var _label: Label = get_node_or_null("StatusLabel") as Label
+
+
+func _ready() -> void:
+	EventBus.tick_fired.connect(_on_tick)
+
+
+func _exit_tree() -> void:
+	EventBus.tick_fired.disconnect(_on_tick)
+	if GameState.get_machine_at(cell) == self:
+		GameState.unregister_machine(cell)
 
 
 ## Adds a ChipComponent child running the registry chip. Null for an unknown id or a chip already attached.
@@ -47,6 +61,11 @@ func get_chip(chip_id: int) -> ChipComponent:
 		if component.chip.id == chip_id:
 			return component
 	return null
+
+
+## Takes one item from an upstream machine. True if accepted. Machines that take nothing keep the default.
+func receive(_item: String) -> bool:
+	return false
 
 
 func get_tool_schemas() -> Array:
@@ -88,6 +107,28 @@ func apply_tool_call(tool_name: String, args: Dictionary) -> bool:
 
 func log_chip(message: String) -> void:
 	EventBus.chip_log_added.emit(self, message)
+
+
+## Simulation step, called once per GameState tick unless the machine is DOWN. Override in subclasses.
+func _tick() -> void:
+	pass
+
+
+func _status_text() -> String:
+	return machine_type
+
+
+## Hands an item to the machine in front. False if there is none or it refuses.
+func _push(item: String) -> bool:
+	var target: Machine = GameState.get_machine_at(cell + facing) as Machine
+	return target != null and target.receive(item)
+
+
+func _on_tick(_tick_number: int) -> void:
+	if status != Status.DOWN:
+		_tick()
+	if _label != null:
+		_label.text = _status_text()
 
 
 func _on_chip_decision_applied(reason: String, applied: int, chip_id: int) -> void:

@@ -7,7 +7,7 @@ Godot 4 (GDScript) 2D Factorio-like. Every machine has an "AI chip" whose behavi
 Roadmap, phases, decisions and risks: see `docs/PLAN.md`. Read it before starting a task and keep it updated (tick completed items, record changed decisions).
 
 ## Scope (MVP)
-- Machines: Miner -> Smelter -> Assembler -> Collector. Conveyors are plain, hardcoded logic (AI on conveyors is post-MVP).
+- Machines: Miner -> Smelter -> Assembler -> Collector. Conveyors are plain, hardcoded logic (AI on conveyors is post-MVP). In the current prototype, select a conveyor with the `select_conveyor` action (default `5`), rotate its direction with `rotate_placement` (default `R`), and place it with a left click on an empty grid cell. It holds one item and attempts to deliver it to the adjacent machine in its facing direction every five 10 Hz ticks; a blocked delivery stays on the conveyor. Adjacent machines can also pass items directly, without a conveyor.
 - Items: (Coal/Silver/Redstone/etc...).
   - Fuze them in a Assembler which take one or more different ressources.
   - Each assembler take any ressources with a max stock size in each assembler.
@@ -36,7 +36,7 @@ Main (Node)
 │  │  └─ SubViewport
 │  │     └─ World (Node2D)
 │  │        ├─ GridMap2D        (TileMapLayer: ground, minesites, placement validation)
-│  │        ├─ Machines (Node2D) (children are Machine scenes; Collector at map center)
+│  │        ├─ Machines (Node2D) (children are Machine scenes; Collector at map center; conveyors are placed as Machine scenes)
 │  │        └─ Camera2D          (zoom in/out, pan x/y; camera.gd)
 │  └─ Bar (PanelContainer, size_flags_stretch_ratio 1)
 │     └─ VBoxContainer

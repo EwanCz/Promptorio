@@ -1,0 +1,13 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/machines/machine.tscn" id="1_machine"]
+[ext_resource type="Script" path="res://scripts/machines/assembler.gd" id="2_script"]
+[ext_resource type="Resource" path="res://data/recipes/assemble.tres" id="3_recipe"]
+
+[node name="Assembler" instance=ExtResource("1_machine")]
+script = ExtResource("2_script")
+machine_type = "assembler"
+recipe = ExtResource("3_recipe")
+
+[node name="Sprite2D" parent="." index="0"]
+modulate = Color(0.3, 0.6, 0.9, 1)
