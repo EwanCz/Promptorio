@@ -13,14 +13,14 @@ func before_each() -> void:
 	_saved = {
 		"provider": _settings.provider,
 		"api_key": _settings.api_key,
-		"codex_api_key": _settings.codex_api_key,
+		"openai_api_key": _settings.openai_api_key,
 		"env_path": _settings.env_path,
 	}
 	_settings.env_path = "user://missing.env"
 	_settings.load_env()
 	_settings.provider = "anthropic"
 	_settings.api_key = ""
-	_settings.codex_api_key = ""
+	_settings.openai_api_key = ""
 	_main = load("res://scenes/main.tscn").instantiate()
 	tree.root.add_child(_main)
 	_panel = _main.get_node("%KeyStatus")
@@ -31,7 +31,7 @@ func after_each() -> void:
 	_main.free()
 	_settings.provider = _saved["provider"]
 	_settings.api_key = _saved["api_key"]
-	_settings.codex_api_key = _saved["codex_api_key"]
+	_settings.openai_api_key = _saved["openai_api_key"]
 	_settings.env_path = _saved["env_path"]
 	_settings.load_env()
 
@@ -93,8 +93,8 @@ func test_removing_the_key_overrides_a_verdict() -> void:
 
 
 func test_follows_the_selected_provider() -> void:
-	_settings.provider = "codex"
-	_settings.codex_api_key = "sk-codex"
+	_settings.provider = "openai"
+	_settings.openai_api_key = "sk-openai"
 	_changed()
 	check(_label.text.contains("Checking"), "the key of the selected provider counts")
 	_settings.provider = "anthropic"

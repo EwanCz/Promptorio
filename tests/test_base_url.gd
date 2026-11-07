@@ -1,9 +1,10 @@
 extends "res://tests/test_case.gd"
-## ANTHROPIC_BASE_URL: relay origin for editor runs (process env, then .env, then the official endpoint).
+## Relay base URLs (Anthropic and OpenAI): saved setting, then editor-only env / .env, then the official endpoint.
 
 const ScriptedManager: GDScript = preload("res://tests/support/scripted_llm_manager.gd")
 const ENV_FILE: String = "user://test_base_url.env"
 const VAR: String = "ANTHROPIC_BASE_URL"
+const OPENAI_VAR: String = "OPENAI_BASE_URL"
 
 var _settings: Node
 var _saved: Dictionary = {}
@@ -14,6 +15,9 @@ func before_each() -> void:
 	_settings = autoload("Settings")
 	_saved = {
 		"env": OS.get_environment(VAR),
+		"openai_env": OS.get_environment(OPENAI_VAR),
+		"openai_base_url": _settings.openai_base_url,
+		"openai_key": _settings.openai_api_key,
 		"env_path": _settings.env_path,
 		"editor_run": _settings.editor_run,
 		"provider": _settings.provider,
@@ -22,6 +26,9 @@ func before_each() -> void:
 	}
 	_settings.anthropic_base_url = ""
 	OS.unset_environment(VAR)
+	OS.unset_environment(OPENAI_VAR)
+	_settings.openai_base_url = ""
+	_settings.openai_api_key = "openai-key"
 	_settings.env_path = "user://missing.env"
 	_settings.editor_run = true
 	_settings.provider = "anthropic"
@@ -37,6 +44,12 @@ func after_each() -> void:
 		OS.unset_environment(VAR)
 	else:
 		OS.set_environment(VAR, _saved["env"])
+	if _saved["openai_env"] == "":
+		OS.unset_environment(OPENAI_VAR)
+	else:
+		OS.set_environment(OPENAI_VAR, _saved["openai_env"])
+	_settings.openai_base_url = _saved["openai_base_url"]
+	_settings.openai_api_key = _saved["openai_key"]
 	DirAccess.remove_absolute(ENV_FILE)
 	_settings.env_path = _saved["env_path"]
 	_settings.editor_run = _saved["editor_run"]
@@ -165,3 +178,59 @@ func test_malformed_saved_setting_is_rejected() -> void:
 		var message: String = AnthropicProvider.new().config_error()
 		check(message.contains("https origin"), "rejected: %s" % value.get_slice("@", 0))
 		check(not message.contains("secret"), "the message never repeats the value")
+
+
+func _openai_urls() -> Array[String]:
+	var provider: OpenAIProvider = OpenAIProvider.new()
+	return [provider.build_request("s", {}, [])["url"], provider.build_check_request()["url"]]
+
+
+func test_openai_defaults_to_the_official_endpoints() -> void:
+	check_eq(_openai_urls(), ["https://api.openai.com/v1/responses", "https://api.openai.com/v1/models"] as Array[String], "api.openai.com")
+	check_eq(OpenAIProvider.new().config_error(), "", "nothing to complain about")
+
+
+func test_openai_precedence_saved_then_environment_then_dot_env() -> void:
+	var file: FileAccess = FileAccess.open(ENV_FILE, FileAccess.WRITE)
+	file.store_line("%s=https://file.example.com" % OPENAI_VAR)
+	file.close()
+	_settings.env_path = ENV_FILE
+	_settings.load_env()
+	check_eq(_openai_urls()[0], "https://file.example.com/v1/responses", ".env used when nothing else is set")
+	OS.set_environment(OPENAI_VAR, "https://env.example.com//")
+	check_eq(_openai_urls(), ["https://env.example.com/v1/responses", "https://env.example.com/v1/models"] as Array[String], "env beats .env, slashes trimmed, both paths")
+	_settings.openai_base_url = "https://saved.example.com/"
+	check_eq(_openai_urls()[0], "https://saved.example.com/v1/responses", "saved setting beats env")
+	check(("authorization: Bearer openai-key") in OpenAIProvider.new().build_request("s", {}, [])["headers"], "key still sent as bearer")
+
+
+func test_openai_exported_builds_ignore_env_but_not_the_saved_setting() -> void:
+	_settings.editor_run = false
+	OS.set_environment(OPENAI_VAR, "https://env.example.com")
+	check_eq(_openai_urls()[0], "https://api.openai.com/v1/responses", "env ignored")
+	_settings.openai_base_url = "https://saved.example.com"
+	check_eq(_openai_urls()[0], "https://saved.example.com/v1/responses", "saved relay works in an export")
+
+
+func test_providers_do_not_share_a_relay() -> void:
+	_settings.anthropic_base_url = "https://anthropic-relay.example.com"
+	check_eq(_openai_urls()[0], "https://api.openai.com/v1/responses", "openai unaffected by the anthropic relay")
+	_settings.anthropic_base_url = ""
+	_settings.openai_base_url = "https://openai-relay.example.com"
+	check_eq(_urls(), _official(), "anthropic unaffected by the openai relay")
+
+
+func test_openai_malformed_override_fails_before_any_request() -> void:
+	for value: String in ["http://relay.example.com", "https://relay.example.com/v1", "https://user:secret@relay.example.com"]:
+		OS.set_environment(OPENAI_VAR, value)
+		var message: String = OpenAIProvider.new().config_error()
+		check(message.contains("OpenAI base URL") and message.contains("https origin"), "rejected: %s" % value.get_slice("@", 0))
+		check(not message.contains("secret"), "the message never repeats the value")
+	_settings.provider = "openai"
+	var llm: Node = ScriptedManager.new()
+	tree.root.add_child(llm)
+	llm.responses = [{"result": HTTPRequest.RESULT_SUCCESS, "status": 200, "body": "{}".to_utf8_buffer()}] as Array[Dictionary]
+	await llm.check_key()
+	check(_checks.size() == 1 and _checks[0][0] == "error" and _checks[0][1].contains("OpenAI base URL"), "key check reports the config problem")
+	check_eq(llm.sent, 0, "the key was never sent")
+	llm.free()

@@ -1,19 +1,24 @@
-class_name CodexProvider
+class_name OpenAIProvider
 extends LLMProvider
-## OpenAI Responses API (Codex models). Forces tool use; the API key comes only from Settings (or .env).
+## OpenAI Responses API. Forces tool use; the API key comes only from Settings (or .env).
 
-const URL: String = "https://api.openai.com/v1/responses"
+const OFFICIAL_ORIGIN: String = "https://api.openai.com"
+const URL: String = OFFICIAL_ORIGIN + "/v1/responses"
+
+
+func config_error() -> String:
+	return _origin_error("openai", "OpenAI")
 
 
 func build_request(system_prompt: String, state: Dictionary, tools: Array) -> Dictionary:
 	return {
-		"url": URL,
+		"url": _origin("openai", OFFICIAL_ORIGIN) + "/v1/responses",
 		"headers": [
 			"content-type: application/json",
-			"authorization: Bearer %s" % Settings.get_api_key("codex"),
+			"authorization: Bearer %s" % Settings.get_api_key("openai"),
 		],
 		"body": {
-			"model": Settings.codex_model,
+			"model": Settings.openai_model,
 			"max_output_tokens": Settings.max_tokens,
 			"instructions": system_prompt,
 			"input": JSON.stringify(state),
@@ -26,8 +31,8 @@ func build_request(system_prompt: String, state: Dictionary, tools: Array) -> Di
 func build_check_request() -> Dictionary:
 	return {
 		"method": HTTPClient.METHOD_GET,
-		"url": "https://api.openai.com/v1/models",
-		"headers": ["authorization: Bearer %s" % Settings.get_api_key("codex")],
+		"url": _origin("openai", OFFICIAL_ORIGIN) + "/v1/models",
+		"headers": ["authorization: Bearer %s" % Settings.get_api_key("openai")],
 	}
 
 

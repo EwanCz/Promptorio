@@ -137,21 +137,21 @@ func test_chip_log_capture_and_cap() -> void:
 
 func test_settings_dialog_saves_per_provider() -> void:
 	var settings: Node = autoload("Settings")
-	var backup: Array = [settings.api_key, settings.provider, settings.model, settings.codex_api_key, settings.codex_model]
+	var backup: Array = [settings.api_key, settings.provider, settings.model, settings.openai_api_key, settings.openai_model]
 	var had_file: bool = FileAccess.file_exists(settings.PATH)
 	var file_backup: String = FileAccess.get_file_as_string(settings.PATH) if had_file else ""
 	var dialog: SettingsDialog = _spawn("res://scenes/ui/popups/settings_dialog.tscn")
 	var providers: OptionButton = dialog.get_node("%ProviderPicker")
 	var models: OptionButton = dialog.get_node("%ModelPicker")
 	dialog.open()
-	providers.select(SettingsDialog.PROVIDERS.find("codex"))
+	providers.select(SettingsDialog.PROVIDERS.find("openai"))
 	providers.item_selected.emit(providers.selected)
-	check_eq(models.item_count, Settings.MODELS["codex"].size(), "codex models listed")
-	check_eq(models.get_item_text(models.selected), settings.codex_model, "saved codex model preselected")
+	check_eq(models.item_count, Settings.MODELS["openai"].size(), "openai models listed")
+	check_eq(models.get_item_text(models.selected), settings.openai_model, "saved openai model preselected")
 	(dialog.get_node("%KeyEdit") as LineEdit).text = " k-test "
 	models.select(3)
 	(dialog.get_node("%SaveButton") as Button).pressed.emit()
-	check_eq([settings.codex_api_key, settings.provider, settings.codex_model], ["k-test", "codex", Settings.MODELS["codex"][3]], "codex settings written")
+	check_eq([settings.openai_api_key, settings.provider, settings.openai_model], ["k-test", "openai", Settings.MODELS["openai"][3]], "openai settings written")
 	check_eq([settings.api_key, settings.model], [backup[0], backup[2]], "anthropic settings untouched")
 	check(not dialog.visible, "dialog closes after save")
 	dialog.open()
@@ -161,8 +161,8 @@ func test_settings_dialog_saves_per_provider() -> void:
 	settings.api_key = backup[0]
 	settings.provider = backup[1]
 	settings.model = backup[2]
-	settings.codex_api_key = backup[3]
-	settings.codex_model = backup[4]
+	settings.openai_api_key = backup[3]
+	settings.openai_model = backup[4]
 	if had_file:
 		var file: FileAccess = FileAccess.open(settings.PATH, FileAccess.WRITE)
 		file.store_string(file_backup)
@@ -170,9 +170,9 @@ func test_settings_dialog_saves_per_provider() -> void:
 		DirAccess.remove_absolute(settings.PATH)
 
 
-func test_settings_dialog_edits_the_anthropic_base_url() -> void:
+func test_settings_dialog_edits_each_providers_base_url() -> void:
 	var settings: Node = autoload("Settings")
-	var backup: Array = [settings.anthropic_base_url, settings.provider]
+	var backup: Array = [settings.anthropic_base_url, settings.openai_base_url, settings.provider]
 	var had_file: bool = FileAccess.file_exists(settings.PATH)
 	var file_backup: String = FileAccess.get_file_as_string(settings.PATH) if had_file else ""
 	var dialog: SettingsDialog = _spawn("res://scenes/ui/popups/settings_dialog.tscn")
@@ -180,21 +180,25 @@ func test_settings_dialog_edits_the_anthropic_base_url() -> void:
 	var box: Control = dialog.get_node("%BaseUrl")
 	var edit: LineEdit = dialog.get_node("%BaseUrlEdit")
 	settings.anthropic_base_url = ""
+	settings.openai_base_url = ""
 	dialog.open()
-	providers.select(SettingsDialog.PROVIDERS.find("codex"))
-	providers.item_selected.emit(providers.selected)
-	check(not box.visible, "no base URL field for codex")
-	providers.select(SettingsDialog.PROVIDERS.find("anthropic"))
-	providers.item_selected.emit(providers.selected)
-	check(box.visible and edit.text == "", "blank by default for anthropic")
-	edit.text = "  https://relay.example.com/  "
-	(dialog.get_node("%SaveButton") as Button).pressed.emit()
-	check_eq(settings.anthropic_base_url, "https://relay.example.com/", "saved trimmed")
-	check_eq(settings.get_anthropic_base_url(), "https://relay.example.com", "resolved without the trailing slash")
-	dialog.open()
-	check_eq(edit.text, "https://relay.example.com/", "reopened with the saved value")
+	providers.select(0)
+	providers.item_selected.emit(0)
+	check(not box.visible, "no base URL field for mock")
+	for provider: String in ["anthropic", "openai"]:
+		providers.select(SettingsDialog.PROVIDERS.find(provider))
+		providers.item_selected.emit(providers.selected)
+		check(box.visible and edit.text == "", "%s: blank by default" % provider)
+		edit.text = "  https://%s.example.com/  " % provider
+		(dialog.get_node("%SaveButton") as Button).pressed.emit()
+		dialog.open()
+	check_eq(settings.anthropic_base_url, "https://anthropic.example.com/", "anthropic saved trimmed")
+	check_eq(settings.openai_base_url, "https://openai.example.com/", "openai saved separately")
+	check_eq(settings.get_base_url("openai"), "https://openai.example.com", "resolved without the trailing slash")
+	check_eq(edit.text, "https://openai.example.com/", "reopened with the saved value")
 	settings.anthropic_base_url = backup[0]
-	settings.provider = backup[1]
+	settings.openai_base_url = backup[1]
+	settings.provider = backup[2]
 	if had_file:
 		var file: FileAccess = FileAccess.open(settings.PATH, FileAccess.WRITE)
 		file.store_string(file_backup)

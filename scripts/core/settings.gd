@@ -1,26 +1,27 @@
 extends Node
-## Player settings, persisted in user://settings.cfg. Never log or print api_key or codex_api_key.
+## Player settings, persisted in user://settings.cfg. Never log or print api_key or openai_api_key.
 ## A dev key can also come from a .env file (dev-only: read in the editor, never saved to settings.cfg).
 
 const PATH: String = "user://settings.cfg"
 const SECTION: String = "llm"
 ## .env variable holding each provider's key.
-const ENV_VARS: Dictionary = {"anthropic": "ANTHROPIC_API_KEY", "codex": "OPENAI_API_KEY"}
-## Optional dev override of the Anthropic origin, from the process environment or .env.
-const BASE_URL_VAR: String = "ANTHROPIC_BASE_URL"
+const ENV_VARS: Dictionary = {"anthropic": "ANTHROPIC_API_KEY", "openai": "OPENAI_API_KEY"}
+## Optional dev override of a provider's origin (a relay), from the process environment or .env.
+const BASE_URL_VARS: Dictionary = {"anthropic": "ANTHROPIC_BASE_URL", "openai": "OPENAI_BASE_URL"}
 ## Models offered per provider in the settings dialog.
 const MODELS: Dictionary = {
 	"anthropic": ["claude-haiku-5-5", "claude-sonnet-5-5", "claude-opus-5-5"],
-	"codex": ["gpt-6.1-terra", "gpt-5.1-codex-mini", "gpt-5.6-luna", "gpt-6-luna", "codex-auto-review"],
+	"openai": ["gpt-6.1-terra", "gpt-5.1-codex-mini", "gpt-5.6-luna", "gpt-6-luna", "codex-auto-review"],
 }
 
 var api_key: String = ""
 var provider: String = "mock"
 var model: String = "claude-haiku-5-5"
-## Optional Anthropic-compatible relay origin entered in the Settings dialog. Blank: official endpoint.
+## Optional relay origins entered in the Settings dialog. Blank: official endpoint.
 var anthropic_base_url: String = ""
-var codex_api_key: String = ""
-var codex_model: String = "gpt-6.1-terra"
+var openai_base_url: String = ""
+var openai_api_key: String = ""
+var openai_model: String = "gpt-6.1-terra"
 var max_concurrency: int = 4
 var request_timeout: float = 20.0
 var chip_cooldown: float = 5.0
@@ -47,15 +48,34 @@ func get_api_key(provider_name: String) -> String:
 	return saved if saved != "" else _get_env_key(provider_name)
 
 
-## Anthropic relay origin, trailing slashes trimmed: the saved in-game setting, then (editor runs only)
-## the process environment, then .env. "" means the official endpoint. Not validated here (see AnthropicProvider).
-func get_anthropic_base_url() -> String:
-	var value: String = anthropic_base_url.strip_edges()
-	if value == "" and editor_run:
-		value = OS.get_environment(BASE_URL_VAR).strip_edges()
+## A provider's relay origin, trailing slashes trimmed: the saved in-game setting, then (editor runs only)
+## the process environment, then .env. "" means the official endpoint. Not validated here (see LLMProvider).
+func get_base_url(provider_name: String) -> String:
+	var value: String = get_saved_base_url(provider_name).strip_edges()
+	if value == "" and editor_run and BASE_URL_VARS.has(provider_name):
+		var var_name: String = BASE_URL_VARS[provider_name]
+		value = OS.get_environment(var_name).strip_edges()
 		if value == "":
-			value = str(_env.get(BASE_URL_VAR, "")).strip_edges()
+			value = str(_env.get(var_name, "")).strip_edges()
 	return value.rstrip("/")
+
+
+## Only the base URL entered in the Settings dialog.
+func get_saved_base_url(provider_name: String) -> String:
+	match provider_name:
+		"anthropic":
+			return anthropic_base_url
+		"openai":
+			return openai_base_url
+	return ""
+
+
+func set_saved_base_url(provider_name: String, value: String) -> void:
+	match provider_name:
+		"anthropic":
+			anthropic_base_url = value
+		"openai":
+			openai_base_url = value
 
 
 ## Only the key entered in the Settings dialog (what the dialog edits and what is saved to disk).
@@ -63,8 +83,8 @@ func get_saved_api_key(provider_name: String) -> String:
 	match provider_name:
 		"anthropic":
 			return api_key
-		"codex":
-			return codex_api_key
+		"openai":
+			return openai_api_key
 	return ""
 
 
@@ -81,7 +101,7 @@ func needs_api_key() -> bool:
 
 
 func get_model(provider_name: String) -> String:
-	return codex_model if provider_name == "codex" else model
+	return openai_model if provider_name == "openai" else model
 
 
 ## Sets key and model of a provider without saving. Other providers are ignored.
@@ -90,9 +110,9 @@ func set_provider_config(provider_name: String, key: String, model_name: String)
 		"anthropic":
 			api_key = key
 			model = model_name
-		"codex":
-			codex_api_key = key
-			codex_model = model_name
+		"openai":
+			openai_api_key = key
+			openai_model = model_name
 
 
 func load_settings() -> void:
@@ -103,8 +123,12 @@ func load_settings() -> void:
 	provider = cfg.get_value(SECTION, "provider", provider)
 	model = cfg.get_value(SECTION, "model", model)
 	anthropic_base_url = cfg.get_value(SECTION, "anthropic_base_url", anthropic_base_url)
-	codex_api_key = cfg.get_value(SECTION, "codex_api_key", codex_api_key)
-	codex_model = cfg.get_value(SECTION, "codex_model", codex_model)
+	# shortcut: reads settings saved before the codex -> openai rename; drop once nobody has old files
+	openai_api_key = cfg.get_value(SECTION, "openai_api_key", cfg.get_value(SECTION, "codex_api_key", openai_api_key))
+	openai_model = cfg.get_value(SECTION, "openai_model", cfg.get_value(SECTION, "codex_model", openai_model))
+	if provider == "codex":
+		provider = "openai"
+	openai_base_url = cfg.get_value(SECTION, "openai_base_url", openai_base_url)
 	max_concurrency = clampi(cfg.get_value(SECTION, "max_concurrency", max_concurrency), 1, 16)
 	request_timeout = clampf(cfg.get_value(SECTION, "request_timeout", request_timeout), 1.0, 120.0)
 	chip_cooldown = clampf(cfg.get_value(SECTION, "chip_cooldown", chip_cooldown), 0.0, 600.0)
@@ -136,8 +160,9 @@ func save_settings() -> void:
 	cfg.set_value(SECTION, "provider", provider)
 	cfg.set_value(SECTION, "model", model)
 	cfg.set_value(SECTION, "anthropic_base_url", anthropic_base_url)
-	cfg.set_value(SECTION, "codex_api_key", codex_api_key)
-	cfg.set_value(SECTION, "codex_model", codex_model)
+	cfg.set_value(SECTION, "openai_base_url", openai_base_url)
+	cfg.set_value(SECTION, "openai_api_key", openai_api_key)
+	cfg.set_value(SECTION, "openai_model", openai_model)
 	cfg.set_value(SECTION, "max_concurrency", max_concurrency)
 	cfg.set_value(SECTION, "request_timeout", request_timeout)
 	cfg.set_value(SECTION, "chip_cooldown", chip_cooldown)

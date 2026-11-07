@@ -90,10 +90,11 @@ Each `ChipComponent` (one chip, one prompt) requests a decision on: fixed timer,
 10. Secrets: the API key comes only from `Settings` (player-entered in UI, or a dev `.env` read by `Settings` in the editor). Never hardcode, log, or print it. `.env` is dev-only and must stay out of git and out of exports. Check `.gitignore` before committing.
 11. Add a `mock` provider (canned responses, random latency) so the game and UI can be developed and demoed with no network or key.
 
-### Anthropic base URL (relay)
-The Anthropic requests go to `https://api.anthropic.com` unless a relay origin is configured. Resolution order (`Settings.get_anthropic_base_url()`): the Base URL saved from the Settings dialog (`user://settings.cfg`, any build), then the `ANTHROPIC_BASE_URL` process variable, then `ANTHROPIC_BASE_URL` in `.env`. The last two apply in editor runs only; exported builds ignore them. Blank means the official endpoint.
-- The value is an https origin (`https://relay.example.com`, optional port): no path, query, credentials or IPv6 literal. Trailing slashes are trimmed, then `/v1/messages` (chat) and `/v1/models?limit=1` (key check) are appended. Both paths use it.
-- `AnthropicProvider.config_error()` rejects anything else, so `LLMManager` fails the request (or the key check reports "could not verify") before sending, and the key never goes to a malformed or plain-http target. The message does not repeat the value. The URL is never logged.
+### Provider base URL (relay)
+Requests go to the official endpoint (`https://api.anthropic.com`, `https://api.openai.com`) unless a relay origin is configured for that provider. Resolution order (`Settings.get_base_url(provider)`): the Base URL saved from the Settings dialog (`user://settings.cfg`, any build), then the `ANTHROPIC_BASE_URL` / `OPENAI_BASE_URL` process variable, then the same variable in `.env`. The last two apply in editor runs only; exported builds ignore them. Blank means the official endpoint. Each provider has its own value.
+- The value is an https origin (`https://relay.example.com`, optional port): no path, query, credentials or IPv6 literal. Trailing slashes are trimmed, then the provider's paths are appended: `/v1/messages` and `/v1/models?limit=1` (Anthropic chat and key check), `/v1/responses` and `/v1/models` (OpenAI).
+- `LLMProvider.config_error()` rejects anything else, so `LLMManager` fails the request (or the key check reports "could not verify") before sending, and the key never goes to a malformed or plain-http target. The message does not repeat the value. The URL is never logged.
+- Settings saved before the rename of `codex` to `openai` still load: `codex_api_key`, `codex_model` and `provider = codex` are migrated.
 
 ### LLM diagnostics (opt-in, local)
 By default a failed HTTP call reaches the ChipLog as `HTTP <status> (<error type>)` only, because a provider's message can echo part of the key. To see the message while debugging, launch the editor (or the project from it) with `PROMPTORIO_DEBUG_LLM=1`, e.g. `PROMPTORIO_DEBUG_LLM=1 godot --editor`; the log line becomes `HTTP 400 (invalid_request_error): <message>`.
@@ -147,7 +148,7 @@ Env: `GODOT` (godot binary, default `godot`), `TEST_TIMEOUT` (seconds, default 1
 ## Features
 
 ### LLM
-The llm system is linked via the `LLMManager`. It store multiple LLMProvider for claude/codex/... .
+The llm system is linked via the `LLMManager`. It store multiple LLMProvider for claude/openai/... .
 It help to call the models via a `request_decision` function. It can be take the message + the related tools.
 The request_decision get a list of tools to call with arguments. It save the machine which made the chat-call to call the functions related to the machine (ex: prompt ask to make a axe. The llm will ask to call the tool "make" with the param axe on the machine which called it).
 > [!Warning]

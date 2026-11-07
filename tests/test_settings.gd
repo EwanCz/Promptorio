@@ -19,8 +19,9 @@ func before_each() -> void:
 		"provider": _settings.provider,
 		"model": _settings.model,
 		"anthropic_base_url": _settings.anthropic_base_url,
-		"codex_api_key": _settings.codex_api_key,
-		"codex_model": _settings.codex_model,
+		"openai_base_url": _settings.openai_base_url,
+		"openai_api_key": _settings.openai_api_key,
+		"openai_model": _settings.openai_model,
 		"max_concurrency": _settings.max_concurrency,
 		"request_timeout": _settings.request_timeout,
 		"chip_cooldown": _settings.chip_cooldown,
@@ -59,6 +60,26 @@ func test_save_and_load_round_trip() -> void:
 	check_eq(_settings.anthropic_base_url, "https://relay.example.com", "anthropic_base_url round-trips")
 
 
+func test_settings_saved_before_the_openai_rename_still_load() -> void:
+	var cfg: ConfigFile = ConfigFile.new()
+	cfg.set_value(_settings.SECTION, "provider", "codex")
+	cfg.set_value(_settings.SECTION, "codex_api_key", "old-key")
+	cfg.set_value(_settings.SECTION, "codex_model", "gpt-6-luna")
+	cfg.save(_settings.PATH)
+	_settings.openai_api_key = ""
+	_settings.openai_model = ""
+	_settings.load_settings()
+	check_eq([_settings.provider, _settings.openai_api_key, _settings.openai_model], ["openai", "old-key", "gpt-6-luna"], "old codex keys migrate")
+
+
+func test_openai_base_url_round_trips() -> void:
+	_settings.openai_base_url = "https://relay.example.com"
+	_settings.save_settings()
+	_settings.openai_base_url = ""
+	_settings.load_settings()
+	check_eq(_settings.openai_base_url, "https://relay.example.com", "openai_base_url persisted")
+
+
 func test_load_clamps_out_of_range_values() -> void:
 	_settings.save_settings()
 	var cfg: ConfigFile = ConfigFile.new()
@@ -80,18 +101,18 @@ func test_settings_changed_signal() -> void:
 	check_eq(count[0], 1, "save_settings emits settings_changed once")
 
 
-func test_codex_key_and_model_round_trip() -> void:
+func test_openai_key_and_model_round_trip() -> void:
 	check_eq(_settings.get_api_key("mock"), "", "mock has no key")
-	_settings.set_provider_config("codex", "ck", "gpt-6-luna")
+	_settings.set_provider_config("openai", "ck", "gpt-6-luna")
 	_settings.set_provider_config("anthropic", "ak", "claude-opus-5-5")
-	check_eq([_settings.get_api_key("codex"), _settings.get_model("codex")], ["ck", "gpt-6-luna"], "codex config read back")
+	check_eq([_settings.get_api_key("openai"), _settings.get_model("openai")], ["ck", "gpt-6-luna"], "openai config read back")
 	check_eq([_settings.api_key, _settings.model], ["ak", "claude-opus-5-5"], "anthropic config kept apart")
 	_settings.save_settings()
-	_settings.codex_api_key = ""
-	_settings.codex_model = ""
+	_settings.openai_api_key = ""
+	_settings.openai_model = ""
 	_settings.load_settings()
-	check_eq([_settings.codex_api_key, _settings.codex_model], ["ck", "gpt-6-luna"], "codex config persisted")
-	check(_settings.MODELS["codex"].has("gpt-6.1-terra"), "gpt-6.1-terra is offered")
+	check_eq([_settings.openai_api_key, _settings.openai_model], ["ck", "gpt-6-luna"], "openai config persisted")
+	check(_settings.MODELS["openai"].has("gpt-6.1-terra"), "gpt-6.1-terra is offered")
 
 
 func _write_env(text: String) -> void:
@@ -104,10 +125,10 @@ func _write_env(text: String) -> void:
 
 func test_env_file_parsing() -> void:
 	_settings.api_key = ""
-	_settings.codex_api_key = ""
+	_settings.openai_api_key = ""
 	_write_env("# comment\n\nexport ANTHROPIC_API_KEY=\"sk-a b\"\r\nOPENAI_API_KEY = 'sk-o'\nno_equals\n=novalue\n")
 	check_eq(_settings.get_api_key("anthropic"), "sk-a b", "export prefix, double quotes and CRLF handled")
-	check_eq(_settings.get_api_key("codex"), "sk-o", "single quotes and spaces around = handled")
+	check_eq(_settings.get_api_key("openai"), "sk-o", "single quotes and spaces around = handled")
 	check_eq(_settings.get_api_key("mock"), "", "mock never has a key")
 
 
