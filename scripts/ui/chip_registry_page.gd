@@ -7,6 +7,7 @@ signal chip_requested(chip: ChipRessource)
 
 @onready var _list: VBoxContainer = %List
 @onready var _new_button: Button = %NewButton
+@onready var _error_label: Label = %ErrorLabel
 
 
 func _ready() -> void:
@@ -14,6 +15,8 @@ func _ready() -> void:
 	EventBus.chip_registered.connect(_on_registry_changed)
 	EventBus.chip_removed.connect(_on_registry_changed)
 	EventBus.chip_updated.connect(_on_registry_changed)
+	EventBus.chip_storage_error.connect(_show_error)
+	_show_error(ChipRegistry.save_error)
 	_refresh()
 
 
@@ -35,3 +38,8 @@ func _on_new_pressed() -> void:
 
 func _on_registry_changed(_chip: Resource) -> void:
 	_refresh()
+
+
+func _show_error(message: String) -> void:
+	_error_label.text = message
+	_error_label.visible = message != ""

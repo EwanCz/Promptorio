@@ -5,6 +5,8 @@ extends SceneTree
 ## Exit code is 1 if any check fails or any test file has no checks.
 
 const TESTS_DIR: String = "res://tests"
+## Tests save chips here, never to the player's user://chip_registry.tres.
+const TEST_CHIPS_PATH: String = "user://test_chip_registry.tres"
 
 
 func _initialize() -> void:
@@ -13,6 +15,11 @@ func _initialize() -> void:
 	var user_args: PackedStringArray = OS.get_cmdline_user_args()
 	if not user_args.is_empty():
 		filter = user_args[0]
+
+	var registry: Node = root.get_node("ChipRegistry")
+	registry.user_path = TEST_CHIPS_PATH
+	DirAccess.remove_absolute(TEST_CHIPS_PATH)
+	registry.load_registry()
 
 	var total_checks: int = 0
 	var total_failures: int = 0
@@ -44,6 +51,7 @@ func _initialize() -> void:
 		total_checks += int(test.get("checks"))
 		total_failures += int(test.get("failures"))
 
+	DirAccess.remove_absolute(TEST_CHIPS_PATH)
 	print("--------")
 	print("%d checks, %d failed" % [total_checks, total_failures])
 	print("ALL PASSED" if total_failures == 0 else "FAILED")

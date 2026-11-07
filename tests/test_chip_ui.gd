@@ -272,3 +272,16 @@ func test_tooltip_ask_now_and_threshold() -> void:
 	await wait_until(func() -> bool: return not machine.chips[0].pending)
 	settings.provider = saved[0]
 	settings.chip_cooldown = saved[1]
+
+
+func test_registry_page_shows_a_save_error() -> void:
+	var page: ChipRegistryPage = _spawn("res://scenes/ui/pages/chip_registry_page.tscn")
+	var label: Label = page.get_node("%ErrorLabel")
+	check(not label.visible, "no error: label hidden")
+	var saved_path: String = _registry.user_path
+	_registry.user_path = "user://no_such_dir/chips.tres"
+	var chip: ChipRessource = _add("ui_save_fail", "p")
+	check(label.visible and label.text != "", "failed save is visible on the page")
+	_registry.user_path = saved_path
+	_registry.update(chip.id, "ui_save_fail", "", "p")
+	check(not label.visible, "label hides after a good save")

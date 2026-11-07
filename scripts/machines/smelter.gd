@@ -7,7 +7,7 @@ extends CraftMachine
 const AMBIENT: float = 20.0
 const HEAT_PER_TICK: float = 0.6
 const COOL_PER_TICK: float = 0.3
-const COOLING_EXTRA_PER_TICK: float = 0.7
+const COOLING_EXTRA_PER_TICK: float = 0.3
 const OVERHEAT_AT: float = 100.0
 const SAFE_AT: float = 80.0
 const EXPLODE_AT: float = 150.0
@@ -24,7 +24,7 @@ var cooling: bool = false
 func _own_tool_schemas() -> Array:
 	return [{
 		"name": "set_cooling",
-		"description": "Turn the cooling on or off. Cooling lowers the temperature faster but is needed while working.",
+		"description": "Turn the cooling on or off. Cooling only slows the heating while working (it cannot keep a working smelter stable), and speeds up the cooldown while idle.",
 		"input_schema": {"type": "object", "properties": {"on": {"type": "boolean"}}},
 	}]
 
