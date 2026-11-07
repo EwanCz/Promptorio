@@ -15,8 +15,8 @@ var temperature: float = AMBIENT
 var cooling: bool = false
 
 
-func get_tool_schemas() -> Array:
-	return super.get_tool_schemas() + [{
+func _own_tool_schemas() -> Array:
+	return [{
 		"name": "set_cooling",
 		"description": "Turn the cooling on or off. Cooling lowers the temperature faster but is needed while working.",
 		"input_schema": {"type": "object", "properties": {"on": {"type": "boolean"}}},

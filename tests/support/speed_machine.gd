@@ -5,8 +5,8 @@ var speed: float = 0.0
 var level: int = 0
 
 
-func get_tool_schemas() -> Array:
-	return super.get_tool_schemas() + [{
+func _own_tool_schemas() -> Array:
+	return [{
 		"name": "set_speed",
 		"description": "Set speed and level.",
 		"input_schema": {"type": "object", "properties": {

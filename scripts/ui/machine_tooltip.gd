@@ -7,6 +7,8 @@ signal log_requested(machine: Machine)
 
 const PROMPT_PREVIEW: int = 40
 const MAX_TIMEOUT: int = 100000
+const MAX_LIMIT: int = 100000
+const NO_WATCH: String = "(never)"
 
 var _machine: Machine = null
 
@@ -62,7 +64,9 @@ func _refresh_chips() -> void:
 
 
 func _make_row(component: ChipComponent) -> Control:
+	var box: VBoxContainer = VBoxContainer.new()
 	var row: HBoxContainer = HBoxContainer.new()
+	box.add_child(row)
 	var label: Label = Label.new()
 	label.text = "%s: %s" % [component.chip.name, component.chip.prompt.left(PROMPT_PREVIEW)]
 	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -79,6 +83,38 @@ func _make_row(component: ChipComponent) -> Control:
 	remove.text = "X"
 	remove.pressed.connect(_on_remove_pressed.bind(component))
 	row.add_child(remove)
+	var ask: Button = Button.new()
+	ask.text = "Ask now"
+	ask.pressed.connect(_on_ask_pressed.bind(component))
+	row.add_child(ask)
+	box.add_child(_make_watch_row(component))
+	return box
+
+
+## Threshold trigger: pick a numeric state value and the limit it must rise above.
+func _make_watch_row(component: ChipComponent) -> Control:
+	var row: HBoxContainer = HBoxContainer.new()
+	var title: Label = Label.new()
+	title.text = "Ask when"
+	row.add_child(title)
+	var keys: OptionButton = OptionButton.new()
+	keys.add_item(NO_WATCH, 0)
+	var state: Dictionary = _machine.get_state()
+	for key: String in state:
+		if state[key] is int or state[key] is float:
+			keys.add_item(key)
+			if key == component.threshold_key:
+				keys.select(keys.item_count - 1)
+	keys.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(keys)
+	var limit: SpinBox = SpinBox.new()
+	limit.min_value = -MAX_LIMIT
+	limit.max_value = MAX_LIMIT
+	limit.prefix = ">"
+	limit.value = component.threshold
+	row.add_child(limit)
+	keys.item_selected.connect(_on_watch_changed.bind(keys, limit, component))
+	limit.value_changed.connect(_on_limit_changed.bind(keys, limit, component))
 	return row
 
 
@@ -111,6 +147,23 @@ func _on_add_pressed() -> void:
 func _on_remove_pressed(component: ChipComponent) -> void:
 	_machine.detach_chip(component.chip.id)
 	_refresh_chips()
+
+
+func _on_ask_pressed(component: ChipComponent) -> void:
+	component.call_llm("manual")
+
+
+func _on_watch_changed(_index: int, keys: OptionButton, limit: SpinBox, component: ChipComponent) -> void:
+	_apply_watch(keys, limit, component)
+
+
+func _on_limit_changed(_value: float, keys: OptionButton, limit: SpinBox, component: ChipComponent) -> void:
+	_apply_watch(keys, limit, component)
+
+
+func _apply_watch(keys: OptionButton, limit: SpinBox, component: ChipComponent) -> void:
+	var key: String = "" if keys.selected == 0 else keys.get_item_text(keys.selected)
+	component.set_threshold(key, limit.value)
 
 
 func _on_timeout_changed(value: float, component: ChipComponent) -> void:

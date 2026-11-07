@@ -8,6 +8,8 @@ const MAX_STOCK: int = 10
 @export var recipe: Recipe
 
 var stock: Dictionary = {}
+## Per-item cap on the input stock, at most MAX_STOCK.
+var stock_limit: int = MAX_STOCK
 ## Ticks left on the current craft, 0 when idle.
 var progress: int = 0
 
@@ -17,7 +19,7 @@ var _output: String = ""
 func receive(item: String) -> bool:
 	if status == Status.DOWN or recipe == null or not recipe.inputs.has(item):
 		return false
-	if int(stock.get(item, 0)) >= MAX_STOCK:
+	if int(stock.get(item, 0)) >= stock_limit:
 		return false
 	stock[item] = int(stock.get(item, 0)) + 1
 	return true
@@ -29,6 +31,15 @@ func is_working() -> bool:
 
 func get_state() -> Dictionary:
 	return super.get_state().merged({"stock": stock, "working": is_working()})
+
+
+func get_events() -> Array[String]:
+	var events: Array[String] = super.get_events()
+	if _output != "":
+		events.append("output_full")
+	elif progress == 0 and not _can_start():
+		events.append("input_empty")
+	return events
 
 
 func _tick() -> void:

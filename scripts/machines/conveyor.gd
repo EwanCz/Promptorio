@@ -12,6 +12,20 @@ var held: String = ""
 var _wait: int = 0
 
 
+func get_state() -> Dictionary:
+	return super.get_state().merged({"direction": ARROWS.keys().find(facing), "holding": held != ""})
+
+
+func _own_tool_schemas() -> Array:
+	return [{
+		"name": "set_direction",
+		"description": "Turn the conveyor: 0 right, 1 down, 2 left, 3 up.",
+		"input_schema": {"type": "object", "properties": {
+			"direction": {"type": "integer", "minimum": 0, "maximum": ARROWS.size() - 1},
+		}},
+	}]
+
+
 func receive(item: String) -> bool:
 	if held != "" or status == Status.DOWN:
 		return false
@@ -26,6 +40,13 @@ func _tick() -> void:
 	_wait += 1
 	if _wait >= MOVE_TICKS and _push(held):
 		held = ""
+
+
+func _apply(tool_name: String, args: Dictionary) -> void:
+	if tool_name == "set_direction":
+		facing = ARROWS.keys()[args["direction"]]
+		return
+	super._apply(tool_name, args)
 
 
 func _status_text() -> String:
