@@ -55,10 +55,9 @@ func _check(condition: bool, label: String) -> void:
 
 
 func _wait_until(condition: Callable, timeout: float) -> void:
-	var elapsed: float = 0.0
-	while not condition.call() and elapsed < timeout:
+	var deadline: int = Time.get_ticks_msec() + int(timeout * 1000.0)
+	while not condition.call() and Time.get_ticks_msec() < deadline:
 		await process_frame
-		elapsed += 1.0 / 60.0
 
 
 func _test_grid() -> void:
