@@ -21,6 +21,8 @@ const HOVER_OK: Color = Color(0.2, 1.0, 0.3, 0.35)
 const HOVER_BLOCKED: Color = Color(1.0, 0.2, 0.2, 0.35)
 
 var hovered_cell: Vector2i = Vector2i(-1, -1)
+## The machine type being placed ("" for none): the highlight follows its rules.
+var placement_type: String = ""
 
 
 func _ready() -> void:
@@ -42,8 +44,21 @@ func _draw() -> void:
 	if not GameState.is_in_grid(hovered_cell):
 		return
 	var tile_size: Vector2 = Vector2(tile_set.tile_size)
-	var color: Color = HOVER_OK if GameState.can_place(hovered_cell) else HOVER_BLOCKED
-	draw_rect(Rect2(Vector2(hovered_cell) * tile_size, tile_size), color)
+	draw_rect(Rect2(Vector2(hovered_cell) * tile_size, tile_size), hover_color())
+
+
+## The placement rule for a machine type: a free cell inside the grid, and miners only on minesites.
+func can_place(type: String, cell: Vector2i) -> bool:
+	return GameState.can_place(cell) and (type != "miner" or is_minesite(cell))
+
+
+func set_placement_type(type: String) -> void:
+	placement_type = type
+	queue_redraw()
+
+
+func hover_color() -> Color:
+	return HOVER_OK if can_place(placement_type, hovered_cell) else HOVER_BLOCKED
 
 
 func get_hovered_cell(world_pos: Vector2) -> Vector2i:

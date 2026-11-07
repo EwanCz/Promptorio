@@ -71,8 +71,9 @@ Machine (Node2D, machine.gd)
 - `LLMProvider` (base class, `scripts/llm/providers/llm_provider.gd`) defines:
   - `build_request(system_prompt: String, state: Dictionary, tools: Array) -> Dictionary` returns `{url, headers, body}`
   - `parse_response(body: Dictionary) -> Array[Dictionary]` returns a normalized list of `{name, args}` tool calls
-- Implementations: `AnthropicProvider` first; `OpenAICompatProvider` second if time allows. Nothing outside `scripts/llm/providers/` knows provider formats.
-- Machines expose their tool schemas via `get_tool_schemas()` (e.g. `set_speed(value: 0..1)`, `set_cooling(on: bool)`). `apply_tool_call(name, args)` is the only way LLM output touches a machine.
+  - `build_check_request()` returns the free key-check GET (list models), and `config_error()` returns a message when the provider's relay base URL is unusable (see "Provider base URL")
+- Implementations: `AnthropicProvider` (Messages API), `OpenAIProvider` (Responses API) and `MockProvider` (offline, deterministic). `Settings.provider` is `mock`, `anthropic` or `openai`. Nothing outside `scripts/llm/providers/` knows provider formats. Neither real provider has been run against its live API: tests use scripted responses.
+- Machines expose their tool schemas via `get_tool_schemas()` (the shared `set_enabled(on: bool)` plus one tool per machine type, e.g. `set_mine_ticks(ticks: 5..100)` on the Miner and `set_cooling(on: bool)` on the Smelter; the full list is in `docs/PLAN.md`, "AI tool inventory"). `apply_tool_call(name, args)` is the only way LLM output touches a machine.
 
 ### Chip triggers
 Each `ChipComponent` (one chip, one prompt) requests a decision on: fixed timer, state threshold (temp > X), events (input empty / output full / error), manual "Ask chip now" button. All go through one method, `request_decision(reason: String)`, which enforces the per-chip cooldown and the "one request in flight per chip" rule.
@@ -89,6 +90,17 @@ Each `ChipComponent` (one chip, one prompt) requests a decision on: fixed timer,
 9. Send compact state JSON (only fields the chip needs). Keep `max_tokens` small (<= 300). Always force tool use / structured output.
 10. Secrets: the API key comes only from `Settings` (player-entered in UI, or a dev `.env` read by `Settings` in the editor). Never hardcode, log, or print it. `.env` is dev-only and must stay out of git and out of exports. Check `.gitignore` before committing.
 11. Add a `mock` provider (canned responses, random latency) so the game and UI can be developed and demoed with no network or key.
+
+### Provider base URL (relay)
+Requests go to the official endpoint (`https://api.anthropic.com`, `https://api.openai.com`) unless a relay origin is configured for that provider. Resolution order (`Settings.get_base_url(provider)`): the Base URL saved from the Settings dialog (`user://settings.cfg`, any build), then the `ANTHROPIC_BASE_URL` / `OPENAI_BASE_URL` process variable, then the same variable in `.env`. The last two apply in editor runs only; exported builds ignore them. Blank means the official endpoint. Each provider has its own value.
+- The value is an https origin (`https://relay.example.com`, optional port): no path, query, credentials or IPv6 literal. Trailing slashes are trimmed, then the provider's paths are appended: `/v1/messages` and `/v1/models?limit=1` (Anthropic chat and key check), `/v1/responses` and `/v1/models` (OpenAI).
+- `LLMProvider.config_error()` rejects anything else, so `LLMManager` fails the request (or the key check reports "could not verify") before sending, and the key never goes to a malformed or plain-http target. The message does not repeat the value. The URL is never logged.
+- Settings saved before the rename of `codex` to `openai` still load: `codex_api_key`, `codex_model` and `provider = codex` are migrated.
+
+### LLM diagnostics (opt-in, local)
+By default a failed HTTP call reaches the ChipLog as `HTTP <status> (<error type>)` only, because a provider's message can echo part of the key. To see the message while debugging, launch the editor (or the project from it) with `PROMPTORIO_DEBUG_LLM=1`, e.g. `PROMPTORIO_DEBUG_LLM=1 godot --editor`; the log line becomes `HTTP 400 (invalid_request_error): <message>`.
+- Limits: only the exact value `1` enables it, and only when `OS.has_feature("editor")`, so exported builds ignore it. It adds the provider's error `message` for non-200 answers and nothing else; no headers, request body or raw response body is ever logged, and a non-JSON body adds nothing.
+- The message is made one line, the configured API key and any 20+ character token-like run are replaced by `[redacted]`, and it is cut at 200 characters (`...` marks the cut). The token mask is a heuristic (`shortcut:`): it can hide a long identifier and cannot catch a key shorter than 20 characters that is not the configured one.
 
 ## GDScript conventions
 - Godot 4.x only. Fully typed GDScript: type every variable, parameter and return (`var speed: float = 1.0`, `func foo(x: int) -> void`).
@@ -137,7 +149,7 @@ Env: `GODOT` (godot binary, default `godot`), `TEST_TIMEOUT` (seconds, default 1
 ## Features
 
 ### LLM
-The llm system is linked via the `LLMManager`. It store multiple LLMProvider for claude/codex/... .
+The llm system is linked via the `LLMManager`. It stores the providers (`mock`, `anthropic`, `openai`), one `LLMProvider` each.
 It help to call the models via a `request_decision` function. It can be take the message + the related tools.
 The request_decision get a list of tools to call with arguments. It save the machine which made the chat-call to call the functions related to the machine (ex: prompt ask to make a axe. The llm will ask to call the tool "make" with the param axe on the machine which called it).
 > [!Warning]

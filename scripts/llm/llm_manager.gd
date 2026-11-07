@@ -8,8 +8,10 @@ signal decision_failed(requester_id: int, reason: String)
 
 const MAX_RETRIES: int = 3
 const BACKOFF_BASE: float = 1.0
+const DEBUG_MAX_CHARS: int = 200
 
 var _queue: Array[Dictionary] = []
+var _key_check_id: int = 0
 var _in_flight: int = 0
 var _idle_requests: Array[HTTPRequest] = []
 
@@ -26,6 +28,31 @@ func request_decision(requester_id: int, system_prompt: String, state: Dictionar
 		"tools": tools,
 	})
 	_pump()
+
+
+## Probes the selected provider's key with a free request and reports "valid", "invalid" (401/403)
+## or "error" (network, 5xx, 429...) on EventBus.key_checked. Does nothing without a key to test.
+## A newer check supersedes an older one, so a stale answer is never reported.
+func check_key() -> void:
+	_key_check_id += 1
+	var id: int = _key_check_id
+	var provider: LLMProvider = _make_provider()
+	if provider == null or not provider.requires_network() or Settings.get_api_key(Settings.provider) == "":
+		return
+	if provider.config_error() != "":
+		EventBus.key_checked.emit("error", provider.config_error())
+		return
+	var response: Dictionary = await _send(provider.build_check_request())
+	if id != _key_check_id:
+		return
+	var status: int = response["status"]
+	if response["result"] != HTTPRequest.RESULT_SUCCESS:
+		EventBus.key_checked.emit("error", "network error (result %d)" % response["result"])
+	elif status == 200:
+		EventBus.key_checked.emit("valid", "")
+	else:
+		var state: String = "invalid" if status == 401 or status == 403 else "error"
+		EventBus.key_checked.emit(state, _http_error(status, response["body"]))
 
 
 func _pump() -> void:
@@ -69,6 +96,8 @@ func _run(job: Dictionary) -> void:
 func _execute(provider: LLMProvider, job: Dictionary) -> Dictionary:
 	if provider.requires_network() and Settings.get_api_key(Settings.provider) == "":
 		return _outcome([], "no API key (set one in Settings or .env)", 0)
+	if provider.config_error() != "":
+		return _outcome([], provider.config_error(), 0)
 	var request: Dictionary = provider.build_request(job["system_prompt"], job["state"], job["tools"])
 	if not provider.requires_network():
 		await get_tree().create_timer(provider.simulated_latency()).timeout
@@ -104,7 +133,9 @@ func _send(request: Dictionary) -> Dictionary:
 	var http: HTTPRequest = _acquire()
 	http.timeout = Settings.request_timeout
 	var headers: PackedStringArray = PackedStringArray(request["headers"])
-	var err: Error = http.request(request["url"], headers, HTTPClient.METHOD_POST, JSON.stringify(request["body"]))
+	var method: int = request.get("method", HTTPClient.METHOD_POST)
+	var body: String = "" if method == HTTPClient.METHOD_GET else JSON.stringify(request["body"])
+	var err: Error = http.request(request["url"], headers, method, body)
 	if err != OK:
 		_release(http)
 		return {"result": HTTPRequest.RESULT_CANT_CONNECT, "status": 0, "body": PackedByteArray()}
@@ -113,13 +144,38 @@ func _send(request: Dictionary) -> Dictionary:
 	return {"result": response[0], "status": response[1], "body": response[3]}
 
 
-## "HTTP 401 (authentication_error)": the status plus the API's error type, never its message,
-## which may echo part of the key.
+## "HTTP 401 (authentication_error)": the status plus the API's error type. The API's message
+## (which may echo part of the key) is appended only when local diagnostics are on.
 func _http_error(status: int, raw: PackedByteArray) -> String:
 	var parsed: Variant = JSON.parse_string(raw.get_string_from_utf8())
 	var error: Variant = parsed.get("error") if typeof(parsed) == TYPE_DICTIONARY else null
 	var type: String = str(error.get("type", "")) if typeof(error) == TYPE_DICTIONARY else ""
-	return "HTTP %d (%s)" % [status, type] if type != "" else "HTTP %d" % status
+	var text: String = "HTTP %d (%s)" % [status, type] if type != "" else "HTTP %d" % status
+	if typeof(error) == TYPE_DICTIONARY and _debug_enabled():
+		var message: String = _sanitize(str(error.get("message", "")))
+		if message != "":
+			text += ": " + message
+	return text
+
+
+## Opt-in local diagnostics: PROMPTORIO_DEBUG_LLM=1 in an editor run; never in exported builds.
+func _debug_enabled() -> bool:
+	return OS.has_feature("editor") and OS.get_environment("PROMPTORIO_DEBUG_LLM") == "1"
+
+
+## One line, secrets masked, capped at DEBUG_MAX_CHARS.
+func _sanitize(message: String) -> String:
+	var key: String = Settings.get_api_key(Settings.provider)
+	if key != "":
+		message = message.replace(key, "[redacted]")
+	# shortcut: masks any 20+ char token-like run (covers other key formats), may hide long identifiers
+	var secret: RegEx = RegEx.create_from_string("[A-Za-z0-9_\\-]{20,}")
+	message = secret.sub(message, "[redacted]", true)
+	var spaces: RegEx = RegEx.create_from_string("\\s+")
+	message = spaces.sub(message, " ", true).strip_edges()
+	if message.length() > DEBUG_MAX_CHARS:
+		message = message.substr(0, DEBUG_MAX_CHARS) + "..."
+	return message
 
 
 func _outcome(calls: Array, error: String, status: int) -> Dictionary:
@@ -137,8 +193,8 @@ func _make_provider() -> LLMProvider:
 			return MockProvider.new()
 		"anthropic":
 			return AnthropicProvider.new()
-		"codex":
-			return CodexProvider.new()
+		"openai":
+			return OpenAIProvider.new()
 	return null
 
 

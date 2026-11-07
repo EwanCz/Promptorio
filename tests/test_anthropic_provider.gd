@@ -1,16 +1,24 @@
 extends "res://tests/test_case.gd"
 
 var _saved_key: String = ""
+var _saved_editor_run: bool = true
+var _saved_base_url: String = ""
 var _heard: Array = []
 
 
 func before_each() -> void:
 	_saved_key = autoload("Settings").api_key
+	_saved_editor_run = autoload("Settings").editor_run
+	autoload("Settings").editor_run = false
+	_saved_base_url = autoload("Settings").anthropic_base_url
+	autoload("Settings").anthropic_base_url = ""
 	_heard.clear()
 
 
 func after_each() -> void:
 	autoload("Settings").api_key = _saved_key
+	autoload("Settings").editor_run = _saved_editor_run
+	autoload("Settings").anthropic_base_url = _saved_base_url
 
 
 func test_build_request() -> void:
@@ -37,6 +45,15 @@ func test_build_request_falls_back_to_the_env_key() -> void:
 	settings.env_path = saved_path
 	settings.load_env()
 	check("x-api-key: env-k" in req["headers"], "the .env key is sent when none is saved")
+
+
+func test_check_request_is_a_free_authenticated_get() -> void:
+	autoload("Settings").api_key = "k"
+	var req: Dictionary = AnthropicProvider.new().build_check_request()
+	check_eq(req["method"], HTTPClient.METHOD_GET, "GET")
+	check(req["url"].contains("/v1/models"), "lists models, no tokens spent")
+	check("x-api-key: k" in req["headers"], "key header")
+	check(not req.has("body"), "no body")
 
 
 func test_parse_response() -> void:

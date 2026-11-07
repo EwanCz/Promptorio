@@ -18,6 +18,8 @@ func _ready() -> void:
 	_registry_page.chip_requested.connect(_chip_page.open)
 	_tooltip.log_requested.connect(_chip_log.show_machine)
 	_bar.settings_requested.connect(_settings_dialog.open)
+	EventBus.settings_changed.connect(_check_key)
+	_check_key()
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -35,3 +37,9 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _on_cell_clicked(cell: Vector2i) -> void:
 	EventBus.machine_selected.emit(GameState.get_machine_at(cell))
+
+
+## Verifies the key for the Bar's status. Headless runs (tests) never touch the network.
+func _check_key() -> void:
+	if DisplayServer.get_name() != "headless":
+		LLMManager.check_key()

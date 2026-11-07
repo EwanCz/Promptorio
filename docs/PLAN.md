@@ -3,7 +3,7 @@
 Living document. Update it when scope or decisions change, and tick items off as they land.
 
 ## Decisions
-- **LLM:** provider-agnostic adapter (`LLMProvider`). Anthropic first, OpenAI-compatible if time allows, plus a mock provider.
+- **LLM:** provider-agnostic adapter (`LLMProvider`). `AnthropicProvider` and `OpenAIProvider` (both with an optional relay base URL), plus a deterministic `MockProvider`. Neither real provider has been run against its live API: tests use scripted responses.
 - **API key:** player-entered in a settings UI, stored in `user://settings.cfg`. A dev can also put it in a git-ignored `.env` at the project root (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, see `.env.example`). The key saved from the dialog wins, `.env` is the fallback. `.env` is only read by the editor build (`OS.has_feature("editor")`), never saved to `settings.cfg`, never shown in the dialog, never exported or committed.
 - **Chip triggers:** fixed timer, state thresholds, events (input empty / output full / error), and a manual "Ask chip now" button.
 - **Chips and prompts:** a machine can have several chips. Each chip has exactly one prompt and its own timeout, cooldown and in-flight slot, so chips never compete with each other.
@@ -14,7 +14,7 @@ Living document. Update it when scope or decisions change, and tick items off as
 Architecture and async HTTP rules live in `CLAUDE.md`.
 
 ## Phase 0 — Foundations (h0–4, everyone)
-- [x] Autoloads: `EventBus`, `GameState`, `Settings`, `LLMManager` (+ `LLMProvider` base, `MockProvider`, `AnthropicProvider`)
+- [x] Autoloads: `EventBus`, `GameState`, `Settings`, `LLMManager` (+ `LLMProvider` base, `MockProvider`, `AnthropicProvider`, `OpenAIProvider`)
 - [x] `Main` scene (HBox split: FactoryView 80% / Bar 20%, `UI` CanvasLayer for popups) and base `Machine` scene with `ChipComponent`
 - [x] Tool-call schema and state JSON format (see "Machine / chip API"). Base `Machine` scene is now frozen: subclasses inherit it, don't edit it without telling the team
 
@@ -38,14 +38,15 @@ Architecture and async HTTP rules live in `CLAUDE.md`.
 ## Phase 1 — Parallel tracks (h4–20)
 | Dev | Track |
 |---|---|
-| A (LLM) | `LLMProvider` base, `MockProvider`, `AnthropicProvider`, `HTTPRequest` pool, queue, timeout, 429 backoff, signals |
+| A (LLM) | `LLMProvider` base, `MockProvider`, `AnthropicProvider`, `OpenAIProvider`, `HTTPRequest` pool, queue, timeout, 429 backoff, signals |
 | B (Sim) | Grid placement, fixed-rate tick, Miner/Smelter/Assembler/Collector logic, smelter temperature model, explosion fail state |
 | C (UI) | 80/20 split (Factory View + camera, Bar with Build / Chip Registry pages), Chip Page popup (pauses game), machine tooltip, settings dialog (key, provider, model), chip decision log. Spec in `docs/UI.md` |
 
 ### LLM (track A, done)
-- [x] `LLMProvider` base, `AnthropicProvider`, `MockProvider` (deterministic canned answer: first tool, booleans `true`, integers at `minimum`, numbers at the midpoint; latency stays random 0.3-1.5 s; empty tool list gives no calls)
+- [x] `LLMProvider` base, `AnthropicProvider`, `OpenAIProvider`, `MockProvider` (deterministic canned answer: first tool, booleans `true`, integers at `minimum`, numbers at the midpoint; latency stays random 0.3-1.5 s; empty tool list gives no calls)
 - [x] `HTTPRequest` pool, queue, `max_concurrency`, timeout, 429 exponential backoff (3 retries max), `decision_received` / `decision_failed`
 - [x] Real HTTP path tested offline (`tests/test_llm_http.gd`): timeout, transport failure, non-200, invalid JSON, 429 backoff and cap. Seam: `LLMManager._send(request)` is the only code that touches `HTTPRequest`; tests subclass it (`tests/support/scripted_llm_manager.gd`) and also override `_wait_backoff(seconds)` to record the requested retry delays (1 s, 2 s, 4 s) without waiting.
+- [x] Opt-in HTTP error diagnostics: see "LLM diagnostics" in `CLAUDE.md` (`PROMPTORIO_DEBUG_LLM=1`, editor runs only; tested offline in `tests/test_llm_http.gd`).
 
 ### Simulation (track B, done)
 - [x] Chain Miner -> Smelter -> Assembler -> Collector over plain `Conveyor`s, driven by `EventBus.tick_fired`. `Machine` gained `facing`, `receive(item) -> bool` (default refuses), `_tick()` (override per type, skipped while `DOWN`) and `_push(item)` (hands an item to the machine in front). Items are strings: `ore` -> `ingot` -> `part`.
@@ -55,32 +56,31 @@ Architecture and async HTTP rules live in `CLAUDE.md`.
 - [x] Placement (`Placement`, `scripts/world/placement.gd`, node in `World`): Input Map actions (physical-key defaults, layout independent) `select_miner` / `select_smelter` / `select_assembler` / `select_conveyor` (`1`, `2`, `3`, `5`), `rotate_placement` (`R`, facing right, down, left, up) and `cancel_placement` (`Esc`) drive it; `Main` forwards them to `Placement.handle_input()`; left click on a grid cell places. Refuses out-of-grid, occupied cells, and miners off a minesite. The Collector is placed at the map center on start and is not selectable: no action, no Build page entry, and `select` / `try_place` refuse it. Machines unregister themselves from `GameState` when freed. `Placement.select(type)` is what both the shortcuts and the Build page call; `place(type, cell)` applies the rules without cost and `try_place(type, cell)` adds the `COSTS` charge (once, only on success; emits `placement_rejected(reason)` otherwise).
 - Head-on rule: two machines facing each other (`target.facing == -facing`) pass nothing to one another, in either direction (`Machine._push`), e.g. a smelter facing a conveyor that points back at it: both stay blocked until one is turned. The Collector has no facing and never counts. Test: `tests/test_simulation.gd`.
 - Prototype conveyor controls: trigger `select_conveyor` (`5`) to select a conveyor, `rotate_placement` (`R`) to rotate its output direction clockwise, then left-click a free grid cell to place it. The direction is shown by the belt art and the tooltip (no arrow label over the machine); the status label is only a dot while it holds an item. No machine shows its name over it any more: the label is empty except the smelter temperature / BOOM and the conveyor dot. The Build page selects the same types through `Placement.select`.
-- Paid placement, machine removal/rotation, the Build page and the tooltip actions are track C and are done (see "Bar and popups" below). The hover highlight still does not show the minesite rule; chip-to-LLM wiring remains in Phase 2.
+- Paid placement, machine removal/rotation, the Build page and the tooltip actions are track C and are done (see "Bar and popups" below). The hover highlight follows the selected machine's rule (see "Grid and camera").
 
 ### AI tool inventory (as implemented)
-What `get_tool_schemas()` returns today. Only `Machine` (base) and `Smelter` define tools; `Miner`, `Assembler`, `Conveyor` and `Collector` add none. Every argument is required, and a missing or wrongly typed value rejects the whole call (logged to the ChipLog, machine unchanged). A chip can be attached to any machine, including a conveyor or the Collector, so every machine type is listed.
+What `get_tool_schemas()` returns per machine: the shared tool first, then the tools unique to the type (`_own_tool_schemas()`). Every argument is required; a missing or wrongly typed value rejects the whole call (logged to the ChipLog, machine unchanged), and integers are clamped to their range. A chip can be attached to any machine, including the Collector and conveyors, so all five types are listed. Checked in `tests/test_machine_tools.gd` and `tests/test_chip_integration.gd`.
 
-| Tool | Args | Origin | Effect |
-|------|------|--------|--------|
-| `set_enabled` | `on: boolean` | inherited from `Machine`, on every machine | Sets `enabled` (reported as `enabled` in the state sent to the LLM). See the per-machine effect below. |
-| `set_cooling` | `on: boolean` | `Smelter` only | Sets `cooling`: an extra -0.7 °/tick (see Smelter temperature above). Reported as `temperature` and `cooling` in the state. |
+| Tool | Args | Offered by | Effect |
+|------|------|------------|--------|
+| `set_enabled` | `on: boolean` | every machine (inherited from `Machine`) | Sets `enabled`; see the per-machine effect below. |
+| `set_mine_ticks` | `ticks: integer`, 5..100 | Miner | Ticks per ore (default 20); lower is faster. |
+| `set_cooling` | `on: boolean` | Smelter | Cooling adds -0.7 °/tick (see Smelter temperature above); needed while working. |
+| `set_stock_limit` | `limit: integer`, 1..10 | Assembler | Per-item input cap (default 10); upstream machines are refused at or above it. |
+| `set_direction` | `direction: integer`, 0..3 (right, down, left, up) | Conveyor | Turns the conveyor. |
+| `set_accepting` | `on: boolean` | Collector | Off: refuses every item, sells nothing and blocks the line behind it. |
 
-| Machine | Tools | What `set_enabled(false)` does |
-|---------|-------|--------------------------------|
-| Miner | `set_enabled` | Stops mining progress. An ore already held is still pushed on. |
-| Smelter | `set_enabled`, `set_cooling` | Starts no new craft and pauses a running one (progress is kept, `true` resumes it). A finished output is still pushed on and input is still accepted. It counts as idle, so it cools -0.3/tick. |
-| Assembler | `set_enabled` | Same as the Smelter without the temperature. |
-| Conveyor | `set_enabled` | Nothing. `enabled` is stored and reported, but conveyor logic never reads it, so it keeps moving items. |
-| Collector | `set_enabled` | Nothing. Same as the Conveyor; it keeps selling. |
+`set_enabled(false)` per machine:
+| Machine | Effect |
+|---------|--------|
+| Miner | Stops mining progress. An ore already held is still pushed on. |
+| Smelter, Assembler | Starts no new craft and pauses a running one (progress is kept, `true` resumes it). A finished output is still pushed on and input is still accepted. The Smelter counts as idle, so it cools -0.3/tick. |
+| Conveyor, Collector | None: `enabled` is stored and reported but their logic never reads it. Use `set_direction` / `set_accepting` instead. |
 
-Design gaps:
-- No tool takes a number or an integer yet (the `number`/`integer` clamping in `apply_tool_call` is only exercised by a test machine). No speed, recipe or rotation control exists for the LLM.
-- `set_enabled` is a no-op on `Conveyor` and `Collector`, yet it is advertised to their chips. Either hide it there or give `enabled` a meaning (also an open question: conveyor AI is post-MVP).
-- The Assembler has no machine-specific control, so an assembler chip can only switch it on and off.
-- `get_state()` sends `type`, `enabled`, `status` plus per-type fields; there is no tool to read more.
+State sent with a request (`get_state()`): `type`, `enabled`, `status`, plus Miner `item`, `mine_ticks`, `blocked`; Smelter/Assembler `stock`, `working` (Smelter also `temperature`, `cooling`; Assembler also `stock_limit`); Conveyor `direction`, `holding`; Collector `accepting`, `sold`.
 
 ### Grid and camera (track B, done)
-- [x] `GridMap2D` (`scripts/world/grid_map_2d.gd`, `TileMapLayer` in `World`): ground and minesite tiles from `data/tilesets/factory_tileset.tres` (100 px atlas tiles, layer scaled to `CELL_SIZE` 64), hover highlight (green/red from `GameState.can_place`), signals `cell_hovered(cell)` / `cell_clicked(cell)`, `get_hovered_cell(world_pos)`, `is_minesite(cell)`. Placement (`Placement`, see Simulation below) enforces bounds, occupancy and the minesite rule for miners through `GameState.can_place` and `is_minesite`.
+- [x] `GridMap2D` (`scripts/world/grid_map_2d.gd`, `TileMapLayer` in `World`): ground and minesite tiles from `data/tilesets/factory_tileset.tres` (100 px atlas tiles, layer scaled to `CELL_SIZE` 64), hover highlight (green/red from `can_place(type, cell)` for the machine being placed: a Miner shows free ordinary cells as invalid and free minesites as valid; every other type may use minesites; with nothing selected it is the plain free-cell rule), signals `cell_hovered(cell)` / `cell_clicked(cell)`, `get_hovered_cell(world_pos)`, `is_minesite(cell)`, `can_place(type, cell)`, `set_placement_type(type)`. `Placement` calls `GridMap2D.can_place` for both the highlight and the placement itself, so they always agree (bounds, occupancy, miners only on minesites). Tested in `tests/test_grid_map.gd`.
 - [x] `FactoryCamera` (`scripts/world/camera.gd`): wheel zoom at cursor (0.4-2.0), middle-drag / arrow-key pan, clamped to the grid.
 
 ### Bar and popups (track C)
@@ -89,6 +89,8 @@ Design gaps:
 - [x] `ChipPage` popup: edit/save/remove, pauses the game while open. `ChipRegistry.update()` and `EventBus.chip_updated` were added for it.
 - [x] `MachineTooltip`: id, type, state, chips (prompt preview, timeout in ticks, remove), add chip from the registry, Log button. Opens through `EventBus.machine_selected`, which `main.gd` emits on `GridMap2D.cell_clicked`; a second click or an empty cell closes it.
 - [x] `ChipLog` (last 200 lines per machine from `chip_log_added`) and `SettingsDialog` (key, provider, model).
+- [x] Provider base URL (relay) for Anthropic and OpenAI: Settings dialog field, else editor-only `ANTHROPIC_BASE_URL` / `OPENAI_BASE_URL` env / `.env`; https origin only, validated before any request. Tested in `tests/test_base_url.gd`; rules in `CLAUDE.md`. The provider `codex` was renamed `openai` (old saved settings migrate).
+- [x] `KeyStatus` panel at the top of the Bar: missing / checking / verified / rejected / unverified key, from `LLMManager.check_key()` (free GET on the provider's models endpoint, `EventBus.key_checked`). Hidden for `mock`. Details in `docs/UI.md` ("API key status"); tested in `tests/test_key_status.gd` and `tests/test_llm_http.gd`. **Unverified against a real provider:** the key-check GET (and its 200/401 handling) is only exercised through scripted responses.
 - [x] Build page: list Miner / Smelter / Assembler / Conveyor and their prices; show current money and disable unaffordable choices. Selecting a machine enters placement mode; valid placement charges once, invalid placement charges nothing. The fixed map-center Collector is not buildable.
 - [x] Machine interaction: tooltip can rotate a placed output machine and remove a placed machine. Removal unregisters/frees the machine, discards its stock and attached chips, frees its cell, and gives no refund. The fixed Collector cannot be removed. Rebuilding uses the normal price and placement validation. `R` (`rotate_placement`) also rotates the machine whose tooltip is open: one press turns both it and the next placement (`MachineTooltip.rotate_machine()`, called from `Main`).
 - [x] Tooltip current action: Miner production rate and blocked output; CraftMachine recipe, stock, progress/time remaining and blocked output; Conveyor facing and held item; Collector sales. Smelter also shows temperature/cooling. State is shown separately as normal/down/overheating.
@@ -98,7 +100,7 @@ Design gaps:
 - [x] `ChipComponent` wired to `LLMManager`: timer, threshold, event and manual triggers, per-chip cooldown, one request in flight per chip (`tests/test_chip_triggers.gd`). The tooltip has an "Ask now" button and an "Ask when <state value> > <limit>" picker per chip.
 - [x] Each machine exposes `get_tool_schemas()` and `apply_tool_call()` (validates and clamps all LLM args): the shared `set_enabled` plus one tool unique to its type (see "Machine / chip API"). Checked per type in `tests/test_machine_tools.gd` and on all five machine scenes in `tests/test_chip_integration.gd`.
 - [x] Full loop on the mock provider: Miner -> Conveyor -> Smelter (with a chip) -> Conveyor -> Collector, chip timer -> `LLMManager` -> tool call -> machine, items still sold (`tests/test_chip_integration.gd`).
-- [x] Full loop on the real API, system side: the key comes from the Settings dialog or `.env` (`Settings.get_api_key`, used by `AnthropicProvider` and `CodexProvider`). Without a key a request fails at once with `no API key (set one in Settings or .env)` and sends nothing. A non-200 reply is reported as `HTTP <status> (<error type>)` (the API's message is dropped, it may echo part of the key) and shows in the chip log as `chip request failed: ...`; the machine keeps its last settings. Tested offline end to end through the Anthropic wire format in `tests/test_real_api_loop.gd` (the `LLMManager` autoload runs the scripted test double for each test).
+- [x] Full loop on the real API, system side: the key comes from the Settings dialog or `.env` (`Settings.get_api_key`, used by `AnthropicProvider` and `OpenAIProvider`). Without a key a request fails at once with `no API key (set one in Settings or .env)` and sends nothing. A non-200 reply is reported as `HTTP <status> (<error type>)` (the API's message is dropped, it may echo part of the key) and shows in the chip log as `chip request failed: ...`; the machine keeps its last settings. Tested offline end to end through the Anthropic wire format in `tests/test_real_api_loop.gd` (the `LLMManager` autoload runs the scripted test double for each test). **Unverified against a real provider:** no live Anthropic or OpenAI call has been made, so the wire formats, the models-list key check and relay URLs are checked only against scripted responses.
 
 ## Phase 3 — Game feel and demo (h32–42)
 - [ ] Demo scenario with a visible win and fail state (bad prompt -> smelter explodes, good prompt -> stable)

@@ -54,21 +54,11 @@ func handle_input(event: InputEvent) -> bool:
 
 
 func select(type: String) -> void:
-	if type == "":
-		selected = ""
-		selection_changed.emit(selected)
-		return
-	if not COSTS.has(type):
-		selected = ""
-		selection_changed.emit(selected)
-		return
-	if GameState.money < int(COSTS[type]):
-		selected = ""
-		selection_changed.emit(selected)
+	if type != "" and COSTS.has(type) and GameState.money < int(COSTS[type]):
+		_set_selected("")
 		placement_rejected.emit("Not enough money (%d needed)" % int(COSTS[type]))
 		return
-	selected = type
-	selection_changed.emit(selected)
+	_set_selected(type if COSTS.has(type) else "")
 
 
 ## Clockwise: right, down, left, up.
@@ -79,9 +69,7 @@ func rotate_facing() -> void:
 ## Returns the new machine, or null if the type is unknown or the cell is out of bounds, taken,
 ## or (for a miner) not a minesite.
 func place(type: String, cell: Vector2i) -> Machine:
-	if not SCENES.has(type) or not GameState.can_place(cell):
-		return null
-	if type == "miner" and not grid.is_minesite(cell):
+	if not SCENES.has(type) or not grid.can_place(type, cell):
 		return null
 	var machine: Machine = (SCENES[type] as PackedScene).instantiate() as Machine
 	machine.cell = cell
@@ -109,6 +97,12 @@ func try_place(type: String, cell: Vector2i) -> Machine:
 		return null
 	GameState.add_money(-cost)
 	return machine
+
+
+func _set_selected(type: String) -> void:
+	selected = type
+	grid.set_placement_type(type)
+	selection_changed.emit(selected)
 
 
 func _on_cell_clicked(cell: Vector2i) -> void:

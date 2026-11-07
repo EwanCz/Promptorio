@@ -2,13 +2,18 @@ class_name AnthropicProvider
 extends LLMProvider
 ## Anthropic Messages API. Forces tool use; the API key comes only from Settings (or .env).
 
-const URL: String = "https://api.anthropic.com/v1/messages"
+const OFFICIAL_ORIGIN: String = "https://api.anthropic.com"
+const URL: String = OFFICIAL_ORIGIN + "/v1/messages"
 const API_VERSION: String = "2023-06-01"
+
+
+func config_error() -> String:
+	return _origin_error("anthropic", "Anthropic")
 
 
 func build_request(system_prompt: String, state: Dictionary, tools: Array) -> Dictionary:
 	return {
-		"url": URL,
+		"url": _origin("anthropic", OFFICIAL_ORIGIN) + "/v1/messages",
 		"headers": [
 			"content-type: application/json",
 			"x-api-key: %s" % Settings.get_api_key("anthropic"),
@@ -22,6 +27,14 @@ func build_request(system_prompt: String, state: Dictionary, tools: Array) -> Di
 			"tools": tools,
 			"tool_choice": {"type": "any"},
 		},
+	}
+
+
+func build_check_request() -> Dictionary:
+	return {
+		"method": HTTPClient.METHOD_GET,
+		"url": _origin("anthropic", OFFICIAL_ORIGIN) + "/v1/models?limit=1",
+		"headers": ["x-api-key: %s" % Settings.get_api_key("anthropic"), "anthropic-version: %s" % API_VERSION],
 	}
 
 

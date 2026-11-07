@@ -22,7 +22,11 @@ func before_each() -> void:
 		"api_key": _settings.api_key,
 		"chip_cooldown": _settings.chip_cooldown,
 		"env_path": _settings.env_path,
+		"editor_run": _settings.editor_run,
+		"anthropic_base_url": _settings.anthropic_base_url,
 	}
+	_settings.editor_run = false
+	_settings.anthropic_base_url = ""
 	_settings.provider = "anthropic"
 	_settings.api_key = "test-key"
 	_settings.chip_cooldown = 0.0
