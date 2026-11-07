@@ -54,6 +54,15 @@ func close() -> void:
 	visible = false
 
 
+## Turns the machine shown in the tooltip, the same as the Rotate button. False if none is open
+## or it has no facing.
+func rotate_machine() -> bool:
+	if _machine == null or not is_instance_valid(_machine) or not _machine.can_rotate():
+		return false
+	_on_rotate_pressed()
+	return true
+
+
 func _refresh_status() -> void:
 	_status_label.text = "State: %s" % Machine.Status.keys()[_machine.status].to_lower()
 	_action_label.text = _machine.get_action_text()
