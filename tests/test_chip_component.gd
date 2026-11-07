@@ -99,5 +99,26 @@ func test_timer_fires_at_exact_timeout() -> void:
 	await wait_until(func() -> bool: return not _chip.pending)
 
 
+func test_overdue_prompts_are_served_in_order() -> void:
+	var event_bus: Node = autoload("EventBus")
+	event_bus.tick_fired.disconnect(_chip._on_tick)
+	_chip.remove_prompt("production")
+	_chip.add_prompt("first", "First prompt", 1.0)
+	_chip.add_prompt("second", "Second prompt", 1.0)
+	autoload("Settings").chip_cooldown = 60.0
+	for i: int in _tick_rate():
+		_chip._on_tick(i)
+	check(_chip.pending, "first timer sent a request")
+	await wait_until(func() -> bool: return not _chip.pending)
+	for i: int in _tick_rate():
+		_chip._on_tick(i)
+	autoload("Settings").chip_cooldown = 0.0
+	_chip._on_tick(0)
+	check(_chip.pending, "an overdue timer sent a request")
+	check_eq(_chip._elapsed["second"], 0, "longest overdue prompt was served")
+	await wait_until(func() -> bool: return not _chip.pending)
+	event_bus.tick_fired.connect(_chip._on_tick)
+
+
 func _tick_rate() -> int:
 	return autoload("GameState").TICK_RATE

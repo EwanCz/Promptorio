@@ -66,12 +66,17 @@ func _find_prompt(prompt_name: String) -> Dictionary:
 
 
 func _on_tick(_tick: int) -> void:
+	var most_overdue: int = -1
+	var selected: String = ""
 	for prompt: Dictionary in prompts:
 		var key: String = prompt["name"]
 		_elapsed[key] = _elapsed.get(key, 0) + 1
-		if _elapsed[key] >= roundi(prompt["timeout"] * GameState.TICK_RATE):
-			if request_decision("timer", key):
-				_elapsed[key] = 0
+		var overdue: int = _elapsed[key] - roundi(prompt["timeout"] * GameState.TICK_RATE)
+		if overdue > most_overdue:
+			most_overdue = overdue
+			selected = key
+	if most_overdue >= 0 and request_decision("timer", selected):
+		_elapsed[selected] = 0
 
 
 func _on_decision_received(requester_id: int, tool_calls: Array[Dictionary]) -> void:
