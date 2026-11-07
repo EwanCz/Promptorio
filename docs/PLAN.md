@@ -20,10 +20,10 @@ Architecture and async HTTP rules live in `CLAUDE.md`.
 |---|---|
 | A (LLM) | `LLMProvider` base, `MockProvider`, `AnthropicProvider`, `HTTPRequest` pool, queue, timeout, 429 backoff, signals |
 | B (Sim) | Grid placement, fixed-rate tick, Miner/Smelter/Assembler/Collector logic, smelter temperature model, explosion fail state |
-| C (UI) | 80/20 split (Factory View + camera, Bar with Build / Prompt Registry pages), Prompt Page popup (pauses game), machine tooltip, settings dialog (key, provider, model), chip decision log. Spec in `docs/UI.md` |
+| C (UI) | 80/20 split (Factory View + camera, Bar with Build / Chip Registry pages), Prompt Page popup (pauses game), machine tooltip, settings dialog (key, provider, model), chip decision log. Spec in `docs/UI.md` |
 
 ## Phase 2 — Integration (h20–32)
-- [ ] `ChipComponent` wired to `LLMManager`: timer, threshold, event and manual triggers, per-chip cooldown, one request in flight per chip
+- [ ] `ChipComponent` (prompt) wired to `LLMManager`: timer, threshold, event and manual triggers, per-chip cooldown, one request in flight per chip
 - [ ] Each machine exposes `get_tool_schemas()` and `apply_tool_call()` (validates and clamps all LLM args)
 - [ ] Full loop on the mock provider, then on the real API
 

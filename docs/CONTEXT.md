@@ -108,6 +108,9 @@ assets/   art, audio
 ## Features
 
 ### LLM
+The llm system is linked via the `LLMManager`. It store multiple LLMProvider for claude/codex/... .
+It help to call the models via a `chat` function. It can be take the message + the related tools.
+The chat get a list of tools to call with arguments. It save the machine which made the chat-call to call the functions related to the machine (ex: prompt ask to make a axe. The llm will ask to call the tool "make" with the param axe on the machine which called it).
 > [!Warning]
 > Complete
 
