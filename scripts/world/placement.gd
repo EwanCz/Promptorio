@@ -1,6 +1,6 @@
 class_name Placement
 extends Node
-## Minimal build flow: pick a type (keys 1-5), rotate with R, click a grid cell to place it.
+## Minimal build flow: pick a type (select_* actions), rotate_placement, cancel_placement, click a grid cell to place it.
 ## Rules: inside the grid, free cell, miners only on minesites. Places the Collector at the map center.
 
 const SCENES: Dictionary = {
@@ -10,7 +10,14 @@ const SCENES: Dictionary = {
 	"collector": preload("res://scenes/machines/collector.tscn"),
 	"conveyor": preload("res://scenes/machines/conveyor.tscn"),
 }
-const TYPES: Array[String] = ["miner", "smelter", "assembler", "collector", "conveyor"]
+## Input Map action -> machine type. Bindings live in project.godot (physical keys 1-5).
+const SELECT_ACTIONS: Dictionary = {
+	"select_miner": "miner",
+	"select_smelter": "smelter",
+	"select_assembler": "assembler",
+	"select_collector": "collector",
+	"select_conveyor": "conveyor",
+}
 
 @export var grid: GridMap2D
 @export var machines: Node2D
@@ -26,17 +33,19 @@ func _ready() -> void:
 	place("collector", GameState.GRID_SIZE / 2)
 
 
-func _unhandled_key_input(event: InputEvent) -> void:
-	var key: InputEventKey = event as InputEventKey
-	if key == null or not key.pressed or key.echo:
-		return
-	var index: int = key.keycode - KEY_1
-	if index >= 0 and index < TYPES.size():
-		select(TYPES[index])
-	elif key.keycode == KEY_R:
+## Handles the placement actions from the Input Map. True if the event was one of them.
+func handle_input(event: InputEvent) -> bool:
+	for action: String in SELECT_ACTIONS:
+		if event.is_action_pressed(action):
+			select(SELECT_ACTIONS[action])
+			return true
+	if event.is_action_pressed("rotate_placement"):
 		rotate_facing()
-	elif key.keycode == KEY_ESCAPE:
+		return true
+	if event.is_action_pressed("cancel_placement"):
 		select("")
+		return true
+	return false
 
 
 func select(type: String) -> void:

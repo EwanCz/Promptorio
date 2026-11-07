@@ -67,18 +67,79 @@ func test_rotation_is_applied_to_new_machines() -> void:
 	check_eq(_placement.place("conveyor", Vector2i(8, 8)).facing, Vector2i.DOWN, "machine takes the current facing")
 
 
-func test_keys_select_and_rotate() -> void:
-	var key: InputEventKey = InputEventKey.new()
-	key.pressed = true
-	key.keycode = KEY_2
-	_placement._unhandled_key_input(key)
-	check_eq(_placement.selected, "smelter", "key 2 selects the smelter")
-	key.keycode = KEY_R
-	_placement._unhandled_key_input(key)
+const BINDINGS: Dictionary = {
+	"select_miner": KEY_1,
+	"select_smelter": KEY_2,
+	"select_assembler": KEY_3,
+	"select_collector": KEY_4,
+	"select_conveyor": KEY_5,
+	"rotate_placement": KEY_R,
+	"cancel_placement": KEY_ESCAPE,
+}
+
+
+func _action(name: String) -> InputEventAction:
+	var event: InputEventAction = InputEventAction.new()
+	event.action = name
+	event.pressed = true
+	return event
+
+
+func _key(physical: Key, label: Key = KEY_NONE) -> InputEventKey:
+	var event: InputEventKey = InputEventKey.new()
+	event.pressed = true
+	event.physical_keycode = physical
+	event.keycode = label
+	return event
+
+
+func test_actions_have_physical_default_bindings() -> void:
+	for action: String in BINDINGS:
+		check(InputMap.has_action(action), "%s exists" % action)
+		var physical: Array = InputMap.action_get_events(action).filter(
+			func(e: InputEvent) -> bool: return e is InputEventKey and e.physical_keycode == BINDINGS[action] and e.keycode == KEY_NONE)
+		check_eq(physical.size(), 1, "%s is bound to its physical default key" % action)
+
+
+func test_actions_select_rotate_and_cancel() -> void:
+	_main._unhandled_input(_action("select_smelter"))
+	check_eq(_placement.selected, "smelter", "select_smelter selects the smelter")
+	_main._unhandled_input(_action("rotate_placement"))
+	check_eq(_placement.facing, Vector2i.DOWN, "rotate_placement rotates")
+	_main._unhandled_input(_action("cancel_placement"))
+	check_eq(_placement.selected, "", "cancel_placement deselects")
+
+
+func test_each_select_action_picks_its_machine() -> void:
+	var expected: Dictionary = {"select_miner": "miner", "select_smelter": "smelter", "select_assembler": "assembler",
+		"select_collector": "collector", "select_conveyor": "conveyor"}
+	for action: String in expected:
+		_main._unhandled_input(_action(action))
+		check_eq(_placement.selected, expected[action], "%s -> %s" % [action, expected[action]])
+
+
+func test_default_keys_trigger_the_actions() -> void:
+	_main._unhandled_input(_key(KEY_3, KEY_3))
+	check_eq(_placement.selected, "assembler", "key 3 selects the assembler")
+	_main._unhandled_input(_key(KEY_R, KEY_R))
 	check_eq(_placement.facing, Vector2i.DOWN, "R rotates")
-	key.keycode = KEY_ESCAPE
-	_placement._unhandled_key_input(key)
-	check_eq(_placement.selected, "", "Escape deselects")
+	_main._unhandled_input(_key(KEY_ESCAPE, KEY_ESCAPE))
+	check_eq(_placement.selected, "", "Escape cancels")
+
+
+func test_number_row_works_on_azerty() -> void:
+	# AZERTY: the physical "5" key produces "(" and the physical "1" key produces "&".
+	_main._unhandled_input(_key(KEY_5, KEY_PARENLEFT))
+	check_eq(_placement.selected, "conveyor", "physical 5 selects the conveyor whatever the layout")
+	_main._unhandled_input(_key(KEY_1, KEY_AMPERSAND))
+	check_eq(_placement.selected, "miner", "physical 1 selects the miner whatever the layout")
+	_main._unhandled_input(_key(KEY_NONE, KEY_5))
+	check_eq(_placement.selected, "miner", "a label-only 5 (a different physical key) does nothing")
+
+
+func test_unrelated_input_is_not_handled() -> void:
+	check(not _placement.handle_input(_key(KEY_Q, KEY_A)), "unbound key is ignored")
+	check(not _placement.handle_input(_action("toggle_bar")), "other actions are ignored")
 
 
 func test_placed_machines_are_removed_with_the_scene() -> void:

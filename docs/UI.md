@@ -7,6 +7,11 @@ The factory will be a tile map with some of them being minesite. On those site c
 In the center of the map is placed a collector it is where our ressource are sold.
 The camera can be zoomed in/out and move in x/y axis.
 
+### Prototype machine placement
+Until the Build page is connected, machines are selected with keyboard shortcuts and placed with a left click on an empty grid cell. These shortcuts are Input Map actions (defined in `project.godot`, rebindable in Project Settings), bound by default to physical keys so the number row works on any layout (AZERTY included): `select_miner` (`1`), `select_smelter` (`2`), `select_assembler` (`3`), `select_collector` (`4`), `select_conveyor` (`5`), `rotate_placement` (`R`, rotates the facing clockwise) and `cancel_placement` (`Escape`, clears the selection). The Collector is placed at the map center when the scene starts. Miners can only be placed on minesites.
+
+A Conveyor uses the facing direction shown by its status label. It accepts one item and attempts to pass it to the adjacent machine in front after five simulation ticks. If that cell is empty or the machine refuses the item, the Conveyor holds the item and retries. Items can also move directly between adjacent machines, so a Conveyor is only needed when the layout calls for a transport cell between machines.
+
 ## Bar
 On the remaining 20% will be a Bar. This bar will contain mutiple page which can be swap by clicking the page marker at the top of the bar.
 The different page are:
