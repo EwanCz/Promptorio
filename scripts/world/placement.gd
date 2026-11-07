@@ -54,7 +54,20 @@ func handle_input(event: InputEvent) -> bool:
 
 
 func select(type: String) -> void:
-	selected = type if COSTS.has(type) else ""
+	if type == "":
+		selected = ""
+		selection_changed.emit(selected)
+		return
+	if not COSTS.has(type):
+		selected = ""
+		selection_changed.emit(selected)
+		return
+	if GameState.money < int(COSTS[type]):
+		selected = ""
+		selection_changed.emit(selected)
+		placement_rejected.emit("Not enough money (%d needed)" % int(COSTS[type]))
+		return
+	selected = type
 	selection_changed.emit(selected)
 
 

@@ -117,6 +117,20 @@ func test_each_select_action_picks_its_machine() -> void:
 		check_eq(_placement.selected, expected[action], "%s -> %s" % [action, expected[action]])
 
 
+func test_unaffordable_machine_cannot_be_selected_by_shortcut() -> void:
+	var saved_money: int = _game.money
+	_game.money = Placement.COSTS["miner"] - 1
+	var rejections: Array[String] = []
+	var on_rejected: Callable = func(reason: String) -> void: rejections.append(reason)
+	_placement.placement_rejected.connect(on_rejected)
+	_main._unhandled_input(_action("select_miner"))
+	check_eq(_placement.selected, "", "unaffordable shortcut leaves placement cancelled")
+	check_eq(rejections.size(), 1, "shortcut reports insufficient funds")
+	check(rejections[0].contains("Not enough money"), "feedback explains why selection failed")
+	_placement.placement_rejected.disconnect(on_rejected)
+	_game.money = saved_money
+
+
 func test_player_cannot_select_or_build_a_collector() -> void:
 	check(not InputMap.has_action("select_collector"), "no collector action")
 	check(not _placement.handle_input(_key(KEY_4, KEY_4)), "key 4 is not a placement key")
