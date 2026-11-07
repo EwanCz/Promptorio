@@ -24,6 +24,9 @@ const FLASH_COLOR: Color = Color(3.0, 2.2, 0.8)
 
 var temperature: float = AMBIENT
 var cooling: bool = false
+## True while the smelter is stopped by set_emergency_stop(on=true). Any set_enabled call clears it, so a
+## pause from another chip is never mistaken for the emergency stop.
+var emergency_stop: bool = false
 
 
 func _own_tool_schemas() -> Array:
@@ -31,11 +34,15 @@ func _own_tool_schemas() -> Array:
 		"name": "set_cooling",
 		"description": "Turn the cooling on or off. While on, the smelter cools down even while working but crafts take twice as long; it also cools faster while idle.",
 		"input_schema": {"type": "object", "properties": {"on": {"type": "boolean"}}},
+	}, {
+		"name": "set_emergency_stop",
+		"description": "on=true: stop this smelter and mark it as an emergency stop (emergency_stop in the state). on=false: resume it only if it is still in that emergency stop; a pause set by anything else (set_enabled) stays in effect.",
+		"input_schema": {"type": "object", "properties": {"on": {"type": "boolean"}}},
 	}]
 
 
 func get_state() -> Dictionary:
-	return super.get_state().merged({"temperature": roundi(temperature), "cooling": cooling})
+	return super.get_state().merged({"temperature": roundi(temperature), "cooling": cooling, "emergency_stop": emergency_stop})
 
 
 func get_action_text() -> String:
@@ -46,6 +53,16 @@ func _apply(tool_name: String, args: Dictionary) -> void:
 	if tool_name == "set_cooling":
 		cooling = args["on"]
 		return
+	if tool_name == "set_emergency_stop":
+		if args["on"]:
+			enabled = false
+			emergency_stop = true
+		elif emergency_stop:
+			enabled = true
+			emergency_stop = false
+		return
+	if tool_name == "set_enabled":
+		emergency_stop = false
 	super._apply(tool_name, args)
 
 

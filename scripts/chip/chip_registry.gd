@@ -9,7 +9,7 @@ const USER_PATH: String = "user://chip_registry.tres"
 ## md5 of the starter prompts shipped before, by chip id. A saved chip whose prompt is still exactly
 ## one of them is replaced by the current shipped prompt; an edited or custom prompt never is.
 const OUTDATED_STARTER_PROMPTS: Dictionary = {
-	2: ["828136d52cd886c88b44cabea1c540df", "22b71a85b041e25cac8b437a37ac04b1"],
+	2: ["828136d52cd886c88b44cabea1c540df", "22b71a85b041e25cac8b437a37ac04b1", "f84febd378c0ddc006ab0a6773e77fba"],
 }
 
 ## Where edits are saved. Tests point it elsewhere; an empty path disables saving.

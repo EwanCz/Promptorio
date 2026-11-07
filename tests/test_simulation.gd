@@ -282,26 +282,55 @@ func test_cooled_production_never_explodes() -> void:
 	check(_exploded.is_empty(), "nothing exploded")
 
 
-func test_emergency_pause_recovers_and_production_resumes() -> void:
-	var pair: Array = _smelter_with_collector(Vector2i(1, 0))
-	var smelter: Machine = pair[0]
-	var collector: Machine = pair[1]
+func _run_until_overheating(smelter: Machine) -> void:
 	_feed(smelter, 600, func(m: Machine) -> bool: return m.status == Machine.Status.OVERHEATING)
-	check_eq(smelter.status, Machine.Status.OVERHEATING, "an uncooled smelter overheats")
-	smelter.apply_tool_call("set_enabled", {"on": false})
-	smelter.apply_tool_call("set_cooling", {"on": true})
+	check_eq(smelter.status, Machine.Status.OVERHEATING, "got hot")
+
+
+func _cool_down(smelter: Machine) -> void:
 	var ticks: int = 0
-	while smelter.temperature > Smelter.SAFE_AT and ticks < 300:
+	while smelter.temperature > Smelter.SAFE_AT and ticks < 400:
 		_ticks(1)
 		ticks += 1
-	check_eq(smelter.status, Machine.Status.NORMAL, "back to normal at %d degrees or less" % int(Smelter.SAFE_AT))
-	check(smelter.temperature <= Smelter.SAFE_AT, "cooled down to the resume point")
-	smelter.apply_tool_call("set_enabled", {"on": true})
-	var sold_before: int = collector.sold
-	_feed(smelter, 400)
-	check(collector.sold > sold_before, "production resumed")
-	check_eq(smelter.status, Machine.Status.NORMAL, "and stays within limits while cooling")
+	check(smelter.temperature <= Smelter.SAFE_AT, "cooled to the resume point")
+
+
+func test_the_coolers_own_emergency_stop_resumes() -> void:
+	var pair: Array = _smelter_with_collector(Vector2i(1, 0))
+	var smelter: Machine = pair[0]
+	_run_until_overheating(smelter)
+	check(smelter.apply_tool_call("set_emergency_stop", {"on": true}), "emergency stop applies")
+	check(not smelter.enabled and smelter.get_state()["emergency_stop"], "stopped, and the state says it is an emergency stop")
+	_cool_down(smelter)
+	check(smelter.apply_tool_call("set_emergency_stop", {"on": false}), "resume applies")
+	check(smelter.enabled and not smelter.get_state()["emergency_stop"], "running again, marker cleared")
+	var sold: int = pair[1].sold
+	smelter.apply_tool_call("set_cooling", {"on": true})
+	_feed(smelter, 300)
+	check(pair[1].sold > sold, "production resumed")
 	check(_exploded.is_empty(), "never exploded")
+
+
+func test_another_chips_pause_survives_the_coolers_resume() -> void:
+	var smelter: Machine = _smelter_with_collector(Vector2i(1, 0))[0]
+	_run_until_overheating(smelter)
+	smelter.apply_tool_call("set_enabled", {"on": false})
+	check(not smelter.get_state()["emergency_stop"], "not an emergency stop")
+	_cool_down(smelter)
+	check(smelter.apply_tool_call("set_emergency_stop", {"on": false}), "the Cooler's resume is accepted but does nothing")
+	check(not smelter.enabled, "the other chip's pause stays in effect")
+
+
+func test_a_later_set_enabled_takes_over_the_emergency_stop() -> void:
+	var smelter: Machine = _smelter_with_collector(Vector2i(1, 0))[0]
+	smelter.apply_tool_call("set_emergency_stop", {"on": true})
+	smelter.apply_tool_call("set_enabled", {"on": false})
+	check(not smelter.get_state()["emergency_stop"], "another chip pausing explicitly clears the marker")
+	smelter.apply_tool_call("set_emergency_stop", {"on": false})
+	check(not smelter.enabled, "so the Cooler no longer resumes it")
+	smelter.apply_tool_call("set_emergency_stop", {"on": true})
+	smelter.apply_tool_call("set_enabled", {"on": true})
+	check(smelter.enabled and not smelter.get_state()["emergency_stop"], "resuming by hand clears it too")
 
 
 func test_cooling_while_idle_speeds_recovery() -> void:
@@ -327,7 +356,7 @@ func test_disabling_an_overheating_smelter_recovers() -> void:
 func test_smelter_tools_and_state() -> void:
 	var smelter: Machine = _put("smelter", Vector2i(0, 0))
 	var names: Array = smelter.get_tool_schemas().map(func(s: Dictionary) -> String: return s["name"])
-	check("set_cooling" in names and "set_enabled" in names, "exposes set_cooling and set_enabled")
+	check("set_cooling" in names and "set_enabled" in names and "set_emergency_stop" in names, "exposes its three tools")
 	check(not smelter.apply_tool_call("set_cooling", {"on": "yes"}), "bad arg type rejected")
 	check(smelter.apply_tool_call("set_cooling", {"on": true}) and smelter.cooling, "set_cooling applies")
 	var state: Dictionary = smelter.get_state()
