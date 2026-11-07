@@ -285,3 +285,67 @@ func test_machine_unregisters_when_freed() -> void:
 	_nodes.erase(machine)
 	machine.free()
 	check(_game.get_machine_at(Vector2i(3, 3)) == null, "cell freed with the machine")
+
+
+## Counts how often "output_full" appears (false -> true) over `count` ticks, and whether it is on at the end.
+func _output_full_rises(machine: Machine, count: int) -> int:
+	var rises: int = 0
+	var was_on: bool = machine.get_events().has("output_full")
+	for i: int in count:
+		_ticks(1)
+		var is_on: bool = machine.get_events().has("output_full")
+		if is_on and not was_on:
+			rises += 1
+		was_on = is_on
+	return rises
+
+
+func test_deliverable_miner_output_is_never_blocked() -> void:
+	var miner: Miner = _put("miner", Vector2i(0, 0)) as Miner
+	miner.mine_ticks = 5
+	var collector: Machine = _put("collector", Vector2i(1, 0))
+	check_eq(_output_full_rises(miner, 100), 0, "a deliverable ore does not raise output_full")
+	check(not miner.get_events().has("output_full"), "and none is shown at the end")
+	check(not miner.get_state()["blocked"], "state is not blocked")
+	check(not miner.get_action_text().contains("blocked"), "action text is not blocked")
+	check(collector.sold >= 10, "ore flowed")
+
+
+func test_miner_failed_delivery_raises_output_full_once_then_again_after_clearing() -> void:
+	var miner: Miner = _put("miner", Vector2i(0, 0)) as Miner
+	miner.mine_ticks = 5
+	check_eq(_output_full_rises(miner, 5), 0, "a freshly mined ore is not blocked before a delivery attempt")
+	check_eq(_output_full_rises(miner, 1), 1, "the failed delivery raises it")
+	check(miner.get_state()["blocked"], "state is blocked")
+	check(miner.get_action_text().contains("output blocked"), "action text is blocked")
+	check_eq(_output_full_rises(miner, 50), 0, "it does not repeat while still blocked")
+	miner.clear_contents()
+	check(not miner.get_events().has("output_full"), "clearing removes the event")
+	check(not miner.get_state()["blocked"], "and the blocked state")
+	check(not miner.get_action_text().contains("blocked"), "and the action text")
+	check_eq(_output_full_rises(miner, 10), 1, "the blockage coming back raises it again")
+
+
+func test_deliverable_craft_output_is_never_blocked() -> void:
+	var smelter: Machine = _put("smelter", Vector2i(1, 1), Vector2i.UP)
+	var collector: Machine = _put("collector", Vector2i(1, 0))
+	for i: int in 3:
+		smelter.receive("ore")
+	check_eq(_output_full_rises(smelter, 100), 0, "a deliverable ingot does not raise output_full")
+	check(not smelter.get_action_text().contains("blocked"), "action text is not blocked")
+	check_eq(collector.sold, 3, "the ingots were delivered")
+
+
+func test_craft_failed_delivery_raises_output_full_once_then_again_after_clearing() -> void:
+	var smelter: Machine = _put("smelter", Vector2i(1, 1), Vector2i.UP)
+	smelter.receive("ore")
+	var ticks_to_craft: int = (smelter as Smelter).recipe.ticks + 1
+	check_eq(_output_full_rises(smelter, ticks_to_craft), 0, "a finished ingot is not blocked before a delivery attempt")
+	check_eq(_output_full_rises(smelter, 1), 1, "the failed delivery raises it")
+	check(smelter.get_action_text().contains("output blocked"), "action text is blocked")
+	check_eq(_output_full_rises(smelter, 50), 0, "it does not repeat while still blocked")
+	smelter.clear_contents()
+	check(not smelter.get_events().has("output_full"), "clearing removes the event")
+	check(not smelter.get_action_text().contains("blocked"), "and the action text")
+	smelter.receive("ore")
+	check_eq(_output_full_rises(smelter, ticks_to_craft + 1), 1, "the blockage coming back raises it again")

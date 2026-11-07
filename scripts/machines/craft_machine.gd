@@ -14,6 +14,8 @@ var stock_limit: int = MAX_STOCK
 var progress: int = 0
 
 var _output: String = ""
+## True only after a delivery attempt failed; cleared when it succeeds or the contents are cleared.
+var _blocked: bool = false
 
 
 func receive(item: String) -> bool:
@@ -35,7 +37,7 @@ func get_state() -> Dictionary:
 
 func get_events() -> Array[String]:
 	var events: Array[String] = super.get_events()
-	if _output != "":
+	if _blocked:
 		events.append("output_full")
 	elif progress == 0 and not _can_start():
 		events.append("input_empty")
@@ -46,7 +48,7 @@ func get_action_text() -> String:
 	if recipe == null:
 		return "No recipe"
 	var state: String = "idle"
-	if _output != "":
+	if _blocked:
 		state = "output blocked"
 	elif is_working():
 		state = "working, %d ticks left" % progress
@@ -57,6 +59,7 @@ func clear_contents() -> void:
 	stock.clear()
 	progress = 0
 	_output = ""
+	_blocked = false
 
 
 func _items_text(items: Dictionary) -> String:
@@ -70,7 +73,8 @@ func _items_text(items: Dictionary) -> String:
 
 func _tick() -> void:
 	if _output != "":
-		if _push(_output):
+		_blocked = not _push(_output)
+		if not _blocked:
 			_output = ""
 		return
 	if not enabled:

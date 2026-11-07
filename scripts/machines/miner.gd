@@ -10,10 +10,12 @@ const MAX_MINE_TICKS: int = 100
 
 var _progress: int = 0
 var _held: String = ""
+## True only after a delivery attempt failed; cleared when it succeeds or the contents are cleared.
+var _blocked: bool = false
 
 
 func get_state() -> Dictionary:
-	return super.get_state().merged({"item": ITEM, "mine_ticks": mine_ticks, "blocked": _held != ""})
+	return super.get_state().merged({"item": ITEM, "mine_ticks": mine_ticks, "blocked": _blocked})
 
 
 func _own_tool_schemas() -> Array:
@@ -35,23 +37,25 @@ func _apply(tool_name: String, args: Dictionary) -> void:
 
 func get_events() -> Array[String]:
 	var events: Array[String] = super.get_events()
-	if _held != "":
+	if _blocked:
 		events.append("output_full")
 	return events
 
 
 func get_action_text() -> String:
-	return "Mining 1 %s every %d ticks%s" % [ITEM, mine_ticks, " (output blocked)" if _held != "" else ""]
+	return "Mining 1 %s every %d ticks%s" % [ITEM, mine_ticks, " (output blocked)" if _blocked else ""]
 
 
 func clear_contents() -> void:
 	_held = ""
+	_blocked = false
 	_progress = 0
 
 
 func _tick() -> void:
 	if _held != "":
-		if _push(_held):
+		_blocked = not _push(_held)
+		if not _blocked:
 			_held = ""
 		return
 	if not enabled:
