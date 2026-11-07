@@ -25,6 +25,14 @@ func build_request(system_prompt: String, state: Dictionary, tools: Array) -> Di
 	}
 
 
+func build_check_request() -> Dictionary:
+	return {
+		"method": HTTPClient.METHOD_GET,
+		"url": "https://api.anthropic.com/v1/models?limit=1",
+		"headers": ["x-api-key: %s" % Settings.get_api_key("anthropic"), "anthropic-version: %s" % API_VERSION],
+	}
+
+
 func parse_response(body: Dictionary) -> Array[Dictionary]:
 	var calls: Array[Dictionary] = []
 	var content: Variant = body.get("content", [])

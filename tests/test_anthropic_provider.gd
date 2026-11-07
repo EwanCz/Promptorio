@@ -39,6 +39,15 @@ func test_build_request_falls_back_to_the_env_key() -> void:
 	check("x-api-key: env-k" in req["headers"], "the .env key is sent when none is saved")
 
 
+func test_check_request_is_a_free_authenticated_get() -> void:
+	autoload("Settings").api_key = "k"
+	var req: Dictionary = AnthropicProvider.new().build_check_request()
+	check_eq(req["method"], HTTPClient.METHOD_GET, "GET")
+	check(req["url"].contains("/v1/models"), "lists models, no tokens spent")
+	check("x-api-key: k" in req["headers"], "key header")
+	check(not req.has("body"), "no body")
+
+
 func test_parse_response() -> void:
 	var p: AnthropicProvider = AnthropicProvider.new()
 	var calls: Array[Dictionary] = p.parse_response({"content": [

@@ -31,6 +31,15 @@ func test_build_request() -> void:
 	check(not tools[0]["input_schema"].has("required"), "input schema not mutated")
 
 
+func test_check_request_is_a_free_authenticated_get() -> void:
+	autoload("Settings").codex_api_key = "ck"
+	var req: Dictionary = CodexProvider.new().build_check_request()
+	check_eq(req["method"], HTTPClient.METHOD_GET, "GET")
+	check(req["url"].contains("/v1/models"), "lists models, no tokens spent")
+	check("authorization: Bearer ck" in req["headers"], "bearer header")
+	check(not req.has("body"), "no body")
+
+
 func test_parse_response() -> void:
 	var p: CodexProvider = CodexProvider.new()
 	var calls: Array[Dictionary] = p.parse_response({"output": [

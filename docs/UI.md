@@ -60,8 +60,15 @@ Show machine state independently from current action: normal, down, or overheati
 ### Settings dialog
 Open Settings from the Bar. Offer `mock`, `anthropic`, and `codex` providers. For providers that use credentials, show that provider's API key field and model picker; mask the key while editing. The `mock` provider needs neither. Save writes through `Settings.save_settings()` and closes the dialog; Close dismisses without saving pending edits. If the provider's key comes from `.env` (`Settings.get_key_source()`), the key field stays empty and its placeholder says so; saving never copies the `.env` key to disk, and saving an empty field falls back to it. Never print or log the key.
 
-### API key warning
-At the top of the Bar (above the page tabs), an orange `KeyWarning` panel says "No active API key" whenever the selected provider calls a real API and has no key (`Settings.needs_api_key()`: neither a saved key nor a `.env` one). It is hidden for the `mock` provider, which needs no key, and updates on `EventBus.settings_changed`. It lives in the Bar, so it disappears with it when the Bar is toggled with `E`.
+### API key status
+At the top of the Bar (above the page tabs), a colored `KeyStatus` panel reports the state of the selected provider's key. It is hidden for `mock`, which needs no key. States:
+- Orange, "No active API key": neither a saved key nor a `.env` one (`Settings.needs_api_key()`).
+- Grey, "Checking the API key...": a key exists and no verdict has arrived yet. Any settings change discards the previous verdict.
+- Green, "API key verified.": the provider accepted the key.
+- Red, "API key rejected (HTTP 401 ...)": the provider answered 401 or 403.
+- Orange, "Could not verify the API key (...)": timeout, network failure, 429 or 5xx. This never says the key is wrong.
+
+The verdict comes from `LLMManager.check_key()` (a free "list models" GET, so no tokens are spent), reported on `EventBus.key_checked(state, detail)`. `Main` runs it at startup and after every `settings_changed` (so after Settings save), and skips it in headless runs so tests never touch the network. Limits: it proves the key is accepted, not that the chosen model is available to it or that the account has credit. The panel lives in the Bar, so it hides with the Bar (`E`).
 
 ### Chip log
 Open the selected machine's log from its tooltip. Show its most recent 200 log messages in order, update while open when new entries arrive, and provide a close button. Closing the log returns to the factory view without changing the selected machine or pausing simulation.

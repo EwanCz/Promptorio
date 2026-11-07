@@ -11,6 +11,7 @@ const BACKOFF_BASE: float = 1.0
 const DEBUG_MAX_CHARS: int = 200
 
 var _queue: Array[Dictionary] = []
+var _key_check_id: int = 0
 var _in_flight: int = 0
 var _idle_requests: Array[HTTPRequest] = []
 
@@ -27,6 +28,28 @@ func request_decision(requester_id: int, system_prompt: String, state: Dictionar
 		"tools": tools,
 	})
 	_pump()
+
+
+## Probes the selected provider's key with a free request and reports "valid", "invalid" (401/403)
+## or "error" (network, 5xx, 429...) on EventBus.key_checked. Does nothing without a key to test.
+## A newer check supersedes an older one, so a stale answer is never reported.
+func check_key() -> void:
+	_key_check_id += 1
+	var id: int = _key_check_id
+	var provider: LLMProvider = _make_provider()
+	if provider == null or not provider.requires_network() or Settings.get_api_key(Settings.provider) == "":
+		return
+	var response: Dictionary = await _send(provider.build_check_request())
+	if id != _key_check_id:
+		return
+	var status: int = response["status"]
+	if response["result"] != HTTPRequest.RESULT_SUCCESS:
+		EventBus.key_checked.emit("error", "network error (result %d)" % response["result"])
+	elif status == 200:
+		EventBus.key_checked.emit("valid", "")
+	else:
+		var state: String = "invalid" if status == 401 or status == 403 else "error"
+		EventBus.key_checked.emit(state, _http_error(status, response["body"]))
 
 
 func _pump() -> void:
@@ -105,7 +128,9 @@ func _send(request: Dictionary) -> Dictionary:
 	var http: HTTPRequest = _acquire()
 	http.timeout = Settings.request_timeout
 	var headers: PackedStringArray = PackedStringArray(request["headers"])
-	var err: Error = http.request(request["url"], headers, HTTPClient.METHOD_POST, JSON.stringify(request["body"]))
+	var method: int = request.get("method", HTTPClient.METHOD_POST)
+	var body: String = "" if method == HTTPClient.METHOD_GET else JSON.stringify(request["body"])
+	var err: Error = http.request(request["url"], headers, method, body)
 	if err != OK:
 		_release(http)
 		return {"result": HTTPRequest.RESULT_CANT_CONNECT, "status": 0, "body": PackedByteArray()}

@@ -66,15 +66,14 @@ script = ExtResource("5_bar")
 [node name="VBoxContainer" type="VBoxContainer" parent="Game/Bar"]
 layout_mode = 2
 
-[node name="KeyWarning" type="PanelContainer" parent="Game/Bar/VBoxContainer"]
+[node name="KeyStatus" type="PanelContainer" parent="Game/Bar/VBoxContainer"]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
-self_modulate = Color(1, 0.55, 0.1, 1)
 
-[node name="Label" type="Label" parent="Game/Bar/VBoxContainer/KeyWarning"]
+[node name="KeyStatusLabel" type="Label" parent="Game/Bar/VBoxContainer/KeyStatus"]
+unique_name_in_owner = true
 layout_mode = 2
-text = "No active API key: AI chips cannot reach the LLM. Add one in Settings."
 autowrap_mode = 3
 
 [node name="PageTabs" type="HFlowContainer" parent="Game/Bar/VBoxContainer"]

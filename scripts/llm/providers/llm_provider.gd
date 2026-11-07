@@ -19,5 +19,10 @@ func build_request(_system_prompt: String, _state: Dictionary, _tools: Array) ->
 	return {"url": "", "headers": [], "body": {}}
 
 
+## A free, authenticated request that only succeeds with a valid key (list models). Empty when no key is needed.
+func build_check_request() -> Dictionary:
+	return {}
+
+
 func parse_response(_body: Dictionary) -> Array[Dictionary]:
 	return []

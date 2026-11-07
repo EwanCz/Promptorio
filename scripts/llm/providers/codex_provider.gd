@@ -23,6 +23,14 @@ func build_request(system_prompt: String, state: Dictionary, tools: Array) -> Di
 	}
 
 
+func build_check_request() -> Dictionary:
+	return {
+		"method": HTTPClient.METHOD_GET,
+		"url": "https://api.openai.com/v1/models",
+		"headers": ["authorization: Bearer %s" % Settings.get_api_key("codex")],
+	}
+
+
 func parse_response(body: Dictionary) -> Array[Dictionary]:
 	var calls: Array[Dictionary] = []
 	var output: Variant = body.get("output", [])

@@ -13,6 +13,7 @@ var _saved_provider: String = ""
 var _saved_key: String = ""
 var _saved_env_path: String = ""
 var _saved_debug: String = ""
+var _checks: Array[Array] = []
 
 
 func before_each() -> void:
@@ -34,11 +35,14 @@ func before_each() -> void:
 	_failed.clear()
 	_llm.decision_received.connect(_on_received)
 	_llm.decision_failed.connect(_on_failed)
+	_checks.clear()
+	autoload("EventBus").key_checked.connect(_on_key_checked)
 
 
 func after_each() -> void:
 	_llm.decision_received.disconnect(_on_received)
 	_llm.decision_failed.disconnect(_on_failed)
+	autoload("EventBus").key_checked.disconnect(_on_key_checked)
 	_llm.free()
 	_requester.free()
 	_settings.provider = _saved_provider
@@ -57,6 +61,10 @@ func _on_received(id: int, calls: Array[Dictionary]) -> void:
 
 func _on_failed(id: int, reason: String) -> void:
 	_failed[id] = reason
+
+
+func _on_key_checked(state: String, detail: String) -> void:
+	_checks.append([state, detail])
 
 
 func _reply(result: int, status: int, body: String = "") -> Dictionary:
@@ -133,6 +141,10 @@ func test_error_type_is_reported_without_the_message_by_default() -> void:
 	var body: String = '{"type": "error", "error": {"type": "authentication_error", "message": "invalid x-api-key sk-secret"}}'
 	var id: int = await _ask([_reply(HTTPRequest.RESULT_SUCCESS, 401, body)])
 	_check_failed(id, "HTTP 401 (authentication_error)", "401 with an API error body")
+
+
+func _script(replies: Array[Dictionary]) -> void:
+	_llm.responses = replies
 
 
 func _error_body(message: String) -> String:
@@ -212,3 +224,46 @@ func test_env_key_is_enough_to_send() -> void:
 	DirAccess.remove_absolute(path)
 	check(_received.has(id) and _failed.is_empty(), "the .env key lets the request go out")
 	check_eq(_llm.sent, 1, "one request sent")
+
+
+func test_check_key_valid() -> void:
+	_script([_reply(HTTPRequest.RESULT_SUCCESS, 200, "{}")])
+	await _llm.check_key()
+	check_eq(_checks, [["valid", ""]], "200 means the key works")
+	check_eq(_llm.requests[0]["method"], HTTPClient.METHOD_GET, "a GET probe, not a chat request")
+	check_eq(_llm.sent, 1, "one request")
+
+
+func test_check_key_rejected_keys_are_invalid() -> void:
+	var body: String = '{"type": "error", "error": {"type": "authentication_error", "message": "invalid x-api-key"}}'
+	_script([_reply(HTTPRequest.RESULT_SUCCESS, 401, body)])
+	await _llm.check_key()
+	check_eq(_checks, [["invalid", "HTTP 401 (authentication_error)"]], "401 is an invalid key")
+	_checks.clear()
+	_script([_reply(HTTPRequest.RESULT_SUCCESS, 403)])
+	await _llm.check_key()
+	check_eq(_checks, [["invalid", "HTTP 403"]], "403 is an invalid key")
+
+
+func test_check_key_other_failures_are_unverified_not_invalid() -> void:
+	_script([_reply(HTTPRequest.RESULT_SUCCESS, 500)])
+	await _llm.check_key()
+	_script([_reply(HTTPRequest.RESULT_SUCCESS, 429)])
+	await _llm.check_key()
+	_script([_reply(HTTPRequest.RESULT_TIMEOUT, 0)])
+	await _llm.check_key()
+	check_eq(_checks, [
+		["error", "HTTP 500"],
+		["error", "HTTP 429"],
+		["error", "network error (result %d)" % HTTPRequest.RESULT_TIMEOUT],
+	], "a server or network problem never says the key is wrong")
+
+
+func test_check_key_skips_the_request_without_a_key_or_for_mock() -> void:
+	_script([_reply(HTTPRequest.RESULT_SUCCESS, 200, "{}")])
+	_settings.api_key = ""
+	await _llm.check_key()
+	_settings.provider = "mock"
+	await _llm.check_key()
+	check_eq(_llm.sent, 0, "nothing sent")
+	check(_checks.is_empty(), "nothing reported")
