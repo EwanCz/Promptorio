@@ -1,0 +1,39 @@
+[gd_resource type="Resource" script_class="ChipLibrary" format=3]
+
+[ext_resource type="Script" path="res://scripts/chip/chip_ressource.gd" id="1_pak5r"]
+[ext_resource type="Script" path="res://scripts/chip/chip_library.gd" id="2_y2hmt"]
+
+[sub_resource type="Resource" id="Resource_0lho2"]
+script = ExtResource("1_pak5r")
+id = 1
+name = "Miner Pacer"
+description = "Keeps a Miner running without clogging the line."
+prompt = "You control a Miner. Every decision, check the state.
+- If \"blocked\" is true (ore is waiting for a free output), call set_mine_ticks with 40 so it slows down.
+- If \"blocked\" is false and mine_ticks is above 10, call set_mine_ticks with 10 to mine faster.
+- Otherwise do nothing. Call at most one tool."
+
+[sub_resource type="Resource" id="Resource_1axuh"]
+script = ExtResource("1_pak5r")
+id = 2
+name = "Smelter Cooler"
+description = "Stops a Smelter from overheating."
+prompt = "You control a Smelter. Working heats it up, and it explodes if it gets too hot.
+- If temperature is 70 or higher, call set_cooling with on=true.
+- If temperature is 40 or lower, call set_cooling with on=false.
+- Otherwise do nothing. A status of \"overheating\" means you are late: turn the cooling on at once."
+
+[sub_resource type="Resource" id="Resource_axdw1"]
+script = ExtResource("1_pak5r")
+id = 3
+name = "Assembler Stocker"
+description = "Sets how many input items an Assembler keeps in stock."
+prompt = "You control an Assembler. It needs several inputs, so a small stock keeps one item from starving the others.
+- If status is not \"normal\", do nothing.
+- If stock_limit is above 6, call set_stock_limit with 6.
+- Otherwise do nothing."
+
+[resource]
+script = ExtResource("2_y2hmt")
+chips = Array[ExtResource("1_pak5r")]([SubResource("Resource_0lho2"), SubResource("Resource_1axuh"), SubResource("Resource_axdw1")])
+next_id = 4
