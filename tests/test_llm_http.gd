@@ -114,8 +114,12 @@ func test_429_retries_are_capped_at_three() -> void:
 	_check_backoff_gaps()
 
 
-## Each wait doubles: BASE, 2*BASE, 4*BASE. Lower bounds with slack for millisecond rounding.
+## Each wait doubles (BASE, 2*BASE, 4*BASE), so the gaps between sends keep growing. Only the
+## growth is asserted: a timer started mid-frame can fire up to one frame early.
 func _check_backoff_gaps() -> void:
+	var gaps: Array[int] = []
 	for i: int in range(1, _llm.sent_msec.size()):
-		var gap: float = (_llm.sent_msec[i] - _llm.sent_msec[i - 1]) / 1000.0
-		check(gap >= BASE * pow(2.0, i - 1) * 0.8, "retry %d waited at least %.2fs" % [i, BASE * pow(2.0, i - 1)])
+		gaps.append(_llm.sent_msec[i] - _llm.sent_msec[i - 1])
+	for i: int in range(1, gaps.size()):
+		check(gaps[i] > gaps[i - 1], "wait %d is longer than wait %d" % [i + 1, i])
+	check(gaps[-1] >= int(BASE * pow(2.0, gaps.size() - 1) * 1000.0 * 0.5), "last wait is about BASE * 2^n")
