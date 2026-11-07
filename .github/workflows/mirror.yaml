@@ -4,9 +4,7 @@ env:
   TARGET_REPO_NAME: "rubix-consulting-eu/groupe-2"
 
 on:
-  workflow_run:
-    workflows: [ "Checks" ]
-    types: [ completed ]
+  push:
     branches: [ "main" ]
 
 permissions:
