@@ -20,9 +20,11 @@ func _ready() -> void:
 	EventBus.tick_fired.connect(_on_tick)
 	LLMManager.decision_received.connect(_on_decision_received)
 	LLMManager.decision_failed.connect(_on_decision_failed)
+	EventBus.chip_registered.emit(self)
 
 
 func _exit_tree() -> void:
+	EventBus.chip_removed.emit(self)
 	EventBus.tick_fired.disconnect(_on_tick)
 	LLMManager.decision_received.disconnect(_on_decision_received)
 	LLMManager.decision_failed.disconnect(_on_decision_failed)
