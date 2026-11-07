@@ -20,6 +20,7 @@ func _ready() -> void:
 	_bar.settings_requested.connect(_settings_dialog.open)
 	EventBus.settings_changed.connect(_check_key)
 	_check_key()
+	_start_session_log()
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -43,3 +44,12 @@ func _on_cell_clicked(cell: Vector2i) -> void:
 func _check_key() -> void:
 	if DisplayServer.get_name() != "headless":
 		LLMManager.check_key()
+
+
+## Headless runs (tests) write no session file.
+func _start_session_log() -> void:
+	if DisplayServer.get_name() == "headless":
+		return
+	var session_log: SessionLog = SessionLog.new()
+	add_child(session_log)
+	session_log.start()

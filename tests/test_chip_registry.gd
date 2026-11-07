@@ -114,6 +114,26 @@ func test_starter_prompts_only_use_real_tools() -> void:
 	_restore_path()
 
 
+func test_smelter_cooler_uses_cooling_and_pause_with_distinct_thresholds() -> void:
+	_use_tmp_path()
+	var prompt: String = ""
+	for chip: ChipRessource in _registry.get_all():
+		if chip.name == "Smelter Cooler":
+			prompt = chip.prompt
+	check(prompt.contains("set_cooling") and prompt.contains("on=true") and prompt.contains("on=false"), "cooling on and off")
+	check(prompt.contains("set_enabled"), "pause and resume")
+	var pause_at: int = 110
+	var resume_at: int = 40
+	var cool_on: int = 60
+	var cool_off: int = 30
+	for number: int in [pause_at, resume_at, cool_on, cool_off]:
+		check(prompt.contains(str(number)), "prompt states %d" % number)
+	check(resume_at < pause_at and cool_off < cool_on, "each pair has a gap, so it cannot toggle every turn")
+	check(cool_on < pause_at and pause_at < Smelter.EXPLODE_AT, "cooling starts first, the pause comes before the explosion")
+	check(resume_at <= Smelter.SAFE_AT - 20.0, "it resumes only well below the overheat recovery point")
+	_restore_path()
+
+
 func test_edits_survive_a_reload_with_stable_ids() -> void:
 	_use_tmp_path()
 	var added: ChipRessource = _registry.add("persist_new", "np", "nd")

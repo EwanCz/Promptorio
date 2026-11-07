@@ -106,6 +106,9 @@ By default a failed HTTP call reaches the ChipLog as `HTTP <status> (<error type
 - Limits: only the exact value `1` enables it, and only when `OS.has_feature("editor")`, so exported builds ignore it. It adds the provider's error `message` for non-200 answers and nothing else; no headers, request body or raw response body is ever logged, and a non-JSON body adds nothing.
 - The message is made one line, the configured API key and any 20+ character token-like run are replaced by `[redacted]`, and it is cut at 200 characters (`...` marks the cut). The token mask is a heuristic (`shortcut:`): it can hide a long identifier and cannot catch a key shorter than 20 characters that is not the configured one.
 
+### Session log (local)
+`SessionLog` appends every machine log line to `user://logs/session_<date>_<time>.log` (`time | #id type | message`), flushing each line. Only the message text is written (no request bodies or headers) and configured API keys are replaced by `[redacted]`. It is started by `Main`, skipped in headless runs, and does not change the ChipLog's 200-line cap.
+
 ## GDScript conventions
 - Godot 4.x only. Fully typed GDScript: type every variable, parameter and return (`var speed: float = 1.0`, `func foo(x: int) -> void`).
 - Naming: `snake_case` for files, functions, variables; `PascalCase` for `class_name` and nodes; `UPPER_SNAKE` for constants; signals in past tense (`decision_received`); private members prefixed `_`.
