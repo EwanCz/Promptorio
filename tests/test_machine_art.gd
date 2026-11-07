@@ -128,6 +128,20 @@ func test_conveyor_art_and_flips_per_direction() -> void:
 			check([sprite.texture, sprite.flip_h, sprite.flip_v] == expected[facing], "%s for %s" % [sprite.name, facing])
 
 
+func test_conveyor_label_shows_no_direction_arrow() -> void:
+	var conveyor: Conveyor = _spawn("conveyor") as Conveyor
+	var label: Label = conveyor.get_node("StatusLabel") as Label
+	for facing: Vector2i in Conveyor.ARROWS:
+		conveyor.facing = facing
+		_tick(1)
+		for arrow: String in Conveyor.ARROWS.values():
+			check(not label.text.contains(arrow), "label has no %s facing %s" % [arrow, facing])
+	check_eq(label.text, "", "an empty conveyor shows no label")
+	conveyor.receive("coal")
+	_tick(2)
+	check_eq(label.text, "•", "a held item shows as a dot")
+
+
 func test_set_direction_tool_redraws_the_belt() -> void:
 	var conveyor: Conveyor = _spawn("conveyor") as Conveyor
 	check(conveyor.apply_tool_call("set_direction", {"direction": 1}), "set_direction accepted")

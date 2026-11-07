@@ -104,4 +104,4 @@ func _apply(tool_name: String, args: Dictionary) -> void:
 
 
 func _status_text() -> String:
-	return str(ARROWS.get(facing, "?")) + ("•" if held != "" else "")
+	return "•" if held != "" else ""
