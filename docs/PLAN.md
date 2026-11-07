@@ -13,8 +13,8 @@ Architecture and async HTTP rules live in `CLAUDE.md`.
 
 ## Phase 0 — Foundations (h0–4, everyone)
 - [x] Autoloads: `EventBus`, `GameState`, `Settings`, `LLMManager` (+ `LLMProvider` base and `MockProvider`; `AnthropicProvider` still to do)
-- [ ] `Main` scene (HBox split: FactoryView 80% / Bar 20%, `UI` CanvasLayer for popups) and base `Machine` scene with `ChipComponent`
-- [ ] Agree on the tool-call schema and state JSON format (then freeze the base `Machine` scene)
+- [x] `Main` scene (HBox split: FactoryView 80% / Bar 20%, `UI` CanvasLayer for popups) and base `Machine` scene with `ChipComponent`
+- [x] Tool-call schema and state JSON format (see "Machine / chip API"). Base `Machine` scene is now frozen: subclasses inherit it, don't edit it without telling the team
 
 ### Autoload API (for Machine / ChipComponent / UI work)
 - `LLMManager.request_decision(requester_id: int, system_prompt: String, state: Dictionary, tools: Array)`. `requester_id` is `get_instance_id()`. Results come back as `decision_received(requester_id, tool_calls: Array[Dictionary])` (each `{name, args}`) or `decision_failed(requester_id, reason)`. A queued request replaced by a newer one from the same requester fails with `"superseded"`. Re-validate with `is_instance_valid(instance_from_id(id))` on receipt.
@@ -24,6 +24,11 @@ Architecture and async HTTP rules live in `CLAUDE.md`.
 - `Settings`: `api_key`, `provider` (`"mock"` for now), `model`, `max_concurrency`, `request_timeout`, `chip_cooldown`, `max_tokens`, `save_settings()`.
 - Tests: `tests/run.sh [filter]` runs every `tests/test_*.gd` headless (~15 s, exit 1 on failure). How to write tests: see "Testing" in `CLAUDE.md`.
 - Headless gotcha: after adding a new `class_name` script, run `godot --headless --import` once to refresh the class cache, otherwise it fails to parse. `godot --headless --quit` still errors until a main scene exists.
+
+### Machine / chip API
+- `Machine` (`scripts/machines/machine.gd`): `get_tool_schemas()`, `get_state() -> Dictionary` (compact: `type`, `enabled`, `status`, plus subclass fields), `apply_tool_call(name, args) -> bool` (whitelists the name, requires every schema arg, type-checks and clamps, then calls the `_apply()` override), `log_chip(message)` (emits `chip_log_added`). Base tool: `set_enabled(on: bool)`. `status` is `Machine.Status` (`NORMAL`, `DOWN`, `OVERHEATING`).
+- `ChipComponent` (child of the machine): `add_prompt(name, text, timeout)`, `remove_prompt(name)`, `request_decision(reason, prompt_name = "") -> bool`, `pending`, signal `decision_applied(reason, applied)`. Timers count `tick_fired` ticks. Cooldown comes from `Settings.chip_cooldown`. Threshold and event triggers are not wired yet: machine subclasses call `request_decision("...")`.
+- Scenes: `scenes/main.tscn` is the project main scene; `scenes/machines/machine.tscn` is the base machine.
 
 ## Phase 1 — Parallel tracks (h4–20)
 | Dev | Track |
