@@ -2,6 +2,7 @@ extends "res://tests/test_case.gd"
 
 var _machine: Machine
 var _chip: ChipComponent
+var _res: Array[ChipRessource] = []
 var _saved_provider: String = ""
 var _saved_cooldown: float = 5.0
 var _applied: int = -1
@@ -18,7 +19,7 @@ func before_each() -> void:
 	_chip = ChipComponent.new()
 	_machine.add_child(_chip)
 	tree.root.add_child(_machine)
-	_chip.set_chip("production", "Keep running", 60.0)
+	_setup(_chip, "production", "Keep running", 60)
 	_chip.decision_applied.connect(_on_applied)
 
 
@@ -28,6 +29,7 @@ func after_each() -> void:
 	settings.chip_cooldown = _saved_cooldown
 	_chip.decision_applied.disconnect(_on_applied)
 	_machine.free()
+	_res.clear()
 
 
 func _on_applied(_reason: String, applied: int) -> void:
@@ -35,7 +37,7 @@ func _on_applied(_reason: String, applied: int) -> void:
 
 
 func test_request_round_trip() -> void:
-	check(_chip.request_decision("manual"), "request sent")
+	check(_chip.call_llm("manual"), "request sent")
 	check(_chip.pending, "pending while in flight")
 	await wait_until(func() -> bool: return not _chip.pending)
 	check(not _chip.pending, "pending cleared")
@@ -43,25 +45,25 @@ func test_request_round_trip() -> void:
 
 
 func test_second_request_ignored_while_pending() -> void:
-	_chip.request_decision("manual")
-	check(not _chip.request_decision("manual"), "ignored while pending")
+	_chip.call_llm("manual")
+	check(not _chip.call_llm("manual"), "ignored while pending")
 	await wait_until(func() -> bool: return not _chip.pending)
 
 
 func test_cooldown_blocks_request() -> void:
 	autoload("Settings").chip_cooldown = 60.0
-	check(_chip.request_decision("manual"), "first request passes")
+	check(_chip.call_llm("manual"), "first request passes")
 	await wait_until(func() -> bool: return not _chip.pending)
-	check(not _chip.request_decision("manual"), "second blocked by cooldown")
+	check(not _chip.call_llm("manual"), "second blocked by cooldown")
 
 
 func test_no_prompt_no_request() -> void:
-	_chip.set_chip("", "", 10.0)
-	check(not _chip.request_decision("manual"), "nothing to ask without a prompt")
+	_setup(_chip, "", "", 10)
+	check(not _chip.call_llm("manual"), "nothing to ask without a prompt")
 
 
 func test_chip_timeout_fires_request() -> void:
-	_chip.set_chip("fast", "Be quick", 1.0)
+	_setup(_chip, "fast", "Be quick", _tick_rate())
 	for i: int in _tick_rate():
 		autoload("EventBus").tick_fired.emit(i)
 	check(_chip.pending, "timer triggered a request")
@@ -76,7 +78,7 @@ func test_machine_freed_while_pending_is_safe() -> void:
 		if id == chip_id:
 			delivered.append(id)
 	llm.decision_received.connect(on_received)
-	check(_chip.request_decision("manual"), "request sent")
+	check(_chip.call_llm("manual"), "request sent")
 	_chip.decision_applied.disconnect(_on_applied)
 	_machine.free()
 	await wait_until(func() -> bool: return llm._in_flight == 0, 3.0)
@@ -90,7 +92,7 @@ func test_machine_freed_while_pending_is_safe() -> void:
 
 
 func test_timer_fires_at_exact_timeout() -> void:
-	_chip.set_chip("fast", "Be quick", 1.0)
+	_setup(_chip, "fast", "Be quick", _tick_rate())
 	for i: int in _tick_rate() - 1:
 		autoload("EventBus").tick_fired.emit(i)
 	check(not _chip.pending, "not fired one tick early")
@@ -102,9 +104,9 @@ func test_timer_fires_at_exact_timeout() -> void:
 func test_chips_on_one_machine_are_independent() -> void:
 	var second: ChipComponent = ChipComponent.new()
 	_machine.add_child(second)
-	second.set_chip("maintenance", "Keep it cool", 60.0)
-	check(_chip.request_decision("manual"), "first chip sends")
-	check(second.request_decision("manual"), "second chip sends while first is pending")
+	_setup(second, "maintenance", "Keep it cool", 60)
+	check(_chip.call_llm("manual"), "first chip sends")
+	check(second.call_llm("manual"), "second chip sends while first is pending")
 	check(_chip.pending and second.pending, "both in flight")
 	await wait_until(func() -> bool: return not _chip.pending and not second.pending)
 	check(not _chip.pending and not second.pending, "both finished")
@@ -113,13 +115,22 @@ func test_chips_on_one_machine_are_independent() -> void:
 func test_chip_timers_do_not_share_progress() -> void:
 	var second: ChipComponent = ChipComponent.new()
 	_machine.add_child(second)
-	second.set_chip("maintenance", "Keep it cool", 60.0)
-	_chip.set_chip("fast", "Be quick", 1.0)
+	_setup(second, "maintenance", "Keep it cool", 60)
+	_setup(_chip, "fast", "Be quick", _tick_rate())
 	for i: int in _tick_rate():
 		autoload("EventBus").tick_fired.emit(i)
 	check(_chip.pending, "short-timeout chip fired")
 	check(not second.pending, "long-timeout chip did not fire")
 	await wait_until(func() -> bool: return not _chip.pending)
+
+
+func _setup(comp: ChipComponent, chip_name: String, prompt: String, ticks: int) -> void:
+	var res: ChipRessource = ChipRessource.new()
+	res.name = chip_name
+	res.prompt = prompt
+	_res.append(res)
+	comp.chip = res
+	comp.set_timeout(ticks)
 
 
 func _tick_rate() -> int:
