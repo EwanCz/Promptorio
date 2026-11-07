@@ -90,6 +90,11 @@ Each `ChipComponent` (one chip, one prompt) requests a decision on: fixed timer,
 10. Secrets: the API key comes only from `Settings` (player-entered in UI, or a dev `.env` read by `Settings` in the editor). Never hardcode, log, or print it. `.env` is dev-only and must stay out of git and out of exports. Check `.gitignore` before committing.
 11. Add a `mock` provider (canned responses, random latency) so the game and UI can be developed and demoed with no network or key.
 
+### LLM diagnostics (opt-in, local)
+By default a failed HTTP call reaches the ChipLog as `HTTP <status> (<error type>)` only, because a provider's message can echo part of the key. To see the message while debugging, launch the editor (or the project from it) with `PROMPTORIO_DEBUG_LLM=1`, e.g. `PROMPTORIO_DEBUG_LLM=1 godot --editor`; the log line becomes `HTTP 400 (invalid_request_error): <message>`.
+- Limits: only the exact value `1` enables it, and only when `OS.has_feature("editor")`, so exported builds ignore it. It adds the provider's error `message` for non-200 answers and nothing else; no headers, request body or raw response body is ever logged, and a non-JSON body adds nothing.
+- The message is made one line, the configured API key and any 20+ character token-like run are replaced by `[redacted]`, and it is cut at 200 characters (`...` marks the cut). The token mask is a heuristic (`shortcut:`): it can hide a long identifier and cannot catch a key shorter than 20 characters that is not the configured one.
+
 ## GDScript conventions
 - Godot 4.x only. Fully typed GDScript: type every variable, parameter and return (`var speed: float = 1.0`, `func foo(x: int) -> void`).
 - Naming: `snake_case` for files, functions, variables; `PascalCase` for `class_name` and nodes; `UPPER_SNAKE` for constants; signals in past tense (`decision_received`); private members prefixed `_`.

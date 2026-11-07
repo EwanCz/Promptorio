@@ -46,6 +46,7 @@ Architecture and async HTTP rules live in `CLAUDE.md`.
 - [x] `LLMProvider` base, `AnthropicProvider`, `MockProvider` (deterministic canned answer: first tool, booleans `true`, integers at `minimum`, numbers at the midpoint; latency stays random 0.3-1.5 s; empty tool list gives no calls)
 - [x] `HTTPRequest` pool, queue, `max_concurrency`, timeout, 429 exponential backoff (3 retries max), `decision_received` / `decision_failed`
 - [x] Real HTTP path tested offline (`tests/test_llm_http.gd`): timeout, transport failure, non-200, invalid JSON, 429 backoff and cap. Seam: `LLMManager._send(request)` is the only code that touches `HTTPRequest`; tests subclass it (`tests/support/scripted_llm_manager.gd`) and also override `_wait_backoff(seconds)` to record the requested retry delays (1 s, 2 s, 4 s) without waiting.
+- [x] Opt-in HTTP error diagnostics: see "LLM diagnostics" in `CLAUDE.md` (`PROMPTORIO_DEBUG_LLM=1`, editor runs only; tested offline in `tests/test_llm_http.gd`).
 
 ### Simulation (track B, done)
 - [x] Chain Miner -> Smelter -> Assembler -> Collector over plain `Conveyor`s, driven by `EventBus.tick_fired`. `Machine` gained `facing`, `receive(item) -> bool` (default refuses), `_tick()` (override per type, skipped while `DOWN`) and `_push(item)` (hands an item to the machine in front). Items are strings: `ore` -> `ingot` -> `part`.

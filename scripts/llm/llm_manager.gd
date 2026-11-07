@@ -8,6 +8,7 @@ signal decision_failed(requester_id: int, reason: String)
 
 const MAX_RETRIES: int = 3
 const BACKOFF_BASE: float = 1.0
+const DEBUG_MAX_CHARS: int = 200
 
 var _queue: Array[Dictionary] = []
 var _in_flight: int = 0
@@ -113,13 +114,38 @@ func _send(request: Dictionary) -> Dictionary:
 	return {"result": response[0], "status": response[1], "body": response[3]}
 
 
-## "HTTP 401 (authentication_error)": the status plus the API's error type, never its message,
-## which may echo part of the key.
+## "HTTP 401 (authentication_error)": the status plus the API's error type. The API's message
+## (which may echo part of the key) is appended only when local diagnostics are on.
 func _http_error(status: int, raw: PackedByteArray) -> String:
 	var parsed: Variant = JSON.parse_string(raw.get_string_from_utf8())
 	var error: Variant = parsed.get("error") if typeof(parsed) == TYPE_DICTIONARY else null
 	var type: String = str(error.get("type", "")) if typeof(error) == TYPE_DICTIONARY else ""
-	return "HTTP %d (%s)" % [status, type] if type != "" else "HTTP %d" % status
+	var text: String = "HTTP %d (%s)" % [status, type] if type != "" else "HTTP %d" % status
+	if typeof(error) == TYPE_DICTIONARY and _debug_enabled():
+		var message: String = _sanitize(str(error.get("message", "")))
+		if message != "":
+			text += ": " + message
+	return text
+
+
+## Opt-in local diagnostics: PROMPTORIO_DEBUG_LLM=1 in an editor run; never in exported builds.
+func _debug_enabled() -> bool:
+	return OS.has_feature("editor") and OS.get_environment("PROMPTORIO_DEBUG_LLM") == "1"
+
+
+## One line, secrets masked, capped at DEBUG_MAX_CHARS.
+func _sanitize(message: String) -> String:
+	var key: String = Settings.get_api_key(Settings.provider)
+	if key != "":
+		message = message.replace(key, "[redacted]")
+	# shortcut: masks any 20+ char token-like run (covers other key formats), may hide long identifiers
+	var secret: RegEx = RegEx.create_from_string("[A-Za-z0-9_\\-]{20,}")
+	message = secret.sub(message, "[redacted]", true)
+	var spaces: RegEx = RegEx.create_from_string("\\s+")
+	message = spaces.sub(message, " ", true).strip_edges()
+	if message.length() > DEBUG_MAX_CHARS:
+		message = message.substr(0, DEBUG_MAX_CHARS) + "..."
+	return message
 
 
 func _outcome(calls: Array, error: String, status: int) -> Dictionary:
