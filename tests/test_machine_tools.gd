@@ -71,7 +71,7 @@ func test_miner_mine_ticks_clamped() -> void:
 	check_eq(miner.mine_ticks, 40, "mine_ticks set")
 	check_eq(miner.get_state()["mine_ticks"], 40, "state shows it")
 	miner.apply_tool_call("set_mine_ticks", {"ticks": 1})
-	check_eq(miner.mine_ticks, Miner.MIN_MINE_TICKS, "clamped to the minimum")
+	check_eq(miner.mine_ticks, miner.get_min_mine_ticks(), "clamped to the mining time of the resource")
 	miner.apply_tool_call("set_mine_ticks", {"ticks": 9999})
 	check_eq(miner.mine_ticks, Miner.MAX_MINE_TICKS, "clamped to the maximum")
 	check(not miner.apply_tool_call("set_mine_ticks", {"ticks": "fast"}), "text rejected")

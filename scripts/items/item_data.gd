@@ -10,8 +10,14 @@ extends Resource
 @export var machine: String = ""
 ## Items consumed per unit built (item id -> count). Empty for a mined resource.
 @export var inputs: Dictionary = {}
-## Ticks one unit takes to build in a smelter or assembler. Unused for mined resources: a Miner's speed is its own mine_ticks.
+## Ticks one unit takes to build (smelter, assembler) or to mine (miner). A Miner can be slowed down by its
+## chip but never goes faster than this.
 @export var ticks: int = 0
+
+
+## True if a machine of this type is the one that builds it.
+func is_built_by(machine_type: String) -> bool:
+	return machine == machine_type
 
 
 func is_mined() -> bool:

@@ -34,6 +34,12 @@ func price_of(id: String) -> int:
 	return 0 if item == null else item.price
 
 
+## Ticks the item takes to mine or build, 0 for an unknown id.
+func ticks_of(id: String) -> int:
+	var item: ItemData = get_item(id)
+	return 0 if item == null else item.ticks
+
+
 ## The resources a machine type can build, in file order.
 func get_built_by(machine_type: String) -> Array[ItemData]:
 	var result: Array[ItemData] = []

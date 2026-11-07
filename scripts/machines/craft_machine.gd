@@ -6,7 +6,7 @@ extends Machine
 
 const MAX_STOCK: int = 10
 
-## Id of the resource being built. Changing it only affects the next craft: a running one finishes as it started.
+## Id of the resource being built. Change it through set_product, which checks the machine may build it.
 @export var product_id: String = ""
 
 var stock: Dictionary = {}
@@ -28,6 +28,16 @@ func receive(item: String) -> bool:
 	if int(stock.get(item, 0)) >= stock_limit:
 		return false
 	stock[item] = int(stock.get(item, 0)) + 1
+	return true
+
+
+## Switches the product to a resource that a machine of this type builds. False, and nothing changes, if the
+## catalog says another machine builds it or it does not exist. A craft already running finishes as it started.
+func set_product(item: String) -> bool:
+	var data: ItemData = ItemCatalog.shared().get_item(item)
+	if data == null or not data.is_built_by(machine_type):
+		return false
+	product_id = item
 	return true
 
 
@@ -79,10 +89,8 @@ func _own_tool_schemas() -> Array:
 	var catalog: ItemCatalog = ItemCatalog.shared()
 	return [{
 		"name": "set_product",
-		"description": "Choose the resource to build from now on. A craft already running finishes first.",
-		"input_schema": {"type": "object", "properties": {
-			"item": {"type": "string", "enum": catalog.get_built_by_ids(machine_type)},
-		}},
+		"description": "Choose the resource to build from now on. This machine can build: %s. Any other resource is refused. A craft already running finishes first." % ", ".join(catalog.get_built_by_ids(machine_type)),
+		"input_schema": {"type": "object", "properties": {"item": {"type": "string"}}},
 	}, {
 		"name": "discard_stock",
 		"description": "Throw away units of a resource held in stock (any resource can be stored, even one this machine does not use).",
@@ -93,18 +101,18 @@ func _own_tool_schemas() -> Array:
 	}]
 
 
-func _apply(tool_name: String, args: Dictionary) -> void:
+func _apply(tool_name: String, args: Dictionary) -> bool:
 	if tool_name == "set_product":
-		product_id = args["item"]
-	elif tool_name == "discard_stock":
+		return set_product(args["item"])
+	if tool_name == "discard_stock":
 		var item: String = args["item"]
 		var left: int = int(stock.get(item, 0)) - int(args["count"])
 		if left > 0:
 			stock[item] = left
 		else:
 			stock.erase(item)
-	else:
-		super._apply(tool_name, args)
+		return true
+	return super._apply(tool_name, args)
 
 
 func _items_text(items: Dictionary) -> String:

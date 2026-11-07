@@ -50,21 +50,31 @@ Architecture and async HTTP rules live in `CLAUDE.md`.
 
 ### Simulation (track B, done)
 - [x] Chain Miner -> Smelter -> Assembler -> Collector over plain `Conveyor`s, driven by `EventBus.tick_fired`. `Machine` gained `facing`, `receive(item) -> bool` (default refuses), `_tick()` (override per type, skipped while `DOWN`) and `_push(item)` (hands an item to the machine in front). Items are strings, the ids of the resource catalog (`ore` -> `ingot` -> `part` is the default chain).
-- [x] `Miner`: 1 unit of its resource / `mine_ticks` (20), stalls while its output is blocked. `CraftMachine` (base of `Smelter` and `Assembler`): stock of any resource capped per item at 10, builds its `product_id` from the stock (inputs and ticks come from the catalog, see "Resources"), blocked output stalls it. `Collector` buys every catalog resource at its catalog price and refuses anything else. `Conveyor` holds one item and moves it on after 5 ticks.
-- [x] Resources (`ItemData`, `ItemCatalog`, `data/items.tres`): a resource has an `id`, a `display_name`, a `price`, the only `machine` type that builds it, its `inputs` (id -> count, empty when mined) and `ticks` (smelter/assembler craft time; a miner keeps its own `mine_ticks`). `ItemCatalog.shared()` loads the file once; `get_item`, `has_item`, `price_of`, `get_built_by(machine_type)` (file order, the first is the machine's default), `get_ids`. Shipped catalog:
+- [x] `Miner`: 1 unit of its resource per `mine_ticks` (the resource's own mining time, 20 for ore), stalls while its output is blocked. `CraftMachine` (base of `Smelter` and `Assembler`): stock of any resource capped per item at 10, builds its `product_id` from the stock (inputs and ticks come from the catalog, see "Resources"), blocked output stalls it. `Collector` buys every catalog resource at its catalog price and refuses anything else. `Conveyor` holds one item and moves it on after 5 ticks.
+- [x] Resources (`ItemData`, `ItemCatalog`, `data/items.tres`): a resource has an `id`, a `display_name`, a `price`, the only `machine` type that builds it, its `inputs` (id -> count, empty when mined) and `ticks` (craft time in a smelter or assembler; mining time for a mined resource, which is also the fastest a miner can go on it). `ItemCatalog.shared()` loads the file once; `get_item`, `has_item`, `price_of`, `get_built_by(machine_type)` (file order, the first is the machine's default), `get_ids`. Shipped catalog:
 
 | Resource | Built by | Needs | Ticks | Price |
 |----------|----------|-------|-------|-------|
-| ore, wood | Miner | mined | - | 1 |
-| coal | Miner | mined | - | 2 |
-| silver | Miner | mined | - | 4 |
+| ore | Miner | mined | 20 | 1 |
+| coal | Miner | mined | 25 | 2 |
+| silver | Miner | mined | 35 | 4 |
+| redstone | Miner | mined | 40 | 5 |
+| diamond | Miner | mined | 80 | 15 |
 | ingot | Smelter | 1 ore | 20 | 3 |
 | power | Smelter | 2 coal | 30 | 8 |
+| silver_bar | Smelter | 1 silver | 25 | 9 |
+| steel | Smelter | 2 ingot + 1 coal | 40 | 14 |
+| gem | Smelter | 1 diamond | 40 | 30 |
 | part | Assembler | 2 ingot | 30 | 10 |
-| spear | Assembler | 1 wood + 1 silver | 40 | 12 |
-| gun | Assembler | 1 spear + 1 power | 60 | 40 |
+| circuit | Assembler | 1 silver_bar + 2 redstone | 40 | 30 |
+| battery | Assembler | 1 power + 2 redstone | 50 | 28 |
+| gun | Assembler | 1 steel + 1 circuit + 1 power | 60 | 80 |
+| drill | Assembler | 2 steel + 1 gem | 60 | 90 |
+| robot | Assembler | 2 circuit + 1 battery + 2 part | 80 | 200 |
 
-  Rules: a resource is only built by its own machine type (`set_product` / `set_mined_item` refuse any other); any catalog resource can be stored in a smelter or assembler (up to `stock_limit` each), needed or not, and only `discard_stock` removes it; a craft needs every input in its full count; changing the product lets the running craft finish as the old product (its inputs are already spent). Defaults: Miner ore, Smelter ingot (`product_id` in `smelter.tscn`), Assembler part (`assembler.tscn`). Adding a resource is a new entry in `data/items.tres` and nothing else; `tests/test_items.gd` checks the catalog is consistent (unique ids, known inputs, no cycles, positive prices and times). `Recipe` and `data/recipes/` are gone. Not done: there is no way for the player to pick the product without a chip (tool calls only).
+  A crafted resource always sells for more than its inputs (checked in `tests/test_items.gd`). Wood and the spear were removed.
+
+  Rules: a resource is only built by its own machine type: the check is `ItemData.is_built_by(machine_type)` inside `set_product` / `set_mined_item`, which return false and change nothing otherwise (`_apply` returns that to `apply_tool_call`, which logs `ignored ...: the machine refused it` and does not emit `tool_applied`); the tool description lists the resources the machine may build, but only the function decides; a machine with no known type builds nothing; any catalog resource can be stored in a smelter or assembler (up to `stock_limit` each), needed or not, and only `discard_stock` removes it; a craft needs every input in its full count; changing the product lets the running craft finish as the old product (its inputs are already spent). Mined resources take time too: more valuable ones are slower (ore 20, coal 25, silver 35, redstone 40, diamond 80 ticks). Defaults: Miner ore, Smelter ingot (`product_id` in `smelter.tscn`), Assembler part (`assembler.tscn`). Adding a resource is a new entry in `data/items.tres` and nothing else; `tests/test_items.gd` checks the catalog is consistent (unique ids, known inputs, no cycles, positive prices and times). `Recipe` and `data/recipes/` are gone. Not done: there is no way for the player to pick the product without a chip (tool calls only).
 - [x] Conveyor behavior: a conveyor is an ordinary placed machine with a facing direction. On each 10 Hz simulation tick it advances its held item; after 5 ticks it tries to deliver that item to the machine in the adjacent cell it faces. If the cell is empty or the machine refuses the item, it keeps the item and retries on later ticks. A conveyor accepts only one item at a time. Machines can also pass items directly to an adjacent machine, so conveyors are optional links rather than automatic belts between every machine.
 - [x] Smelter temperature: working +0.6/tick, idle -0.3/tick, `set_cooling(on)` an extra -0.3/tick, floor 20. `OVERHEATING` at 100 (back to `NORMAL` at 80), explodes at 150: `DOWN`, stock lost, `EventBus.machine_exploded`, then a 0.6 s flash, fade and spark burst, after which the smelter is destroyed and its cell is free (the player has to rebuild it). The art reddens from 60° (white) to fully red at 150° (`Smelter._update_heat_tint`). Without a chip a busy smelter explodes after ~22 s. Cooling on while working only halves the heating (+0.3/tick net, explosion after ~43 s), so it buys time but never keeps a busy smelter stable: the chip must also pause it with `set_enabled(false)`, and idle with cooling on recovers fastest (-0.6/tick). That is the demo fail/win state. `get_tool_schemas()` exposes `set_enabled` and `set_cooling`.
 - [x] Placement (`Placement`, `scripts/world/placement.gd`, node in `World`): Input Map actions (physical-key defaults, layout independent) `select_miner` / `select_smelter` / `select_assembler` / `select_conveyor` (`1`, `2`, `3`, `5`), `rotate_placement` (`R`, facing right, down, left, up) and `cancel_placement` (`Esc`) drive it; `Main` forwards them to `Placement.handle_input()`; left click on a grid cell places. Refuses out-of-grid, occupied cells, and miners off a minesite. The Collector is placed at the map center on start and is not selectable: no action, no Build page entry, and `select` / `try_place` refuse it. Machines unregister themselves from `GameState` when freed. `Placement.select(type)` is what both the shortcuts and the Build page call; `place(type, cell)` applies the rules without cost and `try_place(type, cell)` adds the `COSTS` charge (once, only on success; emits `placement_rejected(reason)` otherwise).
@@ -73,14 +83,14 @@ Architecture and async HTTP rules live in `CLAUDE.md`.
 - Paid placement, machine removal/rotation, the Build page and the tooltip actions are track C and are done (see "Bar and popups" below). The hover highlight follows the selected machine's rule (see "Grid and camera").
 
 ### AI tool inventory (as implemented)
-What `get_tool_schemas()` returns per machine: the shared tool first, then the tools unique to the type (`_own_tool_schemas()`). Every argument is required; a missing or wrongly typed value (or a string outside its `enum`) rejects the whole call (logged to the ChipLog, machine unchanged), and integers are clamped to their range. A chip can be attached to any machine, including the Collector and conveyors, so all five types are listed. Checked in `tests/test_machine_tools.gd` and `tests/test_chip_integration.gd`.
+What `get_tool_schemas()` returns per machine: the shared tool first, then the tools unique to the type (`_own_tool_schemas()`). Every argument is required; a missing or wrongly typed value rejects the whole call (`discard_stock`'s `item` must also be a catalog id) (logged to the ChipLog, machine unchanged), and integers are clamped to their range. A chip can be attached to any machine, including the Collector and conveyors, so all five types are listed. Checked in `tests/test_machine_tools.gd` and `tests/test_chip_integration.gd`.
 
 | Tool | Args | Offered by | Effect |
 |------|------|------------|--------|
 | `set_enabled` | `on: boolean` | every machine (inherited from `Machine`) | Sets `enabled`; see the per-machine effect below. |
-| `set_mine_ticks` | `ticks: integer`, 5..100 | Miner | Ticks per unit (default 20); lower is faster. |
-| `set_mined_item` | `item: string`, one of the resources built by `miner` | Miner | Resource mined from now on (default `ore`); a unit already held is pushed on as it was. |
-| `set_product` | `item: string`, one of the resources built by the machine's type | Smelter, Assembler | Resource built from now on; the running craft finishes first. |
+| `set_mine_ticks` | `ticks: integer`, (the resource's mining time)..100 | Miner | Ticks per unit; lower is faster, but never below the mining time of the current resource (`Miner.get_min_mine_ticks()`: ore 20, diamond 80). A chip can only slow a miner down. `set_mined_item` resets it to the new resource's time. |
+| `set_mined_item` | `item: string` | Miner | Calls `Miner.set_mined_item(item) -> bool`: fails (logged as refused, nothing changes) unless the catalog says a `miner` builds it; else sets the resource mined from now on (default `ore`). A unit already held is pushed on as it was. |
+| `set_product` | `item: string` | Smelter, Assembler | Calls `CraftMachine.set_product(item) -> bool`: fails (logged as refused, nothing changes) unless the catalog says this machine's type builds it; else sets the resource built from now on. The running craft finishes first. |
 | `discard_stock` | `item: string` (any resource), `count: integer`, 1..10 | Smelter, Assembler | Throws away up to `count` units of a stored resource. The only way to empty a stock. |
 | `set_cooling` | `on: boolean` | Smelter | Cooling adds -0.3 °/tick (see Smelter temperature above): slows the heating while working, speeds up the cooldown while idle; it cannot keep a working smelter stable. |
 | `set_stock_limit` | `limit: integer`, 1..10 | Assembler | Per-item input cap (default 10); upstream machines are refused at or above it. |

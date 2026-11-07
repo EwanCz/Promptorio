@@ -78,7 +78,7 @@ Machine (Node2D, machine.gd)
   - `parse_response(body: Dictionary) -> Array[Dictionary]` returns a normalized list of `{name, args}` tool calls
   - `build_check_request()` returns the free key-check GET (list models), and `config_error()` returns a message when the provider's relay base URL is unusable (see "Provider base URL")
 - Implementations: `AnthropicProvider` (Messages API), `OpenAIProvider` (Responses API) and `MockProvider` (offline, deterministic). `Settings.provider` is `mock`, `anthropic` or `openai`. Nothing outside `scripts/llm/providers/` knows provider formats. Neither real provider has been run against its live API: tests use scripted responses.
-- Machines expose their tool schemas via `get_tool_schemas()` (the shared `set_enabled(on: bool)` plus one tool per machine type, e.g. `set_mine_ticks(ticks: 5..100)` on the Miner and `set_cooling(on: bool)` on the Smelter; the full list is in `docs/PLAN.md`, "AI tool inventory"). `apply_tool_call(name, args)` is the only way LLM output touches a machine.
+- Machines expose their tool schemas via `get_tool_schemas()` (the shared `set_enabled(on: bool)` plus one tool per machine type, e.g. `set_mine_ticks(ticks: mining time of the resource..100)` on the Miner and `set_cooling(on: bool)` on the Smelter; the full list is in `docs/PLAN.md`, "AI tool inventory"). `apply_tool_call(name, args)` is the only way LLM output touches a machine.
 
 ### Chip triggers
 Each `ChipComponent` (one chip, one prompt) requests a decision on: fixed timer, state threshold (temp > X), events (input empty / output full / error), manual "Ask chip now" button. All go through one method, `request_decision(reason: String)`, which enforces the per-chip cooldown and the "one request in flight per chip" rule.

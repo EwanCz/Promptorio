@@ -46,7 +46,7 @@ The machine tooltip panel provides the actions that apply to an existing machine
 - Remove: immediately free the machine's grid cell and remove it from the scene. Discard its stock, held item, and attached chips; do not refund its purchase price. Do not offer removal for the fixed Collector. The freed cell can be rebuilt using normal placement checks and cost.
 
 Tooltip current-action content:
-- Miner: production rate (one ore per `mine_ticks`) and whether its output is blocked.
+- Miner: production rate (one unit of its resource per `mine_ticks`, which depends on the resource) and whether its output is blocked.
 - Smelter / Assembler: recipe inputs and output, stock, idle/working/output-blocked state, and remaining craft time while working.
 - Smelter additionally shows temperature and whether cooling is enabled.
 - Conveyor: facing direction and whether it holds an item (and the item type when occupied).
@@ -62,7 +62,7 @@ Show machine state independently from current action: normal, down, or overheati
 - Page, popup, and tooltip controls consume their mouse input so clicks do not also place or select machines in the world.
 
 ### Resources page
-The Resources button of the Bar opens a popup at the center of the screen (it does not pause the game). It lists every resource of the catalog (`data/items.tres`) in a scrollable table: name, the machine that builds it, what it needs (`Mined` for a raw resource, else e.g. `1 Wood + 1 Silver`), the build time in ticks and the price the Collector pays. Close hides it. The table is read from `ItemCatalog` when the popup is created, so a new resource appears without touching the UI. Example chains: wood + silver make a spear (Assembler), a spear + power make a gun, power comes from 2 coal in a Smelter.
+The Resources button of the Bar opens a popup at the center of the screen (it does not pause the game). It lists every resource of the catalog (`data/items.tres`) in a scrollable table: name, the machine that builds it, what it needs (`Mined` for a raw resource, else e.g. `1 Silver Bar + 2 Redstone`), the mining or build time in ticks and the price the Collector pays. Close hides it. The table is read from `ItemCatalog` when the popup is created, so a new resource appears without touching the UI. Example chains: 2 coal make power in a Smelter, a silver bar (smelted silver) + 2 redstone make a circuit in an Assembler, and a steel + a circuit + power make a gun.
 
 ### Settings dialog
 Open Settings from the Bar. Offer `mock`, `anthropic`, and `openai` providers. For providers that use credentials, show that provider's API key field and model picker; mask the key while editing. The `mock` provider needs neither. Save writes through `Settings.save_settings()` and closes the dialog; Close dismisses without saving pending edits. If the provider's key comes from `.env` (`Settings.get_key_source()`), the key field stays empty and its placeholder says so; saving never copies the `.env` key to disk, and saving an empty field falls back to it. Never print or log the key.

@@ -99,7 +99,7 @@ func test_craft_machine_stores_any_resource_and_caps_each() -> void:
 	for i: int in CraftMachine.MAX_STOCK:
 		check(smelter.receive("ore"), "ore %d accepted" % i)
 	check(not smelter.receive("ore"), "stock is capped")
-	check(smelter.receive("wood"), "another resource has its own cap")
+	check(smelter.receive("redstone"), "another resource has its own cap")
 
 
 func test_assembler_needs_all_inputs() -> void:

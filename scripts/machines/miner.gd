@@ -1,19 +1,29 @@
 class_name Miner
 extends Machine
 ## Mines one unit of its resource every mine_ticks and pushes it forward. Stops while its output is blocked.
-## It mines any resource of the catalog built by "miner" (ore by default): set_mined_item picks it.
+## It mines any resource of the catalog built by "miner" (ore by default): set_mined_item picks it. Each
+## resource takes its own time to mine (ItemData.ticks): mine_ticks starts there and a chip can only raise it.
 
-const MIN_MINE_TICKS: int = 5
 const MAX_MINE_TICKS: int = 100
 
-@export var mine_ticks: int = 20
-## Id of the resource being mined. Changing it only affects the next unit: one already held is pushed on.
-@export var item: String = "ore"
+## Ticks per unit of the current resource: never below get_min_mine_ticks(), reset to it by set_mined_item.
+var mine_ticks: int = 0
+## Id of the resource being mined. Change it through set_mined_item, which checks the miner may mine it.
+var item: String = "ore"
 
 var _progress: int = 0
 var _held: String = ""
 ## True only after a delivery attempt failed; cleared when it succeeds or the contents are cleared.
 var _blocked: bool = false
+
+
+func _init() -> void:
+	mine_ticks = get_min_mine_ticks()
+
+
+## The mining time of the current resource: the fastest this miner can go on it.
+func get_min_mine_ticks() -> int:
+	return maxi(1, ItemCatalog.shared().ticks_of(item))
 
 
 func get_state() -> Dictionary:
@@ -23,27 +33,36 @@ func get_state() -> Dictionary:
 func _own_tool_schemas() -> Array:
 	return [{
 		"name": "set_mine_ticks",
-		"description": "Set how many ticks the miner needs for one unit. Lower is faster.",
+		"description": "Set how many ticks the miner needs for one unit. Lower is faster, but not below %d, the time %s takes to mine." % [get_min_mine_ticks(), item],
 		"input_schema": {"type": "object", "properties": {
-			"ticks": {"type": "integer", "minimum": MIN_MINE_TICKS, "maximum": MAX_MINE_TICKS},
+			"ticks": {"type": "integer", "minimum": get_min_mine_ticks(), "maximum": MAX_MINE_TICKS},
 		}},
 	}, {
 		"name": "set_mined_item",
-		"description": "Choose the resource the miner mines from now on.",
-		"input_schema": {"type": "object", "properties": {
-			"item": {"type": "string", "enum": ItemCatalog.shared().get_built_by_ids("miner")},
-		}},
+		"description": "Choose the resource the miner mines from now on. It can mine: %s. Any other resource is refused." % ", ".join(ItemCatalog.shared().get_built_by_ids(machine_type)),
+		"input_schema": {"type": "object", "properties": {"item": {"type": "string"}}},
 	}]
 
 
-func _apply(tool_name: String, args: Dictionary) -> void:
+func _apply(tool_name: String, args: Dictionary) -> bool:
 	if tool_name == "set_mine_ticks":
 		mine_ticks = args["ticks"]
-		return
+		return true
 	if tool_name == "set_mined_item":
-		item = args["item"]
-		return
-	super._apply(tool_name, args)
+		return set_mined_item(args["item"])
+	return super._apply(tool_name, args)
+
+
+## Switches to a resource that a machine of this type builds. False, and nothing changes, if the catalog
+## says another machine builds it or it does not exist. The pace goes back to the new resource's own time and
+## a unit already held is pushed on as it was.
+func set_mined_item(new_item: String) -> bool:
+	var data: ItemData = ItemCatalog.shared().get_item(new_item)
+	if data == null or not data.is_built_by(machine_type):
+		return false
+	item = new_item
+	mine_ticks = get_min_mine_ticks()
+	return true
 
 
 func get_events() -> Array[String]:

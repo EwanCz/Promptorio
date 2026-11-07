@@ -41,8 +41,8 @@ func _own_tool_schemas() -> Array:
 	}]
 
 
-func _apply(tool_name: String, args: Dictionary) -> void:
+func _apply(tool_name: String, args: Dictionary) -> bool:
 	if tool_name == "set_accepting":
 		accepting = args["on"]
-		return
-	super._apply(tool_name, args)
+		return true
+	return super._apply(tool_name, args)

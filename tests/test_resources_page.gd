@@ -47,6 +47,7 @@ func test_lists_every_resource_with_its_build() -> void:
 		check_eq(row[0], item.display_name, "%s: name" % item.id)
 		check_eq(row[1], item.machine.capitalize(), "%s: machine" % item.id)
 		check_eq(row[2], page.needs_text(item), "%s: needs" % item.id)
+		check_eq(row[3], str(item.ticks), "%s: ticks (mined ones too)" % item.id)
 		check_eq(row[4], str(item.price), "%s: price" % item.id)
 
 
@@ -54,7 +55,7 @@ func test_needs_text() -> void:
 	var page: ResourcesPage = _page()
 	var catalog: ItemCatalog = ItemCatalog.shared()
 	check_eq(page.needs_text(catalog.get_item("ore")), "Mined", "a mined resource")
-	check_eq(page.needs_text(catalog.get_item("spear")), "1 Wood + 1 Silver", "two inputs")
+	check_eq(page.needs_text(catalog.get_item("circuit")), "1 Silver Bar + 2 Redstone", "two inputs, a name of two words")
 	check_eq(page.needs_text(catalog.get_item("part")), "2 Ingot", "a count above one")
 
 

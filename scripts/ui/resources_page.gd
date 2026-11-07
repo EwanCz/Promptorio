@@ -1,7 +1,7 @@
 class_name ResourcesPage
 extends PanelContainer
 ## Popup listing every resource of the catalog: the machine that builds it, what it needs, how long
-## it takes and what the Collector pays for it.
+## it takes to mine or build and what the Collector pays for it.
 
 const HEADERS: PackedStringArray = ["Resource", "Built by", "Needs", "Ticks", "Price"]
 
@@ -18,7 +18,7 @@ func _ready() -> void:
 		_add_cell(item.display_name)
 		_add_cell(item.machine.capitalize())
 		_add_cell(needs_text(item))
-		_add_cell("-" if item.is_mined() else str(item.ticks))
+		_add_cell(str(item.ticks))
 		_add_cell(str(item.price))
 
 
@@ -30,7 +30,7 @@ func close() -> void:
 	visible = false
 
 
-## "Mined" for a raw resource, else the inputs with their counts, e.g. "1 Wood + 1 Silver".
+## "Mined" for a raw resource, else the inputs with their counts, e.g. "1 Silver Bar + 2 Redstone".
 func needs_text(item: ItemData) -> String:
 	if item.inputs.is_empty():
 		return "Mined"

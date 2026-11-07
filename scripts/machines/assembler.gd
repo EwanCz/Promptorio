@@ -17,8 +17,8 @@ func _own_tool_schemas() -> Array:
 	}] + super._own_tool_schemas()
 
 
-func _apply(tool_name: String, args: Dictionary) -> void:
+func _apply(tool_name: String, args: Dictionary) -> bool:
 	if tool_name == "set_stock_limit":
 		stock_limit = args["limit"]
-		return
-	super._apply(tool_name, args)
+		return true
+	return super._apply(tool_name, args)

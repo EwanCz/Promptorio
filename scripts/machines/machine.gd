@@ -152,7 +152,9 @@ func apply_tool_call(tool_name: String, args: Dictionary) -> bool:
 			log_chip("ignored %s: bad value for '%s'" % [tool_name, key])
 			return false
 		clean[key] = value
-	_apply(tool_name, clean)
+	if not _apply(tool_name, clean):
+		log_chip("ignored %s(%s): the machine refused it" % [tool_name, JSON.stringify(clean)])
+		return false
 	log_chip("%s(%s)" % [tool_name, JSON.stringify(clean)])
 	tool_applied.emit(tool_name, clean)
 	return true
@@ -228,9 +230,12 @@ func _own_tool_schemas() -> Array:
 	return []
 
 
-func _apply(tool_name: String, args: Dictionary) -> void:
+## Applies a validated tool call. Returns false when the machine refuses it (nothing changed).
+func _apply(tool_name: String, args: Dictionary) -> bool:
 	if tool_name == "set_enabled":
 		enabled = args["on"]
+		return true
+	return false
 
 
 func _find_schema(tool_name: String) -> Dictionary:
@@ -240,7 +245,7 @@ func _find_schema(tool_name: String) -> Dictionary:
 	return {}
 
 
-## Returns the clamped value, or null if the type is wrong (or a string is not one of the schema's "enum").
+## Returns the clamped value, or null if the type is wrong (or a string is not one of the schema's "enum" list, when it has one).
 func _sanitize(prop: Dictionary, value: Variant) -> Variant:
 	match prop.get("type", ""):
 		"boolean":
