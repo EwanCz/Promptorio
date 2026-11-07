@@ -14,8 +14,6 @@ jobs:
   push_to_mirror:
     name: Push to Target Main Repository
     if: >-
-      github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.event == 'push' &&
       github.event.repository.full_name == github.repository
     runs-on: ubuntu-latest
     steps:
@@ -30,3 +28,4 @@ jobs:
             git@github.com:${{ env.TARGET_REPO_NAME }}.git
           ssh_private_key:
             ${{ secrets.GIT_SSH_PRIVATE_KEY }}
+
