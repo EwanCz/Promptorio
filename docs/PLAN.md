@@ -28,7 +28,7 @@ Architecture and async HTTP rules live in `CLAUDE.md`.
 
 ### Machine / chip API
 - `Machine` (`scripts/machines/machine.gd`): `get_tool_schemas()`, `get_state() -> Dictionary` (compact: `type`, `enabled`, `status`, plus subclass fields), `apply_tool_call(name, args) -> bool` (whitelists the name, requires every schema arg, type-checks and clamps, then calls the `_apply()` override), `log_chip(message)` (emits `chip_log_added`). Base tool: `set_enabled(on: bool)`. `status` is `Machine.Status` (`NORMAL`, `DOWN`, `OVERHEATING`).
-- `ChipComponent` (one child node per chip; a machine can have several): target API is one prompt per chip, `set_prompt(name, text, timeout)`, `request_decision(reason) -> bool`, `pending`, signal `decision_applied(reason, applied)`. Timers count `tick_fired` ticks. Cooldown comes from `Settings.chip_cooldown`. Threshold and event triggers are not wired yet: machine subclasses call `request_decision("...")`.
+- `ChipComponent` (one child node per chip; a machine can have several): one prompt per chip: `set_prompt(name, text, timeout)`, `request_decision(reason) -> bool`, `pending`, signal `decision_applied(reason, applied)`. Timers count `tick_fired` ticks. Cooldown comes from `Settings.chip_cooldown`. Threshold and event triggers are not wired yet: machine subclasses call `request_decision("...")`.
 - Scenes: `scenes/main.tscn` is the project main scene; `scenes/machines/machine.tscn` is the base machine.
 
 ## Phase 1 — Parallel tracks (h4–20)

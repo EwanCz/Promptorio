@@ -18,7 +18,7 @@ func before_each() -> void:
 	_chip = ChipComponent.new()
 	_machine.add_child(_chip)
 	tree.root.add_child(_machine)
-	_chip.add_prompt("production", "Keep running", 60.0)
+	_chip.set_prompt("production", "Keep running", 60.0)
 	_chip.decision_applied.connect(_on_applied)
 
 
@@ -56,12 +56,12 @@ func test_cooldown_blocks_request() -> void:
 
 
 func test_no_prompt_no_request() -> void:
-	_chip.remove_prompt("production")
+	_chip.set_prompt("", "", 10.0)
 	check(not _chip.request_decision("manual"), "nothing to ask without a prompt")
 
 
 func test_prompt_timeout_fires_request() -> void:
-	_chip.add_prompt("fast", "Be quick", 1.0)
+	_chip.set_prompt("fast", "Be quick", 1.0)
 	for i: int in _tick_rate():
 		autoload("EventBus").tick_fired.emit(i)
 	check(_chip.pending, "timer triggered a request")
@@ -90,7 +90,7 @@ func test_machine_freed_while_pending_is_safe() -> void:
 
 
 func test_timer_fires_at_exact_timeout() -> void:
-	_chip.add_prompt("fast", "Be quick", 1.0)
+	_chip.set_prompt("fast", "Be quick", 1.0)
 	for i: int in _tick_rate() - 1:
 		autoload("EventBus").tick_fired.emit(i)
 	check(not _chip.pending, "not fired one tick early")
@@ -99,25 +99,27 @@ func test_timer_fires_at_exact_timeout() -> void:
 	await wait_until(func() -> bool: return not _chip.pending)
 
 
-func test_overdue_prompts_are_served_in_order() -> void:
-	var event_bus: Node = autoload("EventBus")
-	event_bus.tick_fired.disconnect(_chip._on_tick)
-	_chip.remove_prompt("production")
-	_chip.add_prompt("first", "First prompt", 1.0)
-	_chip.add_prompt("second", "Second prompt", 1.0)
-	autoload("Settings").chip_cooldown = 60.0
+func test_chips_on_one_machine_are_independent() -> void:
+	var second: ChipComponent = ChipComponent.new()
+	_machine.add_child(second)
+	second.set_prompt("maintenance", "Keep it cool", 60.0)
+	check(_chip.request_decision("manual"), "first chip sends")
+	check(second.request_decision("manual"), "second chip sends while first is pending")
+	check(_chip.pending and second.pending, "both in flight")
+	await wait_until(func() -> bool: return not _chip.pending and not second.pending)
+	check(not _chip.pending and not second.pending, "both finished")
+
+
+func test_chip_timers_do_not_share_progress() -> void:
+	var second: ChipComponent = ChipComponent.new()
+	_machine.add_child(second)
+	second.set_prompt("maintenance", "Keep it cool", 60.0)
+	_chip.set_prompt("fast", "Be quick", 1.0)
 	for i: int in _tick_rate():
-		_chip._on_tick(i)
-	check(_chip.pending, "first timer sent a request")
+		autoload("EventBus").tick_fired.emit(i)
+	check(_chip.pending, "short-timeout chip fired")
+	check(not second.pending, "long-timeout chip did not fire")
 	await wait_until(func() -> bool: return not _chip.pending)
-	for i: int in _tick_rate():
-		_chip._on_tick(i)
-	autoload("Settings").chip_cooldown = 0.0
-	_chip._on_tick(0)
-	check(_chip.pending, "an overdue timer sent a request")
-	check_eq(_chip._elapsed["second"], 0, "longest overdue prompt was served")
-	await wait_until(func() -> bool: return not _chip.pending)
-	event_bus.tick_fired.connect(_chip._on_tick)
 
 
 func _tick_rate() -> int:
