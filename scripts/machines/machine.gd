@@ -188,14 +188,18 @@ func _update_sprite() -> void:
 		_sprite.position = Vector2(0.0, span.y) if facing == Vector2i.RIGHT else Vector2(span.x, 0.0)
 
 
+## Text drawn over the machine. Empty by default: the machine's name is not shown there.
 func _status_text() -> String:
-	return machine_type
+	return ""
 
 
-## Hands an item to the machine in front. False if there is none or it refuses.
+## Hands an item to the machine in front. False if there is none or it refuses. Two machines facing
+## each other (a head-on pair) pass nothing to one another. The Collector has no facing, so it never counts.
 func _push(item: String) -> bool:
 	var target: Machine = GameState.get_machine_at(cell + facing) as Machine
-	return target != null and target.receive(item)
+	if target == null or (target.can_rotate() and target.facing == -facing):
+		return false
+	return target.receive(item)
 
 
 func _on_tick(_tick_number: int) -> void:

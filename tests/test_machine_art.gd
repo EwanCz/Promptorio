@@ -128,6 +128,21 @@ func test_conveyor_art_and_flips_per_direction() -> void:
 			check([sprite.texture, sprite.flip_h, sprite.flip_v] == expected[facing], "%s for %s" % [sprite.name, facing])
 
 
+func test_no_machine_shows_its_name_over_it() -> void:
+	for type: String in SCENES:
+		var machine: Machine = _spawn(type)
+		_tick(1)
+		var label: Label = machine.get_node("StatusLabel") as Label
+		check(not label.text.contains(machine.machine_type), "%s label does not show its name" % type)
+	var smelter: Smelter = _spawn("smelter") as Smelter
+	var label: Label = smelter.get_node("StatusLabel") as Label
+	_tick(2)
+	check_eq(label.text, "%d°" % roundi(smelter.temperature), "the smelter still shows its temperature")
+	smelter.status = Machine.Status.DOWN
+	_tick(3)
+	check_eq(label.text, "BOOM", "and BOOM once it exploded")
+
+
 func test_conveyor_label_shows_no_direction_arrow() -> void:
 	var conveyor: Conveyor = _spawn("conveyor") as Conveyor
 	var label: Label = conveyor.get_node("StatusLabel") as Label
