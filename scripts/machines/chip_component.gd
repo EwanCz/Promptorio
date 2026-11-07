@@ -6,7 +6,7 @@ extends Node
 
 signal decision_applied(reason: String, applied: int)
 
-var prompt_name: String = ""
+var chip_name: String = ""
 var prompt_text: String = ""
 var timeout: float = 10.0
 var pending: bool = false
@@ -28,8 +28,8 @@ func _exit_tree() -> void:
 	LLMManager.decision_failed.disconnect(_on_decision_failed)
 
 
-func set_prompt(new_name: String, text: String, new_timeout: float) -> void:
-	prompt_name = new_name
+func set_chip(new_name: String, text: String, new_timeout: float) -> void:
+	chip_name = new_name
 	prompt_text = text
 	timeout = maxf(new_timeout, 1.0)
 	_elapsed_ticks = 0
