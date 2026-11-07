@@ -1,5 +1,5 @@
 extends Node
-## The only code allowed to do HTTP. Queue, concurrency cap, timeouts, 429 backoff.
+## s. Queue, concurrency cap, timeouts, 429 backoff.
 ## Callers use request_decision() and listen to the two signals. requester_id is the
 ## caller's instance id: re-validate with is_instance_valid(instance_from_id(id)) on receipt.
 

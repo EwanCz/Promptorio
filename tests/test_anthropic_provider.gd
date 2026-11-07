@@ -40,19 +40,16 @@ func test_chip_events_on_bus() -> void:
 	var bus: Node = autoload("EventBus")
 	bus.chip_registered.connect(_on_registered)
 	bus.chip_removed.connect(_on_removed)
-	var machine: Machine = Machine.new()
-	var chip: ChipComponent = ChipComponent.new()
-	machine.add_child(chip)
-	tree.root.add_child(machine)
-	machine.free()
+	var registry: Node = autoload("ChipRegistry")
+	registry.remove(registry.add("bus_chip", "p").id)
 	bus.chip_registered.disconnect(_on_registered)
 	bus.chip_removed.disconnect(_on_removed)
 	check_eq(_heard, ["reg", "rem"], "register then remove")
 
 
-func _on_registered(_chip: Node) -> void:
+func _on_registered(_chip: Resource) -> void:
 	_heard.append("reg")
 
 
-func _on_removed(_chip: Node) -> void:
+func _on_removed(_chip: Resource) -> void:
 	_heard.append("rem")
