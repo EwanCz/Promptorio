@@ -1,0 +1,64 @@
+extends SceneTree
+## Test runner. Prefer tests/run.sh. Direct use:
+##   godot --headless -s tests/run_tests.gd            run every tests/test_*.gd
+##   godot --headless -s tests/run_tests.gd -- llm     only files whose name contains "llm"
+## Exit code is 1 if any check fails or any test file has no checks.
+
+const TESTS_DIR: String = "res://tests"
+
+
+func _initialize() -> void:
+	await process_frame
+	var filter: String = ""
+	var user_args: PackedStringArray = OS.get_cmdline_user_args()
+	if not user_args.is_empty():
+		filter = user_args[0]
+
+	var total_checks: int = 0
+	var total_failures: int = 0
+	var files: PackedStringArray = _find_test_files(filter)
+	if files.is_empty():
+		print("No test files found (filter '%s')" % filter)
+		quit(1)
+		return
+
+	for file_name: String in files:
+		var script: GDScript = load("%s/%s" % [TESTS_DIR, file_name])
+		var test: RefCounted = script.new()
+		test.set("tree", self)
+		var methods: Array[String] = _find_test_methods(test)
+		for method: String in methods:
+			print("== %s :: %s" % [file_name, method])
+			var checks_before: int = test.get("checks")
+			test.before_each()
+			await test.call(method)
+			test.after_each()
+			if int(test.get("checks")) == checks_before:
+				print("  FAIL no checks ran (test aborted or empty)")
+				test.set("failures", int(test.get("failures")) + 1)
+		total_checks += int(test.get("checks"))
+		total_failures += int(test.get("failures"))
+
+	print("--------")
+	print("%d checks, %d failed" % [total_checks, total_failures])
+	print("ALL PASSED" if total_failures == 0 else "FAILED")
+	quit(1 if total_failures > 0 else 0)
+
+
+func _find_test_files(filter: String) -> PackedStringArray:
+	var found: PackedStringArray = PackedStringArray()
+	for file_name: String in DirAccess.get_files_at(TESTS_DIR):
+		if file_name.begins_with("test_") and file_name.ends_with(".gd") and file_name != "test_case.gd":
+			if filter == "" or file_name.contains(filter):
+				found.append(file_name)
+	found.sort()
+	return found
+
+
+func _find_test_methods(test: RefCounted) -> Array[String]:
+	var methods: Array[String] = []
+	for info: Dictionary in test.get_method_list():
+		var method_name: String = info["name"]
+		if method_name.begins_with("test_"):
+			methods.append(method_name)
+	return methods
