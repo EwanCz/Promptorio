@@ -34,6 +34,7 @@ func _pump() -> void:
 		if not _requester_alive(job["requester_id"]):
 			continue
 		_in_flight += 1
+		EventBus.llm_request_started.emit(job["requester_id"])
 		_run(job)
 
 
@@ -55,6 +56,7 @@ func _run(job: Dictionary) -> void:
 	if not _requester_alive(id):
 		_pump()
 		return
+	EventBus.llm_request_finished.emit(id, outcome["error"] == "")
 	if outcome["error"] == "":
 		var calls: Array[Dictionary] = []
 		calls.assign(outcome["calls"])
@@ -110,6 +112,8 @@ func _make_provider() -> LLMProvider:
 	match Settings.provider:
 		"mock":
 			return MockProvider.new()
+		"anthropic":
+			return AnthropicProvider.new()
 	return null
 
 
