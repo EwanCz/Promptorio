@@ -3,8 +3,10 @@
 [ext_resource type="TileSet" path="res://data/tilesets/factory_tileset.tres" id="1_tileset"]
 [ext_resource type="Script" path="res://scripts/world/grid_map_2d.gd" id="2_grid"]
 [ext_resource type="Script" path="res://scripts/world/camera.gd" id="3_camera"]
+[ext_resource type="Script" path="res://scripts/ui/main.gd" id="4_main"]
 
 [node name="Main" type="Node"]
+script = ExtResource("4_main")
 
 [node name="Game" type="HBoxContainer" parent="."]
 anchors_preset = 15
@@ -38,6 +40,7 @@ anchor_mode = 0
 script = ExtResource("3_camera")
 
 [node name="Bar" type="PanelContainer" parent="Game"]
+unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_stretch_ratio = 1.0
