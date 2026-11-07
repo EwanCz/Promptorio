@@ -7,7 +7,7 @@ signal decision_received(requester_id: int, tool_calls: Array[Dictionary])
 signal decision_failed(requester_id: int, reason: String)
 
 const MAX_RETRIES: int = 3
-var backoff_base: float = 1.0
+const BACKOFF_BASE: float = 1.0
 
 var _queue: Array[Dictionary] = []
 var _in_flight: int = 0
@@ -48,7 +48,7 @@ func _run(job: Dictionary) -> void:
 				break
 			if outcome["status"] != 429 or attempt == MAX_RETRIES:
 				break
-			await get_tree().create_timer(backoff_base * pow(2.0, attempt)).timeout
+			await _wait_backoff(BACKOFF_BASE * pow(2.0, attempt))
 			if not _requester_alive(job["requester_id"]):
 				break
 	_in_flight -= 1
@@ -89,6 +89,11 @@ func _execute(provider: LLMProvider, job: Dictionary) -> Dictionary:
 	if typeof(parsed) != TYPE_DICTIONARY:
 		return _outcome([], "invalid JSON response", status)
 	return _outcome(provider.parse_response(parsed), "", status)
+
+
+## Waits before a 429 retry. Tests override it to record the delay without waiting.
+func _wait_backoff(seconds: float) -> void:
+	await get_tree().create_timer(seconds).timeout
 
 
 ## The only place that touches HTTPRequest; tests override it with scripted responses.
