@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bf23ll54en33q"
-path="res://.godot/imported/IndustrialTileSetNoBackground.png-115a91442280d3ea5394022205d97a99.ctex"
+uid="uid://ckrv2mxqdyl8r"
+path="res://.godot/imported/IndustrialTileSetWithBackground.png-c6daa23af89336a236ebcd65a0997be5.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://IndustrialScifiTileset/IndustrialTileSetNoBackground.png"
-dest_files=["res://.godot/imported/IndustrialTileSetNoBackground.png-115a91442280d3ea5394022205d97a99.ctex"]
+source_file="res://assets/IndustrialScifiTileset/IndustrialTileSetWithBackground.png"
+dest_files=["res://.godot/imported/IndustrialTileSetWithBackground.png-c6daa23af89336a236ebcd65a0997be5.ctex"]
 
 [params]
 
