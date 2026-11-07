@@ -57,6 +57,11 @@ func get_key_source(provider_name: String) -> String:
 	return ".env" if _get_env_key(provider_name) != "" else ""
 
 
+## True when the selected provider calls a real API but no key is available (the mock needs none).
+func needs_api_key() -> bool:
+	return ENV_VARS.has(provider) and get_api_key(provider) == ""
+
+
 func get_model(provider_name: String) -> String:
 	return codex_model if provider_name == "codex" else model
 

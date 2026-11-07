@@ -60,5 +60,8 @@ Show machine state independently from current action: normal, down, or overheati
 ### Settings dialog
 Open Settings from the Bar. Offer `mock`, `anthropic`, and `codex` providers. For providers that use credentials, show that provider's API key field and model picker; mask the key while editing. The `mock` provider needs neither. Save writes through `Settings.save_settings()` and closes the dialog; Close dismisses without saving pending edits. If the provider's key comes from `.env` (`Settings.get_key_source()`), the key field stays empty and its placeholder says so; saving never copies the `.env` key to disk, and saving an empty field falls back to it. Never print or log the key.
 
+### API key warning
+At the top of the Bar (above the page tabs), an orange `KeyWarning` panel says "No active API key" whenever the selected provider calls a real API and has no key (`Settings.needs_api_key()`: neither a saved key nor a `.env` one). It is hidden for the `mock` provider, which needs no key, and updates on `EventBus.settings_changed`. It lives in the Bar, so it disappears with it when the Bar is toggled with `E`.
+
 ### Chip log
 Open the selected machine's log from its tooltip. Show its most recent 200 log messages in order, update while open when new entries arrive, and provide a close button. Closing the log returns to the factory view without changing the selected machine or pausing simulation.
