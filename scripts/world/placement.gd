@@ -13,12 +13,11 @@ const SCENES: Dictionary = {
 	"collector": preload("res://scenes/machines/collector.tscn"),
 	"conveyor": preload("res://scenes/machines/conveyor.tscn"),
 }
-## Input Map action -> machine type. Bindings live in project.godot (physical keys 1-5).
+## Input Map action -> machine type. Bindings live in project.godot (physical keys 1-3 and 5).
 const SELECT_ACTIONS: Dictionary = {
 	"select_miner": "miner",
 	"select_smelter": "smelter",
 	"select_assembler": "assembler",
-	"select_collector": "collector",
 	"select_conveyor": "conveyor",
 }
 
@@ -55,7 +54,20 @@ func handle_input(event: InputEvent) -> bool:
 
 
 func select(type: String) -> void:
-	selected = type if SCENES.has(type) else ""
+	if type == "":
+		selected = ""
+		selection_changed.emit(selected)
+		return
+	if not COSTS.has(type):
+		selected = ""
+		selection_changed.emit(selected)
+		return
+	if GameState.money < int(COSTS[type]):
+		selected = ""
+		selection_changed.emit(selected)
+		placement_rejected.emit("Not enough money (%d needed)" % int(COSTS[type]))
+		return
+	selected = type
 	selection_changed.emit(selected)
 
 

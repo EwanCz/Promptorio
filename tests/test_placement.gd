@@ -71,7 +71,6 @@ const BINDINGS: Dictionary = {
 	"select_miner": KEY_1,
 	"select_smelter": KEY_2,
 	"select_assembler": KEY_3,
-	"select_collector": KEY_4,
 	"select_conveyor": KEY_5,
 	"rotate_placement": KEY_R,
 	"cancel_placement": KEY_ESCAPE,
@@ -112,10 +111,42 @@ func test_actions_select_rotate_and_cancel() -> void:
 
 func test_each_select_action_picks_its_machine() -> void:
 	var expected: Dictionary = {"select_miner": "miner", "select_smelter": "smelter", "select_assembler": "assembler",
-		"select_collector": "collector", "select_conveyor": "conveyor"}
+		"select_conveyor": "conveyor"}
 	for action: String in expected:
 		_main._unhandled_input(_action(action))
 		check_eq(_placement.selected, expected[action], "%s -> %s" % [action, expected[action]])
+
+
+func test_unaffordable_machine_cannot_be_selected_by_shortcut() -> void:
+	var saved_money: int = _game.money
+	_game.money = Placement.COSTS["miner"] - 1
+	var rejections: Array[String] = []
+	var on_rejected: Callable = func(reason: String) -> void: rejections.append(reason)
+	_placement.placement_rejected.connect(on_rejected)
+	_main._unhandled_input(_action("select_miner"))
+	check_eq(_placement.selected, "", "unaffordable shortcut leaves placement cancelled")
+	check_eq(rejections.size(), 1, "shortcut reports insufficient funds")
+	check(rejections[0].contains("Not enough money"), "feedback explains why selection failed")
+	_placement.placement_rejected.disconnect(on_rejected)
+	_game.money = saved_money
+
+
+func test_player_cannot_select_or_build_a_collector() -> void:
+	check(not InputMap.has_action("select_collector"), "no collector action")
+	check(not _placement.handle_input(_key(KEY_4, KEY_4)), "key 4 is not a placement key")
+	_placement.select("miner")
+	_placement.select("collector")
+	check_eq(_placement.selected, "", "collector is not a selectable type")
+	_placement.selected = "collector"
+	var saved_money: int = _game.money
+	_game.money = 1000
+	_placement._on_cell_clicked(Vector2i(11, 11))
+	_game.money = saved_money
+	check(_game.get_machine_at(Vector2i(11, 11)) == null, "clicking with a collector selected builds nothing")
+	var collectors: int = 0
+	for machine: Machine in _placement.machines.get_children():
+		collectors += 1 if machine is Collector else 0
+	check_eq(collectors, 1, "only the center collector exists")
 
 
 func test_default_keys_trigger_the_actions() -> void:
