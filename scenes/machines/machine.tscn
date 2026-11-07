@@ -1,0 +1,20 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/machines/machine.gd" id="1_machine"]
+[ext_resource type="Script" path="res://scripts/machines/chip_component.gd" id="2_chip"]
+[ext_resource type="Texture2D" path="res://icon.svg" id="3_icon"]
+
+[node name="Machine" type="Node2D"]
+script = ExtResource("1_machine")
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+scale = Vector2(0.5, 0.5)
+texture = ExtResource("3_icon")
+centered = false
+
+[node name="ChipComponent" type="Node" parent="."]
+script = ExtResource("2_chip")
+
+[node name="StatusLabel" type="Label" parent="."]
+offset_right = 64.0
+offset_bottom = 23.0
