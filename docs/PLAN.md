@@ -4,7 +4,7 @@ Living document. Update it when scope or decisions change, and tick items off as
 
 ## Decisions
 - **LLM:** provider-agnostic adapter (`LLMProvider`). Anthropic first, OpenAI-compatible if time allows, plus a mock provider.
-- **API key:** player-entered in a settings UI, stored in `user://settings.cfg`. `.env` is dev-only and never exported or committed.
+- **API key:** player-entered in a settings UI, stored in `user://settings.cfg`. A dev can also put it in a git-ignored `.env` at the project root (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, see `.env.example`). The key saved from the dialog wins, `.env` is the fallback. `.env` is only read by the editor build (`OS.has_feature("editor")`), never saved to `settings.cfg`, never shown in the dialog, never exported or committed.
 - **Chip triggers:** fixed timer, state thresholds, events (input empty / output full / error), and a manual "Ask chip now" button.
 - **Chips and prompts:** a machine can have several chips. Each chip has exactly one prompt and its own timeout, cooldown and in-flight slot, so chips never compete with each other.
 - **Simulation clock:** physics-driven, with elapsed-time catch-up at 10 Hz; paused time is excluded.
@@ -23,15 +23,15 @@ Architecture and async HTTP rules live in `CLAUDE.md`.
 - Tool schema format (what `get_tool_schemas()` returns): `{name, description, input_schema: {type: "object", properties: {key: {type: "number"|"integer"|"boolean", minimum, maximum}}}}`.
 - `GameState`: `TICK_RATE`, `GRID_SIZE`, `CELL_SIZE`, `tick_count`, `money`, `can_place(cell)`, `register_machine(machine, cell) -> bool`, `unregister_machine(cell)`, `get_machine_at(cell)`, `get_machines()`, `cell_to_world(cell)`, `world_to_cell(pos)`, `add_money(amount)`.
 - `EventBus` signals: `tick_fired(tick)`, `machine_exploded(machine)`, `machine_registered/unregistered(machine, cell)`, `machine_selected(machine)`, `money_changed(amount)`, `chip_log_added(machine, message)`, `settings_changed`, `chip_registered/chip_removed(chip)` (emitted by `ChipRegistry`), `llm_request_started(requester_id)`, `llm_request_finished(requester_id, success)` (emitted by `LLMManager`). `Settings.provider` accepts `"mock"` or `"anthropic"`.
-- `Settings`: `api_key`, `provider` (`"mock"` for now), `model`, `max_concurrency`, `request_timeout`, `chip_cooldown`, `max_tokens`, `save_settings()`.
+- `Settings`: `api_key`, `provider` (`"mock"` for now), `model`, `max_concurrency`, `request_timeout`, `chip_cooldown`, `max_tokens`, `save_settings()`. Keys: `get_api_key(provider)` is the key the game sends (saved key, else `.env`), `get_saved_api_key(provider)` only the dialog one, `get_key_source(provider)` is `"settings"`, `".env"` or `""`. `load_env()` reads `env_path` (default `res://.env`) at startup in the editor.
 - Tests: `tests/run.sh [filter]` runs every `tests/test_*.gd` headless (~15 s, exit 1 on failure). How to write tests: see "Testing" in `CLAUDE.md`.
 - Headless gotcha: after adding a new `class_name` script, run `godot --headless --import` once to refresh the class cache, otherwise it fails to parse. `godot --headless --quit` still errors until a main scene exists.
 
 ### Machine / chip API
-- `Machine` (`scripts/machines/machine.gd`): `get_tool_schemas()`, `get_state() -> Dictionary` (compact: `type`, `enabled`, `status`, plus subclass fields), `apply_tool_call(name, args) -> bool` (whitelists the name, requires every schema arg, type-checks and clamps, then calls the `_apply()` override), `log_chip(message)` (emits `chip_log_added`). Base tool: `set_enabled(on: bool)`. `status` is `Machine.Status` (`NORMAL`, `DOWN`, `OVERHEATING`).
+- `Machine` (`scripts/machines/machine.gd`): `get_tool_schemas()` (the shared tools, then the type's own `_own_tool_schemas()`), `get_state() -> Dictionary` (compact: `type`, `enabled`, `status`, plus subclass fields), `apply_tool_call(name, args) -> bool` (whitelists the name, requires every schema arg, type-checks and clamps, then calls the `_apply()` override), `log_chip(message)` (emits `chip_log_added`). Shared tool: `set_enabled(on: bool)`. Every subclass overrides `_own_tool_schemas()` with tools unique to its type (names never clash with the shared ones) and handles them in `_apply`: Miner `set_mine_ticks(ticks 5..100)`, Smelter `set_cooling(on)`, Assembler `set_stock_limit(limit 1..10)`, Conveyor `set_direction(direction 0..3: right, down, left, up)`, Collector `set_accepting(on)`. `get_state()` shows the value each tool changes. `status` is `Machine.Status` (`NORMAL`, `DOWN`, `OVERHEATING`).
 - `ChipRessource` (`scripts/chip/chip_ressource.gd`, a `Resource`, pure data): `id`, `name`, `description`, `prompt`.
 - `ChipRegistry` (autoload, `scripts/chip/chip_registry.gd`): `add(name, prompt, desc = "") -> ChipRessource` (null if the name is empty or taken), `remove(id) -> bool`, `get_from_id(id)`, `get_all()`. Emits `EventBus.chip_registered/chip_removed`.
-- `ChipComponent` (`scripts/chip/chip_component.gd`, a `Node`, child of the `Machine`): holds a `ChipRessource` (`chip`), `timeout` (ticks between timer calls, `set_timeout()`), `pending`. `call_llm(reason) -> bool` asks the LLM (named `call_llm` because `Object.call` is native); cooldown (`Settings.chip_cooldown`) and one request in flight apply per chip. The answer goes through `Machine.apply_tool_call`; signal `decision_applied(reason, applied)`.
+- `ChipComponent` (`scripts/chip/chip_component.gd`, a `Node`, child of the `Machine`): holds a `ChipRessource` (`chip`), `timeout` (ticks between timer calls, `set_timeout()`), `pending`. `call_llm(reason) -> bool` asks the LLM (named `call_llm` because `Object.call` is native); cooldown (`Settings.chip_cooldown`) and one request in flight apply per chip. The answer goes through `Machine.apply_tool_call`; signal `decision_applied(reason, applied)`. Triggers: timer (`timeout` ticks), event (a name from `Machine.get_events()` that was not there on the previous tick, such as `error`, `output_full`, `input_empty`), threshold (`set_threshold(state_key, value)`: a numeric state value rising above `value`) and manual (`call_llm("manual")`, the tooltip's "Ask now"). Events and thresholds fire on the crossing only. A trigger dropped by the cooldown or an in-flight request is not queued, the timer is the fallback. The reason (`timer`, `event:<name>`, `threshold:<key>`, `manual`) is passed to `decision_applied` and logged.
 - `Machine`: `chips: Array[ChipComponent]`, `attach_chip(chip_id, timeout_ticks) -> ChipComponent` (null if unknown or already attached), `detach_chip(id)`, `get_chip(id)`, signal `chip_decision_applied(chip_id, reason, applied)`.
 - Scenes: `scenes/main.tscn` is the project main scene; `scenes/machines/machine.tscn` is the base machine.
 
@@ -94,9 +94,10 @@ Design gaps:
 - [x] Build/machine action feedback: selected build type is visible, placement mode can be canceled with Escape, invalid placement and insufficient money are communicated, and machine tooltip actions do not click through to the world.
 
 ## Phase 2 — Integration (h20–32)
-- [ ] `ChipComponent` wired to `LLMManager`: timer, threshold, event and manual triggers, per-chip cooldown, one request in flight per chip. Done so far: timer trigger, cooldown, one in flight, answer applied through `apply_tool_call`. Missing: threshold, event and manual ("Ask chip now") triggers.
-- [x] Each machine exposes `get_tool_schemas()` and `apply_tool_call()` (validates and clamps all LLM args). Inventory under "AI tool inventory"; only `set_enabled` (all) and `set_cooling` (Smelter) exist.
-- [ ] Full loop on the mock provider, then on the real API
+- [x] `ChipComponent` wired to `LLMManager`: timer, threshold, event and manual triggers, per-chip cooldown, one request in flight per chip (`tests/test_chip_triggers.gd`). The tooltip has an "Ask now" button and an "Ask when <state value> > <limit>" picker per chip.
+- [x] Each machine exposes `get_tool_schemas()` and `apply_tool_call()` (validates and clamps all LLM args): the shared `set_enabled` plus one tool unique to its type (see "Machine / chip API"). Checked per type in `tests/test_machine_tools.gd` and on all five machine scenes in `tests/test_chip_integration.gd`.
+- [x] Full loop on the mock provider: Miner -> Conveyor -> Smelter (with a chip) -> Conveyor -> Collector, chip timer -> `LLMManager` -> tool call -> machine, items still sold (`tests/test_chip_integration.gd`).
+- [x] Full loop on the real API, system side: the key comes from the Settings dialog or `.env` (`Settings.get_api_key`, used by `AnthropicProvider` and `CodexProvider`). Without a key a request fails at once with `no API key (set one in Settings or .env)` and sends nothing. A non-200 reply is reported as `HTTP <status> (<error type>)` (the API's message is dropped, it may echo part of the key) and shows in the chip log as `chip request failed: ...`; the machine keeps its last settings. Tested offline end to end through the Anthropic wire format in `tests/test_real_api_loop.gd` (the `LLMManager` autoload runs the scripted test double for each test).
 
 ## Phase 3 — Game feel and demo (h32–42)
 - [ ] Demo scenario with a visible win and fail state (bad prompt -> smelter explodes, good prompt -> stable)
@@ -105,7 +106,7 @@ Design gaps:
 
 ## Phase 4 — Polish (h42–48)
 - [ ] Bug fixes and graceful API-failure handling
-- [ ] Build/export test, and check that no key is baked into the export
+- [ ] Build/export test, and check that no key is baked into the export (`.env` must not be in the export filter)
 - [ ] README and demo rehearsal
 
 ## Risks and mitigations

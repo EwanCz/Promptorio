@@ -1,6 +1,6 @@
 class_name CodexProvider
 extends LLMProvider
-## OpenAI Responses API (Codex models). Forces tool use; the API key comes only from Settings.
+## OpenAI Responses API (Codex models). Forces tool use; the API key comes only from Settings (or .env).
 
 const URL: String = "https://api.openai.com/v1/responses"
 
@@ -10,7 +10,7 @@ func build_request(system_prompt: String, state: Dictionary, tools: Array) -> Di
 		"url": URL,
 		"headers": [
 			"content-type: application/json",
-			"authorization: Bearer %s" % Settings.codex_api_key,
+			"authorization: Bearer %s" % Settings.get_api_key("codex"),
 		],
 		"body": {
 			"model": Settings.codex_model,

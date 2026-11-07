@@ -1,6 +1,7 @@
 class_name SettingsDialog
 extends PanelContainer
 ## Edits Settings: provider, then that provider's API key and model. Keys are never logged or printed.
+## A key from .env is not shown: the empty key field says it is in use, and saving never copies it to disk.
 
 const PROVIDERS: Array[String] = ["mock", "anthropic", "codex"]
 
@@ -34,7 +35,8 @@ func close() -> void:
 ## Shows the saved key and model of a provider. The mock provider has neither.
 func _load_provider(provider: String) -> void:
 	_credentials.visible = Settings.MODELS.has(provider)
-	_key_edit.text = Settings.get_api_key(provider)
+	_key_edit.text = Settings.get_saved_api_key(provider)
+	_key_edit.placeholder_text = "using the key from .env" if Settings.get_key_source(provider) == ".env" else "API key"
 	_model_picker.clear()
 	var models: Array = Settings.MODELS.get(provider, [])
 	for model_name: String in models:

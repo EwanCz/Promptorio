@@ -4,11 +4,14 @@ extends "res://scripts/llm/llm_manager.gd"
 
 var responses: Array[Dictionary] = []
 var sent: int = 0
+## Every request handed to _send(), in order.
+var requests: Array[Dictionary] = []
 var delays: Array[float] = []
 
 
 func _send(_request: Dictionary) -> Dictionary:
 	sent += 1
+	requests.append(_request)
 	return responses.pop_front() if responses.size() > 1 else responses[0]
 
 

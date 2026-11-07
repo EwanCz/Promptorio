@@ -3,6 +3,8 @@ extends Machine
 ## Produces one ore every mine_ticks and pushes it forward. Stops while its output is blocked.
 
 const ITEM: String = "ore"
+const MIN_MINE_TICKS: int = 5
+const MAX_MINE_TICKS: int = 100
 
 @export var mine_ticks: int = 20
 
@@ -11,7 +13,31 @@ var _held: String = ""
 
 
 func get_state() -> Dictionary:
-	return super.get_state().merged({"item": ITEM, "blocked": _held != ""})
+	return super.get_state().merged({"item": ITEM, "mine_ticks": mine_ticks, "blocked": _held != ""})
+
+
+func _own_tool_schemas() -> Array:
+	return [{
+		"name": "set_mine_ticks",
+		"description": "Set how many ticks the miner needs for one ore. Lower is faster.",
+		"input_schema": {"type": "object", "properties": {
+			"ticks": {"type": "integer", "minimum": MIN_MINE_TICKS, "maximum": MAX_MINE_TICKS},
+		}},
+	}]
+
+
+func _apply(tool_name: String, args: Dictionary) -> void:
+	if tool_name == "set_mine_ticks":
+		mine_ticks = args["ticks"]
+		return
+	super._apply(tool_name, args)
+
+
+func get_events() -> Array[String]:
+	var events: Array[String] = super.get_events()
+	if _held != "":
+		events.append("output_full")
+	return events
 
 
 func get_action_text() -> String:

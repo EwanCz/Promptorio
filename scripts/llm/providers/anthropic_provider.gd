@@ -1,6 +1,6 @@
 class_name AnthropicProvider
 extends LLMProvider
-## Anthropic Messages API. Forces tool use; the API key comes only from Settings.
+## Anthropic Messages API. Forces tool use; the API key comes only from Settings (or .env).
 
 const URL: String = "https://api.anthropic.com/v1/messages"
 const API_VERSION: String = "2023-06-01"
@@ -11,7 +11,7 @@ func build_request(system_prompt: String, state: Dictionary, tools: Array) -> Di
 		"url": URL,
 		"headers": [
 			"content-type: application/json",
-			"x-api-key: %s" % Settings.api_key,
+			"x-api-key: %s" % Settings.get_api_key("anthropic"),
 			"anthropic-version: %s" % API_VERSION,
 		],
 		"body": {

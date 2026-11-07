@@ -1,6 +1,6 @@
 class_name Machine
 extends Node2D
-## Base machine. Subclasses override get_tool_schemas(), get_state() and _apply().
+## Base machine. Subclasses override _own_tool_schemas(), get_state() and _apply().
 ## apply_tool_call() is the only way LLM output touches a machine.
 
 signal tool_applied(tool_name: String, args: Dictionary)
@@ -104,17 +104,22 @@ func receive(_item: String) -> bool:
 	return false
 
 
+## Every tool the LLM may call on this machine: the shared ones first, then the ones unique to its type.
 func get_tool_schemas() -> Array:
-	return [{
-		"name": "set_enabled",
-		"description": "Turn the machine on or off.",
-		"input_schema": {"type": "object", "properties": {"on": {"type": "boolean"}}},
-	}]
+	return _shared_tool_schemas() + _own_tool_schemas()
 
 
 ## Compact state sent to the LLM. Only fields the chip needs.
 func get_state() -> Dictionary:
 	return {"type": machine_type, "enabled": enabled, "status": Status.keys()[status].to_lower()}
+
+
+## Named conditions that can wake a chip (it is asked when one appears). Subclasses add theirs.
+func get_events() -> Array[String]:
+	var events: Array[String] = []
+	if status != Status.NORMAL:
+		events.append("error")
+	return events
 
 
 ## Validates a tool call against get_tool_schemas(), clamps args, then applies it.
@@ -174,6 +179,21 @@ func _on_tick(_tick_number: int) -> void:
 
 func _on_chip_decision_applied(reason: String, applied: int, chip_id: int) -> void:
 	chip_decision_applied.emit(chip_id, reason, applied)
+
+
+## Tools all machines share.
+func _shared_tool_schemas() -> Array:
+	return [{
+		"name": "set_enabled",
+		"description": "Turn the machine on or off.",
+		"input_schema": {"type": "object", "properties": {"on": {"type": "boolean"}}},
+	}]
+
+
+## Tools unique to this machine type. Every subclass overrides this with its own list,
+## and their names must not clash with the shared tools. Handle them in `_apply`.
+func _own_tool_schemas() -> Array:
+	return []
 
 
 func _apply(tool_name: String, args: Dictionary) -> void:

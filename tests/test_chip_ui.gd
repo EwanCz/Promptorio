@@ -102,9 +102,10 @@ func test_tooltip_toggle_and_chips() -> void:
 	check_eq(machine.chips.size(), 1, "add chip attaches the picked chip")
 	check_eq(tooltip.get_node("%ChipsList").get_child_count(), 1, "attached chip listed")
 	var row: Node = tooltip.get_node("%ChipsList").get_child(0)
-	(row.get_child(1) as SpinBox).value = 7
+	var main_row: Node = row.get_child(0)
+	(main_row.get_child(1) as SpinBox).value = 7
 	check_eq(machine.chips[0].timeout, 7, "timeout edited from the tooltip")
-	(row.get_child(2) as Button).pressed.emit()
+	(main_row.get_child(2) as Button).pressed.emit()
 	check_eq(machine.chips.size(), 0, "remove button detaches the chip")
 	var logged: Array = []
 	var on_log: Callable = func(m: Machine) -> void: logged.append(m)
@@ -167,3 +168,71 @@ func test_settings_dialog_saves_per_provider() -> void:
 		file.store_string(file_backup)
 	else:
 		DirAccess.remove_absolute(settings.PATH)
+
+
+func test_settings_dialog_uses_the_env_key_without_saving_it() -> void:
+	var settings: Node = autoload("Settings")
+	var backup: Array = [settings.api_key, settings.provider, settings.model, settings.env_path]
+	var had_file: bool = FileAccess.file_exists(settings.PATH)
+	var file_backup: String = FileAccess.get_file_as_string(settings.PATH) if had_file else ""
+	var env_file: FileAccess = FileAccess.open("user://test_dialog.env", FileAccess.WRITE)
+	env_file.store_line("ANTHROPIC_API_KEY=env-only")
+	env_file.close()
+	settings.env_path = "user://test_dialog.env"
+	settings.load_env()
+	settings.api_key = ""
+	var dialog: SettingsDialog = _spawn("res://scenes/ui/popups/settings_dialog.tscn")
+	var providers: OptionButton = dialog.get_node("%ProviderPicker")
+	var key_edit: LineEdit = dialog.get_node("%KeyEdit")
+	dialog.open()
+	providers.select(SettingsDialog.PROVIDERS.find("anthropic"))
+	providers.item_selected.emit(providers.selected)
+	check_eq(key_edit.text, "", "the .env key is not shown in the field")
+	check(key_edit.placeholder_text.contains(".env"), "the field says the .env key is in use")
+	(dialog.get_node("%SaveButton") as Button).pressed.emit()
+	check_eq(settings.api_key, "", "saving does not copy the .env key")
+	check_eq(settings.get_api_key("anthropic"), "env-only", "the .env key is still used")
+	DirAccess.remove_absolute("user://test_dialog.env")
+	settings.api_key = backup[0]
+	settings.provider = backup[1]
+	settings.model = backup[2]
+	settings.env_path = backup[3]
+	settings.load_env()
+	if had_file:
+		var file: FileAccess = FileAccess.open(settings.PATH, FileAccess.WRITE)
+		file.store_string(file_backup)
+	else:
+		DirAccess.remove_absolute(settings.PATH)
+
+
+func test_tooltip_ask_now_and_threshold() -> void:
+	var tooltip: MachineTooltip = _spawn("res://scenes/ui/popups/machine_tooltip.tscn")
+	var machine: Machine = _spawn("res://scenes/machines/smelter.tscn")
+	var chip: ChipRessource = _add("ui_ask", "prompt text")
+	machine.attach_chip(chip.id)
+	var settings: Node = autoload("Settings")
+	var saved: Array = [settings.provider, settings.chip_cooldown]
+	settings.provider = "mock"
+	settings.chip_cooldown = 0.0
+	autoload("EventBus").machine_selected.emit(machine)
+	var box: Node = tooltip.get_node("%ChipsList").get_child(0)
+	(box.get_child(0).get_child(3) as Button).pressed.emit()
+	check(machine.chips[0].pending, "Ask now sends a request")
+	var watch: Node = box.get_child(1)
+	var keys: OptionButton = watch.get_child(1) as OptionButton
+	var index: int = -1
+	for i: int in keys.item_count:
+		if keys.get_item_text(i) == "temperature":
+			index = i
+	check(index > 0, "numeric state values are offered")
+	keys.select(index)
+	keys.item_selected.emit(index)
+	(watch.get_child(2) as SpinBox).value = 90
+	check_eq(machine.chips[0].threshold_key, "temperature", "watched value set from the tooltip")
+	check_eq(machine.chips[0].threshold, 90.0, "limit set from the tooltip")
+	keys.select(0)
+	keys.item_selected.emit(0)
+	check_eq(machine.chips[0].threshold_key, "", "never turns the trigger off")
+	await wait_until(func() -> bool: return not machine.chips[0].pending)
+	settings.provider = saved[0]
+	settings.chip_cooldown = saved[1]
