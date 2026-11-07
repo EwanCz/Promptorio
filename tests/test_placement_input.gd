@@ -5,14 +5,11 @@ var _main: Node
 var _placement: Placement
 var _grid: GridMap2D
 var _game: Node
-var _saved_money: int = 0
 var _saved_size: Vector2i = Vector2i.ZERO
 
 
 func before_each() -> void:
 	_game = autoload("GameState")
-	_saved_money = _game.money
-	_game.money = 1000
 	# The headless root window is 64x64, which would drop mouse events outside it.
 	_saved_size = tree.root.size
 	tree.root.size = Vector2i(1152, 648)
@@ -24,7 +21,6 @@ func before_each() -> void:
 
 
 func after_each() -> void:
-	_game.money = _saved_money
 	_main.free()
 	tree.root.size = _saved_size
 

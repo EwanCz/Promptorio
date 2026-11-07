@@ -11,7 +11,7 @@ signal settings_requested
 
 func _ready() -> void:
 	for page: Node in _pages.get_children():
-		_tabs.add_tab(page.name.capitalize().trim_suffix(" Page"))
+		_tabs.add_tab(page.name.capitalize())
 	_tabs.tab_changed.connect(_show_page)
 	_settings_button.pressed.connect(settings_requested.emit)
 	_show_page(_tabs.current_tab)
