@@ -38,6 +38,10 @@ Architecture and async HTTP rules live in `CLAUDE.md`.
 | B (Sim) | Grid placement, fixed-rate tick, Miner/Smelter/Assembler/Collector logic, smelter temperature model, explosion fail state |
 | C (UI) | 80/20 split (Factory View + camera, Bar with Build / Chip Registry pages), Chip Page popup (pauses game), machine tooltip, settings dialog (key, provider, model), chip decision log. Spec in `docs/UI.md` |
 
+### Grid and camera (track B, done)
+- [x] `GridMap2D` (`scripts/world/grid_map_2d.gd`, `TileMapLayer` in `World`): ground and minesite tiles from `data/tilesets/factory_tileset.tres` (100 px atlas tiles, layer scaled to `CELL_SIZE` 64), hover highlight (green/red from `GameState.can_place`), signals `cell_hovered(cell)` / `cell_clicked(cell)`, `get_hovered_cell(world_pos)`, `is_minesite(cell)`. Placing machines is still done through `GameState.register_machine`; the minesite rule is not enforced yet.
+- [x] `FactoryCamera` (`scripts/world/camera.gd`): wheel zoom at cursor (0.4-2.0), middle-drag / arrow-key pan, clamped to the grid.
+
 ## Phase 2 — Integration (h20–32)
 - [ ] `ChipComponent` wired to `LLMManager`: timer, threshold, event and manual triggers, per-chip cooldown, one request in flight per chip
 - [ ] Each machine exposes `get_tool_schemas()` and `apply_tool_call()` (validates and clamps all LLM args)
