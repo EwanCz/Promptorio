@@ -4,9 +4,10 @@ extends Node
 const TICK_RATE: int = 10
 const GRID_SIZE: Vector2i = Vector2i(32, 20)
 const CELL_SIZE: int = 64
+const START_MONEY: int = 100
 
 var tick_count: int = 0
-var money: int = 0
+var money: int = START_MONEY
 
 var _machines: Dictionary = {}
 var _last_tick_time_usec: int = 0

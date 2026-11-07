@@ -20,6 +20,15 @@ func receive(item: String) -> bool:
 	return true
 
 
+func get_action_text() -> String:
+	return "Facing %s, %s" % [ARROWS.get(facing, "?"), "holds %s" % held if held != "" else "empty"]
+
+
+func clear_contents() -> void:
+	held = ""
+	_wait = 0
+
+
 func _tick() -> void:
 	if held == "":
 		return
