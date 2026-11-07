@@ -36,9 +36,14 @@ func _tap(physical: Key, label: Key) -> void:
 	await tree.process_frame
 
 
-## Moves the mouse over the cell (so the grid hovers it), then left-clicks.
+## Moves the mouse over the cell (so the grid hovers it), then left-clicks. The camera starts zoomed out
+## over the whole grid, so the cell is looked up through its transform.
 func _click_cell(cell: Vector2i) -> void:
-	var position: Vector2 = Vector2(cell * _game.CELL_SIZE) + Vector2(_game.CELL_SIZE, _game.CELL_SIZE) / 2.0
+	var camera: Camera2D = _main.get_node("Game/FactoryView/SubViewport/World/Camera2D")
+	# The window resize and the view layout take a few frames, then the camera fits the grid to the view.
+	await wait_until(func() -> bool: return camera.zoom.x > 0.1 and is_equal_approx(camera.get_canvas_transform().get_scale().x, camera.zoom.x), 5.0)
+	var center: Vector2 = Vector2(cell * _game.CELL_SIZE) + Vector2(_game.CELL_SIZE, _game.CELL_SIZE) / 2.0
+	var position: Vector2 = camera.get_canvas_transform() * center
 	var motion: InputEventMouseMotion = InputEventMouseMotion.new()
 	motion.position = position
 	motion.global_position = position

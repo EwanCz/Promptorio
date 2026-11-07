@@ -5,7 +5,7 @@ The UI will split the screen in 2.
 It display the factory as a up view on the left on the screen taking 80% on the screen.
 The factory will be a tile map with some of them being minesite. On those site can be place miner which will extract the ressource.
 In the center of the map is placed a collector it is where our ressource are sold.
-The camera can be zoomed in/out and move in x/y axis.
+The camera can be zoomed in/out and move in x/y axis. At startup it is zoomed out so the whole grid is visible (centered on an axis where the view is larger than the grid). While the player has not zoomed or panned, resizing the window keeps the whole grid in view. If the view is too small for the usual minimum zoom (0.4), the fit goes lower and that becomes the floor.
 
 ### Prototype machine placement
 Machines are selected from the Build page or with keyboard shortcuts, then placed with a left click on an empty grid cell. Both ways enter the same placement mode and follow the same rules and costs. The shortcuts are Input Map actions (defined in `project.godot`, rebindable in Project Settings), bound by default to physical keys so the number row works on any layout (AZERTY included): `select_miner` (`1`), `select_smelter` (`2`), `select_assembler` (`3`), `select_conveyor` (`5`), `rotate_placement` (`R`, rotates the facing clockwise) and `cancel_placement` (`Escape`, clears the selection). The Collector is placed at the map center when the scene starts and has no select action, so it cannot be chosen for placement. Miners can only be placed on minesites.
