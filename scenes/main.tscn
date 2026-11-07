@@ -1,5 +1,9 @@
 [gd_scene format=3]
 
+[ext_resource type="TileSet" path="res://data/tilesets/factory_tileset.tres" id="1_tileset"]
+[ext_resource type="Script" path="res://scripts/world/grid_map_2d.gd" id="2_grid"]
+[ext_resource type="Script" path="res://scripts/world/camera.gd" id="3_camera"]
+
 [node name="Main" type="Node"]
 
 [node name="Game" type="HBoxContainer" parent="."]
@@ -23,10 +27,15 @@ render_target_update_mode = 4
 
 [node name="World" type="Node2D" parent="Game/FactoryView/SubViewport"]
 
+[node name="GridMap2D" type="TileMapLayer" parent="Game/FactoryView/SubViewport/World"]
+tile_set = ExtResource("1_tileset")
+script = ExtResource("2_grid")
+
 [node name="Machines" type="Node2D" parent="Game/FactoryView/SubViewport/World"]
 
 [node name="Camera2D" type="Camera2D" parent="Game/FactoryView/SubViewport/World"]
 anchor_mode = 0
+script = ExtResource("3_camera")
 
 [node name="Bar" type="PanelContainer" parent="Game"]
 layout_mode = 2
