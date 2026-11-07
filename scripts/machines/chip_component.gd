@@ -1,16 +1,19 @@
 class_name ChipComponent
 extends Node
-## The machine's AI chip. Holds prompts (each with its own timeout), and asks LLMManager
-## for decisions through request_decision(), which enforces cooldown and one request in flight.
+## One AI chip: one prompt, one timeout. A machine can have several chips.
+## Asks LLMManager for decisions through request_decision(), which enforces cooldown
+## and one request in flight.
 
 signal decision_applied(reason: String, applied: int)
 
-var prompts: Array[Dictionary] = []
+var prompt_name: String = ""
+var prompt_text: String = ""
+var timeout: float = 10.0
 var pending: bool = false
 
 var _last_request_msec: int = -1000000
 var _pending_reason: String = ""
-var _elapsed: Dictionary = {}
+var _elapsed_ticks: int = 0
 
 
 func _ready() -> void:
@@ -25,58 +28,35 @@ func _exit_tree() -> void:
 	LLMManager.decision_failed.disconnect(_on_decision_failed)
 
 
-func add_prompt(prompt_name: String, text: String, timeout: float) -> void:
-	remove_prompt(prompt_name)
-	prompts.append({"name": prompt_name, "text": text, "timeout": maxf(timeout, 1.0)})
-	_elapsed[prompt_name] = 0
-
-
-func remove_prompt(prompt_name: String) -> void:
-	for i: int in range(prompts.size() - 1, -1, -1):
-		if prompts[i]["name"] == prompt_name:
-			prompts.remove_at(i)
-	_elapsed.erase(prompt_name)
+func set_prompt(new_name: String, text: String, new_timeout: float) -> void:
+	prompt_name = new_name
+	prompt_text = text
+	timeout = maxf(new_timeout, 1.0)
+	_elapsed_ticks = 0
 
 
 ## Returns true if a request was sent. Ignored (not queued) while pending or cooling down.
-func request_decision(reason: String, prompt_name: String = "") -> bool:
+func request_decision(reason: String) -> bool:
 	var machine: Machine = get_parent() as Machine
-	if machine == null or pending or prompts.is_empty():
+	if machine == null or pending or prompt_text == "":
 		return false
 	if Time.get_ticks_msec() - _last_request_msec < int(Settings.chip_cooldown * 1000.0):
-		return false
-	var prompt: Dictionary = _find_prompt(prompt_name)
-	if prompt.is_empty():
 		return false
 	pending = true
 	_pending_reason = reason
 	_last_request_msec = Time.get_ticks_msec()
+	_elapsed_ticks = 0
 	machine.log_chip("asking chip (%s)" % reason)
-	LLMManager.request_decision(get_instance_id(), prompt["text"], machine.get_state(), machine.get_tool_schemas())
+	LLMManager.request_decision(get_instance_id(), prompt_text, machine.get_state(), machine.get_tool_schemas())
 	return true
 
 
-func _find_prompt(prompt_name: String) -> Dictionary:
-	if prompt_name == "":
-		return prompts[0]
-	for prompt: Dictionary in prompts:
-		if prompt["name"] == prompt_name:
-			return prompt
-	return {}
-
-
 func _on_tick(_tick: int) -> void:
-	var most_overdue: int = -1
-	var selected: String = ""
-	for prompt: Dictionary in prompts:
-		var key: String = prompt["name"]
-		_elapsed[key] = _elapsed.get(key, 0) + 1
-		var overdue: int = _elapsed[key] - roundi(prompt["timeout"] * GameState.TICK_RATE)
-		if overdue > most_overdue:
-			most_overdue = overdue
-			selected = key
-	if most_overdue >= 0 and request_decision("timer", selected):
-		_elapsed[selected] = 0
+	if prompt_text == "":
+		return
+	_elapsed_ticks += 1
+	if _elapsed_ticks >= roundi(timeout * GameState.TICK_RATE):
+		request_decision("timer")
 
 
 func _on_decision_received(requester_id: int, tool_calls: Array[Dictionary]) -> void:
