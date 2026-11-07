@@ -6,7 +6,7 @@ Living document. Update it when scope or decisions change, and tick items off as
 - **LLM:** provider-agnostic adapter (`LLMProvider`). Anthropic first, OpenAI-compatible if time allows, plus a mock provider.
 - **API key:** player-entered in a settings UI, stored in `user://settings.cfg`. `.env` is dev-only and never exported or committed.
 - **Chip triggers:** fixed timer, state thresholds, events (input empty / output full / error), and a manual "Ask chip now" button.
-- **Competing chip timers:** serve the longest-overdue prompt first when the chip becomes available.
+- **Chips and prompts:** a machine can have several chips. Each chip has exactly one prompt and its own timeout, cooldown and in-flight slot, so chips never compete with each other.
 - **Simulation clock:** physics-driven, with elapsed-time catch-up at 10 Hz; paused time is excluded.
 - **Team and scope:** 2-3 devs, one tight loop (Miner -> Smelter -> Assembler) with a visible win/fail state. Conveyors are plain logic. AI on conveyors and logistics nodes is post-MVP.
 
@@ -28,7 +28,7 @@ Architecture and async HTTP rules live in `CLAUDE.md`.
 
 ### Machine / chip API
 - `Machine` (`scripts/machines/machine.gd`): `get_tool_schemas()`, `get_state() -> Dictionary` (compact: `type`, `enabled`, `status`, plus subclass fields), `apply_tool_call(name, args) -> bool` (whitelists the name, requires every schema arg, type-checks and clamps, then calls the `_apply()` override), `log_chip(message)` (emits `chip_log_added`). Base tool: `set_enabled(on: bool)`. `status` is `Machine.Status` (`NORMAL`, `DOWN`, `OVERHEATING`).
-- `ChipComponent` (child of the machine): `add_prompt(name, text, timeout)`, `remove_prompt(name)`, `request_decision(reason, prompt_name = "") -> bool`, `pending`, signal `decision_applied(reason, applied)`. Timers count `tick_fired` ticks. Cooldown comes from `Settings.chip_cooldown`. Threshold and event triggers are not wired yet: machine subclasses call `request_decision("...")`.
+- `ChipComponent` (one child node per chip; a machine can have several): target API is one prompt per chip, `set_prompt(name, text, timeout)`, `request_decision(reason) -> bool`, `pending`, signal `decision_applied(reason, applied)`. Timers count `tick_fired` ticks. Cooldown comes from `Settings.chip_cooldown`. Threshold and event triggers are not wired yet: machine subclasses call `request_decision("...")`.
 - Scenes: `scenes/main.tscn` is the project main scene; `scenes/machines/machine.tscn` is the base machine.
 
 ## Phase 1 — Parallel tracks (h4–20)

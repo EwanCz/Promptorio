@@ -14,8 +14,8 @@ Roadmap, phases, decisions and risks: see `docs/PLAN.md`. Read it before startin
   - The IA will be prompted the ressource to build then will by itself check in the stockage if can be built. If the ressource can be made. Consume them then start a assemble event on for the ressource be build.
   - Ressources are spawned from a miner on the map it will then be transfer via the conveyor to tranform them in smelter/assembler or directly to a collector to sell them.
 - AI-controllable loop in each machine.
-  - Can have multiple prompt per machine with a unique timeout. (ex: prompt for maintenance, prompt for production).
-  - Prompt come from a registry.
+  - A machine can have multiple AI chips. Each chip is its own brain: it has exactly one prompt and its own timeout (ex: a maintenance chip, a production chip).
+  - Each chip's prompt comes from a registry.
 - Prompt editor with option to create/update/remove prompt to a registry (Prompt Registry page + Prompt Page popup, see `docs/UI.md`).
 - UI information on click per machine (Machine tooltip, see `docs/UI.md`).
 
@@ -53,7 +53,7 @@ Main (Node)
 UI rules:
 - UI is `Control` nodes only, laid out with anchors and Containers (`HBox/VBox/Margin`), never hand-placed pixels. One shared `Theme` resource on the root.
 - Opening `PromptPage` pauses the game (`get_tree().paused = true`, popup `process_mode = PROCESS_MODE_ALWAYS`). Closing resumes it.
-- `MachineTooltip` shows: machine id, type, connected prompts with their timeout, "add prompt" (picks from the registry), "log" button, current action (miner: production rate; smelter/assembler: consumed resource and time remaining), state (normal/down/overheating).
+- `MachineTooltip` shows: machine id, type, connected chips with their prompt and timeout, "add chip" (picks a prompt from the registry), "log" button, current action (miner: production rate; smelter/assembler: consumed resource and time remaining), state (normal/down/overheating).
 - Prompts live in a registry (`PromptRegistry` `Resource`, saved as `.tres`). `Bar`, `PromptPage` and the tooltip read and write it; none of them talk to `LLMManager`.
 - UI reads machine state through `GameState` and `EventBus` signals (calls down, signals up). Mouse input on the Bar uses `mouse_filter` so clicks never reach the map beneath, and map clicks only count inside `FactoryView`.
 
@@ -61,7 +61,7 @@ Machine scene (`scenes/machines/machine.tscn`, base; Miner/Smelter/Assembler inh
 ```
 Machine (Node2D, machine.gd)
 ├─ Sprite2D
-├─ ChipComponent (Node, chip_component.gd)   # prompt, triggers, cooldown, pending flag
+├─ ChipComponent (Node, chip_component.gd)   # one per chip (a machine can have several): one prompt, timeout, triggers, cooldown, pending flag
 └─ Label / ProgressBar (status)
 ```
 
@@ -73,7 +73,7 @@ Machine (Node2D, machine.gd)
 - Machines expose their tool schemas via `get_tool_schemas()` (e.g. `set_speed(value: 0..1)`, `set_cooling(on: bool)`). `apply_tool_call(name, args)` is the only way LLM output touches a machine.
 
 ### Chip triggers
-`ChipComponent` requests a decision on: fixed timer, state threshold (temp > X), events (input empty / output full / error), manual "Ask chip now" button. All go through one method, `request_decision(reason: String)`, which enforces the per-chip cooldown and the "one request in flight per chip" rule.
+Each `ChipComponent` (one chip, one prompt) requests a decision on: fixed timer, state threshold (temp > X), events (input empty / output full / error), manual "Ask chip now" button. All go through one method, `request_decision(reason: String)`, which enforces the per-chip cooldown and the "one request in flight per chip" rule.
 
 ## Async HTTP rules (CRITICAL)
 1. Never block the main thread. No `OS.delay_*`, no polling loops with `HTTPClient.poll()` in `_process`, no synchronous waits.
