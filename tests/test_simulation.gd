@@ -221,32 +221,87 @@ func test_head_to_tail_still_flows_and_the_collector_never_blocks() -> void:
 	check(left_collector.sold >= 1, "yet the miner still delivers to it")
 
 
-func test_cooling_slows_the_rise_compared_with_cooling_off() -> void:
-	_put("collector", Vector2i(1, 0))
-	_put("collector", Vector2i(5, 0))
-	var plain: Machine = _put("smelter", Vector2i(1, 1), Vector2i.UP)
-	var cooled: Machine = _put("smelter", Vector2i(5, 1), Vector2i.UP)
+func _smelter_with_collector(cell: Vector2i) -> Array:
+	var collector: Machine = _put("collector", cell)
+	var smelter: Machine = _put("smelter", cell + Vector2i.DOWN, Vector2i.UP)
+	return [smelter, collector]
+
+
+func test_cooling_doubles_the_craft_duration() -> void:
+	var plain: Machine = _smelter_with_collector(Vector2i(1, 0))[0]
+	var cooled: Machine = _smelter_with_collector(Vector2i(5, 0))[0]
 	cooled.apply_tool_call("set_cooling", {"on": true})
-	for i: int in 100:
+	plain.receive("ore")
+	cooled.receive("ore")
+	_ticks(1)
+	check_eq(plain.progress, plain.recipe.ticks, "a craft takes the recipe's ticks")
+	check_eq(cooled.progress, plain.recipe.ticks * 2, "twice as long while cooling")
+
+
+func test_cooled_smelter_keeps_producing_at_reduced_throughput() -> void:
+	var plain_pair: Array = _smelter_with_collector(Vector2i(1, 0))
+	var cooled_pair: Array = _smelter_with_collector(Vector2i(5, 0))
+	var plain: Machine = plain_pair[0]
+	var cooled: Machine = cooled_pair[0]
+	cooled.apply_tool_call("set_cooling", {"on": true})
+	for i: int in 150:
 		plain.receive("ore")
 		cooled.receive("ore")
 		_ticks(1)
-	check(plain.temperature > Smelter.AMBIENT + 20.0, "the uncooled smelter heats up")
-	check(cooled.temperature > Smelter.AMBIENT + 5.0, "cooling does not stop the heating")
-	check(cooled.temperature < plain.temperature, "cooling on rises slower than cooling off")
+	var plain_sold: int = plain_pair[1].sold
+	var cooled_sold: int = cooled_pair[1].sold
+	check(cooled_sold >= 2, "it keeps producing")
+	check(cooled_sold < plain_sold, "but slower than an uncooled smelter")
+	check(absi(plain_sold - 2 * cooled_sold) <= 2, "about half the throughput (%d vs %d)" % [cooled_sold, plain_sold])
+	check_eq(plain.status, Machine.Status.NORMAL, "still within limits after 15 s")
 
 
-func test_continuous_cooling_during_production_still_explodes() -> void:
-	_put("collector", Vector2i(1, 0))
-	var smelter: Machine = _put("smelter", Vector2i(1, 1), Vector2i.UP)
+func test_temperature_falls_during_cooled_production() -> void:
+	var smelter: Machine = _smelter_with_collector(Vector2i(1, 0))[0]
+	smelter.temperature = 80.0
 	smelter.apply_tool_call("set_cooling", {"on": true})
-	var saw_overheat: Array[bool] = [false]
-	_feed(smelter, 1000, func(m: Machine) -> bool:
-		saw_overheat[0] = saw_overheat[0] or m.status == Machine.Status.OVERHEATING
-		return m.status == Machine.Status.DOWN)
-	check(saw_overheat[0], "passes through OVERHEATING first")
-	check_eq(smelter.status, Machine.Status.DOWN, "cooling alone does not keep it stable")
-	check_eq(_exploded, [smelter], "machine_exploded emitted once")
+	var working_ticks: int = 0
+	var last: float = smelter.temperature
+	var never_rose: bool = true
+	for i: int in 100:
+		smelter.receive("ore")
+		working_ticks += 1 if smelter.is_working() else 0
+		_ticks(1)
+		never_rose = never_rose and smelter.temperature <= last
+		last = smelter.temperature
+	check(working_ticks > 50, "it was producing meanwhile")
+	check(never_rose, "the temperature never rises while cooling")
+	check(smelter.temperature < 80.0 - 15.0, "and ends well below where it started")
+
+
+func test_cooled_production_never_explodes() -> void:
+	var smelter: Machine = _smelter_with_collector(Vector2i(1, 0))[0]
+	smelter.apply_tool_call("set_cooling", {"on": true})
+	_feed(smelter, 1500)
+	check_eq(smelter.status, Machine.Status.NORMAL, "stable with cooling on")
+	check(_exploded.is_empty(), "nothing exploded")
+
+
+func test_emergency_pause_recovers_and_production_resumes() -> void:
+	var pair: Array = _smelter_with_collector(Vector2i(1, 0))
+	var smelter: Machine = pair[0]
+	var collector: Machine = pair[1]
+	_feed(smelter, 600, func(m: Machine) -> bool: return m.status == Machine.Status.OVERHEATING)
+	check_eq(smelter.status, Machine.Status.OVERHEATING, "an uncooled smelter overheats")
+	smelter.apply_tool_call("set_enabled", {"on": false})
+	smelter.apply_tool_call("set_cooling", {"on": true})
+	var ticks: int = 0
+	while smelter.temperature > Smelter.SAFE_AT and ticks < 300:
+		_ticks(1)
+		ticks += 1
+	check_eq(smelter.status, Machine.Status.NORMAL, "back to normal at %d degrees or less" % int(Smelter.SAFE_AT))
+	check(smelter.temperature <= Smelter.SAFE_AT, "cooled down to the resume point")
+	smelter.apply_tool_call("set_enabled", {"on": true})
+	var sold_before: int = collector.sold
+	_feed(smelter, 400)
+	check(collector.sold > sold_before, "production resumed")
+	check_eq(smelter.status, Machine.Status.NORMAL, "and stays within limits while cooling")
+	check(_exploded.is_empty(), "never exploded")
 
 
 func test_cooling_while_idle_speeds_recovery() -> void:

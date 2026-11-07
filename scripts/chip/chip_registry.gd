@@ -6,6 +6,11 @@ extends Node
 
 const DEFAULT_PATH: String = "res://data/chip_registry.tres"
 const USER_PATH: String = "user://chip_registry.tres"
+## md5 of the starter prompts shipped before, by chip id. A saved chip whose prompt is still exactly
+## one of them is replaced by the current shipped prompt; an edited or custom prompt never is.
+const OUTDATED_STARTER_PROMPTS: Dictionary = {
+	2: ["828136d52cd886c88b44cabea1c540df", "22b71a85b041e25cac8b437a37ac04b1"],
+}
 
 ## Where edits are saved. Tests point it elsewhere; an empty path disables saving.
 var user_path: String = USER_PATH
@@ -27,8 +32,10 @@ func load_registry() -> void:
 	_next_id = 1
 	save_error = ""
 	var library: ChipLibrary = null
+	var from_user: bool = false
 	if FileAccess.file_exists(user_path):
 		library = _read(user_path)
+		from_user = library != null
 		if library == null:
 			save_error = "Saved chips could not be read; the default chips were loaded."
 	if library == null:
@@ -40,6 +47,8 @@ func load_registry() -> void:
 			_chips[chip.id] = chip
 			_next_id = maxi(_next_id, chip.id + 1)
 	_next_id = maxi(_next_id, library.next_id)
+	if from_user and _upgrade_starter_prompts():
+		_save()
 
 
 ## Creates a chip with a fresh id and returns it. Returns null if the name is empty or already used.
@@ -99,6 +108,21 @@ func get_all() -> Array[ChipRessource]:
 	for chip: ChipRessource in _chips.values():
 		result.append(chip)
 	return result
+
+
+## Swaps in the shipped prompt of every starter chip still on an outdated, unedited prompt. True if any changed.
+func _upgrade_starter_prompts() -> bool:
+	var defaults: ChipLibrary = _read(DEFAULT_PATH)
+	if defaults == null:
+		return false
+	var changed: bool = false
+	for shipped: ChipRessource in defaults.chips:
+		var saved: ChipRessource = _chips.get(shipped.id)
+		var outdated: Array = OUTDATED_STARTER_PROMPTS.get(shipped.id, [])
+		if saved != null and saved.name == shipped.name and saved.prompt.md5_text() in outdated:
+			saved.prompt = shipped.prompt
+			changed = true
+	return changed
 
 
 func _read(path: String) -> ChipLibrary:
