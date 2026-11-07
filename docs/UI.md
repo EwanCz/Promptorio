@@ -58,7 +58,7 @@ Show machine state independently from current action: normal, down, or overheati
 - Page, popup, and tooltip controls consume their mouse input so clicks do not also place or select machines in the world.
 
 ### Settings dialog
-Open Settings from the Bar. Offer `mock`, `anthropic`, and `codex` providers. For providers that use credentials, show that provider's API key field and model picker; mask the key while editing. The `mock` provider needs neither. Save writes through `Settings.save_settings()` and closes the dialog; Close dismisses without saving pending edits. Never print or log the key.
+Open Settings from the Bar. Offer `mock`, `anthropic`, and `codex` providers. For providers that use credentials, show that provider's API key field and model picker; mask the key while editing. The `mock` provider needs neither. Save writes through `Settings.save_settings()` and closes the dialog; Close dismisses without saving pending edits. If the provider's key comes from `.env` (`Settings.get_key_source()`), the key field stays empty and its placeholder says so; saving never copies the `.env` key to disk, and saving an empty field falls back to it. Never print or log the key.
 
 ### Chip log
 Open the selected machine's log from its tooltip. Show its most recent 200 log messages in order, update while open when new entries arrive, and provide a close button. Closing the log returns to the factory view without changing the selected machine or pausing simulation.

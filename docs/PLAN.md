@@ -4,7 +4,7 @@ Living document. Update it when scope or decisions change, and tick items off as
 
 ## Decisions
 - **LLM:** provider-agnostic adapter (`LLMProvider`). Anthropic first, OpenAI-compatible if time allows, plus a mock provider.
-- **API key:** player-entered in a settings UI, stored in `user://settings.cfg`. `.env` is dev-only and never exported or committed.
+- **API key:** player-entered in a settings UI, stored in `user://settings.cfg`. A dev can also put it in a git-ignored `.env` at the project root (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, see `.env.example`). The key saved from the dialog wins, `.env` is the fallback. `.env` is only read by the editor build (`OS.has_feature("editor")`), never saved to `settings.cfg`, never shown in the dialog, never exported or committed.
 - **Chip triggers:** fixed timer, state thresholds, events (input empty / output full / error), and a manual "Ask chip now" button.
 - **Chips and prompts:** a machine can have several chips. Each chip has exactly one prompt and its own timeout, cooldown and in-flight slot, so chips never compete with each other.
 - **Simulation clock:** physics-driven, with elapsed-time catch-up at 10 Hz; paused time is excluded.
@@ -23,7 +23,7 @@ Architecture and async HTTP rules live in `CLAUDE.md`.
 - Tool schema format (what `get_tool_schemas()` returns): `{name, description, input_schema: {type: "object", properties: {key: {type: "number"|"integer"|"boolean", minimum, maximum}}}}`.
 - `GameState`: `TICK_RATE`, `GRID_SIZE`, `CELL_SIZE`, `tick_count`, `money`, `can_place(cell)`, `register_machine(machine, cell) -> bool`, `unregister_machine(cell)`, `get_machine_at(cell)`, `get_machines()`, `cell_to_world(cell)`, `world_to_cell(pos)`, `add_money(amount)`.
 - `EventBus` signals: `tick_fired(tick)`, `machine_exploded(machine)`, `machine_registered/unregistered(machine, cell)`, `machine_selected(machine)`, `money_changed(amount)`, `chip_log_added(machine, message)`, `settings_changed`, `chip_registered/chip_removed(chip)` (emitted by `ChipRegistry`), `llm_request_started(requester_id)`, `llm_request_finished(requester_id, success)` (emitted by `LLMManager`). `Settings.provider` accepts `"mock"` or `"anthropic"`.
-- `Settings`: `api_key`, `provider` (`"mock"` for now), `model`, `max_concurrency`, `request_timeout`, `chip_cooldown`, `max_tokens`, `save_settings()`.
+- `Settings`: `api_key`, `provider` (`"mock"` for now), `model`, `max_concurrency`, `request_timeout`, `chip_cooldown`, `max_tokens`, `save_settings()`. Keys: `get_api_key(provider)` is the key the game sends (saved key, else `.env`), `get_saved_api_key(provider)` only the dialog one, `get_key_source(provider)` is `"settings"`, `".env"` or `""`. `load_env()` reads `env_path` (default `res://.env`) at startup in the editor.
 - Tests: `tests/run.sh [filter]` runs every `tests/test_*.gd` headless (~15 s, exit 1 on failure). How to write tests: see "Testing" in `CLAUDE.md`.
 - Headless gotcha: after adding a new `class_name` script, run `godot --headless --import` once to refresh the class cache, otherwise it fails to parse. `godot --headless --quit` still errors until a main scene exists.
 
@@ -75,7 +75,8 @@ Architecture and async HTTP rules live in `CLAUDE.md`.
 - [x] `ChipComponent` wired to `LLMManager`: timer, threshold, event and manual triggers, per-chip cooldown, one request in flight per chip (`tests/test_chip_triggers.gd`). The tooltip has an "Ask now" button and an "Ask when <state value> > <limit>" picker per chip.
 - [x] Each machine exposes `get_tool_schemas()` and `apply_tool_call()` (validates and clamps all LLM args): the shared `set_enabled` plus one tool unique to its type (see "Machine / chip API"). Checked per type in `tests/test_machine_tools.gd` and on all five machine scenes in `tests/test_chip_integration.gd`.
 - [x] Full loop on the mock provider: Miner -> Conveyor -> Smelter (with a chip) -> Conveyor -> Collector, chip timer -> `LLMManager` -> tool call -> machine, items still sold (`tests/test_chip_integration.gd`).
-- [ ] Full loop on the real API: needs a key in the Settings dialog, not tested yet (the HTTP path is only tested offline).
+- [x] Full loop on the real API, system side: the key comes from the Settings dialog or `.env` (`Settings.get_api_key`, used by `AnthropicProvider` and `CodexProvider`). Without a key a request fails at once with `no API key (set one in Settings or .env)` and sends nothing. A non-200 reply is reported as `HTTP <status> (<error type>)` (the API's message is dropped, it may echo part of the key) and shows in the chip log as `chip request failed: ...`; the machine keeps its last settings. Tested offline end to end through the Anthropic wire format in `tests/test_real_api_loop.gd` (the `LLMManager` autoload runs the scripted test double for each test).
+- [ ] Live check with a real key (needs network, not run by the tests): put the key in `.env` or the Settings dialog, switch the provider to `anthropic`, attach a chip to a Smelter with a prompt like "keep it from exploding" and press "Ask now". The chip log should show `set_cooling({"on":true})` (or `chip request failed: ...` with the reason).
 - [ ] The mock always answers with the first tool (the shared `set_enabled`), so it cannot show a chip fixing a bad state. Decide in Phase 3 whether the demo needs a smarter mock.
 
 ## Phase 3 — Game feel and demo (h32–42)
@@ -85,7 +86,7 @@ Architecture and async HTTP rules live in `CLAUDE.md`.
 
 ## Phase 4 — Polish (h42–48)
 - [ ] Bug fixes and graceful API-failure handling
-- [ ] Build/export test, and check that no key is baked into the export
+- [ ] Build/export test, and check that no key is baked into the export (`.env` must not be in the export filter)
 - [ ] README and demo rehearsal
 
 ## Risks and mitigations

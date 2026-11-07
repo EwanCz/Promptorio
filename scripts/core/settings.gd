@@ -1,8 +1,11 @@
 extends Node
 ## Player settings, persisted in user://settings.cfg. Never log or print api_key or codex_api_key.
+## A dev key can also come from a .env file (dev-only: read in the editor, never saved to settings.cfg).
 
 const PATH: String = "user://settings.cfg"
 const SECTION: String = "llm"
+## .env variable holding each provider's key.
+const ENV_VARS: Dictionary = {"anthropic": "ANTHROPIC_API_KEY", "codex": "OPENAI_API_KEY"}
 ## Models offered per provider in the settings dialog.
 const MODELS: Dictionary = {
 	"anthropic": ["claude-haiku-5-5", "claude-sonnet-5-5", "claude-opus-5-5"],
@@ -18,20 +21,40 @@ var max_concurrency: int = 4
 var request_timeout: float = 20.0
 var chip_cooldown: float = 5.0
 var max_tokens: int = 300
+## Dev key file at the project root. Tests point it elsewhere.
+var env_path: String = "res://.env"
+
+var _env: Dictionary = {}
 
 
 func _ready() -> void:
 	load_settings()
+	if OS.has_feature("editor"):
+		load_env()
 
 
-## Key of a provider ("anthropic" or "codex"). Empty for any other provider.
+## The key the game sends for a provider: the one saved from the Settings dialog, else the .env one.
+## Empty for the mock provider or when neither is set.
 func get_api_key(provider_name: String) -> String:
+	var saved: String = get_saved_api_key(provider_name)
+	return saved if saved != "" else _get_env_key(provider_name)
+
+
+## Only the key entered in the Settings dialog (what the dialog edits and what is saved to disk).
+func get_saved_api_key(provider_name: String) -> String:
 	match provider_name:
 		"anthropic":
 			return api_key
 		"codex":
 			return codex_api_key
 	return ""
+
+
+## Where get_api_key() comes from: "settings", ".env" or "" when there is no key.
+func get_key_source(provider_name: String) -> String:
+	if get_saved_api_key(provider_name) != "":
+		return "settings"
+	return ".env" if _get_env_key(provider_name) != "" else ""
 
 
 func get_model(provider_name: String) -> String:
@@ -65,6 +88,24 @@ func load_settings() -> void:
 	EventBus.settings_changed.emit()
 
 
+## Reads `KEY=value` lines (blank lines and `#` comments skipped, optional `export `, optional quotes)
+## from env_path. A missing file just means no .env keys. Nothing read here is ever saved or logged.
+func load_env() -> void:
+	_env.clear()
+	var file: FileAccess = FileAccess.open(env_path, FileAccess.READ)
+	if file == null:
+		return
+	while not file.eof_reached():
+		var line: String = file.get_line().strip_edges().trim_prefix("export ")
+		var equals: int = line.find("=")
+		if line.begins_with("#") or equals <= 0:
+			continue
+		var value: String = line.substr(equals + 1).strip_edges()
+		if value.length() >= 2 and value[0] in "\"'" and value[-1] == value[0]:
+			value = value.substr(1, value.length() - 2)
+		_env[line.substr(0, equals).strip_edges()] = value
+
+
 func save_settings() -> void:
 	var cfg: ConfigFile = ConfigFile.new()
 	cfg.set_value(SECTION, "api_key", api_key)
@@ -79,3 +120,7 @@ func save_settings() -> void:
 	if cfg.save(PATH) != OK:
 		push_warning("Settings: could not save %s" % PATH)
 	EventBus.settings_changed.emit()
+
+
+func _get_env_key(provider_name: String) -> String:
+	return str(_env.get(ENV_VARS.get(provider_name, ""), ""))

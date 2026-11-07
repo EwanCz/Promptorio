@@ -23,6 +23,22 @@ func test_build_request() -> void:
 	check(req["body"]["max_tokens"] <= 300, "max_tokens capped")
 
 
+func test_build_request_falls_back_to_the_env_key() -> void:
+	var settings: Node = autoload("Settings")
+	var saved_path: String = settings.env_path
+	var file: FileAccess = FileAccess.open("user://test_anthropic.env", FileAccess.WRITE)
+	file.store_line("ANTHROPIC_API_KEY=env-k")
+	file.close()
+	settings.env_path = "user://test_anthropic.env"
+	settings.load_env()
+	settings.api_key = ""
+	var req: Dictionary = AnthropicProvider.new().build_request("sys", {}, [])
+	DirAccess.remove_absolute("user://test_anthropic.env")
+	settings.env_path = saved_path
+	settings.load_env()
+	check("x-api-key: env-k" in req["headers"], "the .env key is sent when none is saved")
+
+
 func test_parse_response() -> void:
 	var p: AnthropicProvider = AnthropicProvider.new()
 	var calls: Array[Dictionary] = p.parse_response({"content": [

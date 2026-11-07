@@ -6,6 +6,8 @@ var _had_file: bool = false
 var _original_file: PackedByteArray = PackedByteArray()
 var _saved_values: Dictionary = {}
 
+const TMP_ENV: String = "user://test_settings.env"
+
 
 func before_each() -> void:
 	_settings = autoload("Settings")
@@ -22,6 +24,7 @@ func before_each() -> void:
 		"request_timeout": _settings.request_timeout,
 		"chip_cooldown": _settings.chip_cooldown,
 		"max_tokens": _settings.max_tokens,
+		"env_path": _settings.env_path,
 	}
 
 
@@ -34,6 +37,8 @@ func after_each() -> void:
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(_settings.PATH))
 	for key: String in _saved_values:
 		_settings.set(key, _saved_values[key])
+	DirAccess.remove_absolute(TMP_ENV)
+	_settings.load_env()
 
 
 func test_save_and_load_round_trip() -> void:
@@ -83,3 +88,46 @@ func test_codex_key_and_model_round_trip() -> void:
 	_settings.load_settings()
 	check_eq([_settings.codex_api_key, _settings.codex_model], ["ck", "gpt-6-luna"], "codex config persisted")
 	check(_settings.MODELS["codex"].has("gpt-6.1-terra"), "gpt-6.1-terra is offered")
+
+
+func _write_env(text: String) -> void:
+	var file: FileAccess = FileAccess.open(TMP_ENV, FileAccess.WRITE)
+	file.store_string(text)
+	file.close()
+	_settings.env_path = TMP_ENV
+	_settings.load_env()
+
+
+func test_env_file_parsing() -> void:
+	_settings.api_key = ""
+	_settings.codex_api_key = ""
+	_write_env("# comment\n\nexport ANTHROPIC_API_KEY=\"sk-a b\"\r\nOPENAI_API_KEY = 'sk-o'\nno_equals\n=novalue\n")
+	check_eq(_settings.get_api_key("anthropic"), "sk-a b", "export prefix, double quotes and CRLF handled")
+	check_eq(_settings.get_api_key("codex"), "sk-o", "single quotes and spaces around = handled")
+	check_eq(_settings.get_api_key("mock"), "", "mock never has a key")
+
+
+func test_missing_env_file_means_no_key() -> void:
+	_settings.api_key = ""
+	_settings.env_path = "user://does_not_exist.env"
+	_settings.load_env()
+	check_eq(_settings.get_api_key("anthropic"), "", "no file, no key")
+	check_eq(_settings.get_key_source("anthropic"), "", "no source")
+
+
+func test_saved_key_wins_over_env_and_env_is_the_fallback() -> void:
+	_write_env("ANTHROPIC_API_KEY=env-key\n")
+	_settings.api_key = "saved-key"
+	check_eq([_settings.get_api_key("anthropic"), _settings.get_key_source("anthropic")], ["saved-key", "settings"], "saved key first")
+	_settings.api_key = ""
+	check_eq([_settings.get_api_key("anthropic"), _settings.get_key_source("anthropic")], ["env-key", ".env"], "env key when nothing is saved")
+	check_eq(_settings.get_saved_api_key("anthropic"), "", "the env key is not a saved key")
+
+
+func test_env_key_is_never_written_to_settings_cfg() -> void:
+	_settings.api_key = ""
+	_write_env("ANTHROPIC_API_KEY=env-key\nOPENAI_API_KEY=env-openai\n")
+	_settings.save_settings()
+	check(not FileAccess.get_file_as_string(_settings.PATH).contains("env-"), "settings.cfg holds no .env key")
+	_settings.load_settings()
+	check_eq(_settings.api_key, "", "reloading does not pick the env key up as a saved one")

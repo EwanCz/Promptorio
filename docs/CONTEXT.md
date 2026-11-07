@@ -87,7 +87,7 @@ Each `ChipComponent` (one chip, one prompt) requests a decision on: fixed timer,
 7. Never trust LLM output. Parse with `JSON.parse_string`, check the type, whitelist tool names against `get_tool_schemas()`, validate and clamp every argument. Ignore unknown calls and log them to the ChipLog.
 8. Communicate through signals (`decision_received`, `decision_failed`), not by returning values across frames. UI never calls HTTP directly.
 9. Send compact state JSON (only fields the chip needs). Keep `max_tokens` small (<= 300). Always force tool use / structured output.
-10. Secrets: the API key comes only from `Settings` (player-entered in UI). Never hardcode, log, or print it. `.env` is dev-only and must stay out of git and out of exports. Check `.gitignore` before committing.
+10. Secrets: the API key comes only from `Settings` (player-entered in UI, or a dev `.env` read by `Settings` in the editor). Never hardcode, log, or print it. `.env` is dev-only and must stay out of git and out of exports. Check `.gitignore` before committing.
 11. Add a `mock` provider (canned responses, random latency) so the game and UI can be developed and demoed with no network or key.
 
 ## GDScript conventions

@@ -170,6 +170,41 @@ func test_settings_dialog_saves_per_provider() -> void:
 		DirAccess.remove_absolute(settings.PATH)
 
 
+func test_settings_dialog_uses_the_env_key_without_saving_it() -> void:
+	var settings: Node = autoload("Settings")
+	var backup: Array = [settings.api_key, settings.provider, settings.model, settings.env_path]
+	var had_file: bool = FileAccess.file_exists(settings.PATH)
+	var file_backup: String = FileAccess.get_file_as_string(settings.PATH) if had_file else ""
+	var env_file: FileAccess = FileAccess.open("user://test_dialog.env", FileAccess.WRITE)
+	env_file.store_line("ANTHROPIC_API_KEY=env-only")
+	env_file.close()
+	settings.env_path = "user://test_dialog.env"
+	settings.load_env()
+	settings.api_key = ""
+	var dialog: SettingsDialog = _spawn("res://scenes/ui/popups/settings_dialog.tscn")
+	var providers: OptionButton = dialog.get_node("%ProviderPicker")
+	var key_edit: LineEdit = dialog.get_node("%KeyEdit")
+	dialog.open()
+	providers.select(SettingsDialog.PROVIDERS.find("anthropic"))
+	providers.item_selected.emit(providers.selected)
+	check_eq(key_edit.text, "", "the .env key is not shown in the field")
+	check(key_edit.placeholder_text.contains(".env"), "the field says the .env key is in use")
+	(dialog.get_node("%SaveButton") as Button).pressed.emit()
+	check_eq(settings.api_key, "", "saving does not copy the .env key")
+	check_eq(settings.get_api_key("anthropic"), "env-only", "the .env key is still used")
+	DirAccess.remove_absolute("user://test_dialog.env")
+	settings.api_key = backup[0]
+	settings.provider = backup[1]
+	settings.model = backup[2]
+	settings.env_path = backup[3]
+	settings.load_env()
+	if had_file:
+		var file: FileAccess = FileAccess.open(settings.PATH, FileAccess.WRITE)
+		file.store_string(file_backup)
+	else:
+		DirAccess.remove_absolute(settings.PATH)
+
+
 func test_tooltip_ask_now_and_threshold() -> void:
 	var tooltip: MachineTooltip = _spawn("res://scenes/ui/popups/machine_tooltip.tscn")
 	var machine: Machine = _spawn("res://scenes/machines/smelter.tscn")

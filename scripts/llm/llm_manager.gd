@@ -67,6 +67,8 @@ func _run(job: Dictionary) -> void:
 
 
 func _execute(provider: LLMProvider, job: Dictionary) -> Dictionary:
+	if provider.requires_network() and Settings.get_api_key(Settings.provider) == "":
+		return _outcome([], "no API key (set one in Settings or .env)", 0)
 	var request: Dictionary = provider.build_request(job["system_prompt"], job["state"], job["tools"])
 	if not provider.requires_network():
 		await get_tree().create_timer(provider.simulated_latency()).timeout
@@ -84,7 +86,7 @@ func _execute(provider: LLMProvider, job: Dictionary) -> Dictionary:
 	if result != HTTPRequest.RESULT_SUCCESS:
 		return _outcome([], "network error (result %d)" % result, 0)
 	if status != 200:
-		return _outcome([], "HTTP %d" % status, status)
+		return _outcome([], _http_error(status, raw), status)
 	var parsed: Variant = JSON.parse_string(raw.get_string_from_utf8())
 	if typeof(parsed) != TYPE_DICTIONARY:
 		return _outcome([], "invalid JSON response", status)
@@ -109,6 +111,15 @@ func _send(request: Dictionary) -> Dictionary:
 	var response: Array = await http.request_completed
 	_release(http)
 	return {"result": response[0], "status": response[1], "body": response[3]}
+
+
+## "HTTP 401 (authentication_error)": the status plus the API's error type, never its message,
+## which may echo part of the key.
+func _http_error(status: int, raw: PackedByteArray) -> String:
+	var parsed: Variant = JSON.parse_string(raw.get_string_from_utf8())
+	var error: Variant = parsed.get("error") if typeof(parsed) == TYPE_DICTIONARY else null
+	var type: String = str(error.get("type", "")) if typeof(error) == TYPE_DICTIONARY else ""
+	return "HTTP %d (%s)" % [status, type] if type != "" else "HTTP %d" % status
 
 
 func _outcome(calls: Array, error: String, status: int) -> Dictionary:
