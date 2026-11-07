@@ -11,4 +11,5 @@ script = ExtResource("2_script")
 machine_type = "smelter"
 front_texture = ExtResource("4_front")
 back_texture = ExtResource("5_back")
+turn_front_sideways = true
 recipe = ExtResource("3_recipe")

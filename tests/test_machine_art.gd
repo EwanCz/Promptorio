@@ -59,6 +59,37 @@ func test_craft_machines_show_their_back_only_when_facing_up() -> void:
 			check(_sprite(machine).texture == expected, "%s facing %s" % [type, facing])
 
 
+func _cell_rect(machine: Machine) -> Rect2:
+	var sprite: Sprite2D = _sprite(machine)
+	var size: Vector2 = sprite.texture.get_size()
+	var corners: Array[Vector2] = [Vector2.ZERO, Vector2(size.x, 0), Vector2(0, size.y), size]
+	var rect: Rect2 = Rect2(sprite.transform * corners[0], Vector2.ZERO)
+	for corner: Vector2 in corners:
+		rect = rect.expand(sprite.transform * corner)
+	return rect
+
+
+func test_craft_machines_turn_the_front_on_the_sides_and_keep_it_over_their_cell() -> void:
+	var cell: float = float(autoload("GameState").CELL_SIZE)
+	for type: String in ["smelter", "assembler"]:
+		var machine: Machine = _spawn(type)
+		var turns: Dictionary = {Vector2i.DOWN: 0.0, Vector2i.UP: 0.0, Vector2i.RIGHT: -PI / 2.0, Vector2i.LEFT: PI / 2.0}
+		for facing: Vector2i in turns:
+			machine.facing = facing
+			check(is_equal_approx(_sprite(machine).rotation, turns[facing]), "%s facing %s: rotation" % [type, facing])
+			check(_cell_rect(machine).is_equal_approx(Rect2(0, 0, cell, cell)), "%s facing %s: still covers exactly its cell" % [type, facing])
+		machine.facing = Vector2i.UP
+		check(_sprite(machine).texture == machine.back_texture, "%s: up still shows the back, upright" % type)
+
+
+func test_other_machines_stay_upright_in_every_facing() -> void:
+	for type: String in ["miner", "collector", "conveyor"]:
+		var machine: Machine = _spawn(type)
+		for facing: Vector2i in FACINGS:
+			machine.facing = facing
+			check_eq(_sprite(machine).rotation, 0.0, "%s facing %s is not rotated" % [type, facing])
+
+
 func test_rotating_cycles_the_art() -> void:
 	var machine: Machine = _spawn("smelter")
 	var seen: Array[Texture2D] = []

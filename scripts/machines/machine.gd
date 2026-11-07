@@ -13,6 +13,9 @@ enum Status { NORMAL, DOWN, OVERHEATING }
 @export var front_texture: Texture2D
 ## Art seen from behind, used while facing up. Machines without one keep the front art.
 @export var back_texture: Texture2D
+## Turns the front art a quarter turn to face left or right, so its doorway points where the machine
+## outputs. Off: the front art stays upright for those facings.
+@export var turn_front_sideways: bool = false
 
 var machine_id: int = 0
 var cell: Vector2i = Vector2i.ZERO
@@ -175,6 +178,14 @@ func _update_sprite() -> void:
 	if _sprite == null or front_texture == null:
 		return
 	_sprite.texture = back_texture if facing == Vector2i.UP and back_texture != null else front_texture
+	_sprite.rotation = 0.0
+	_sprite.position = Vector2.ZERO
+	if turn_front_sideways and facing.y == 0:
+		# The front art has its doorway at the bottom. The sprite turns around its top-left corner,
+		# so it is moved back over the cell: right is a quarter turn counter-clockwise, left clockwise.
+		var span: Vector2 = front_texture.get_size() * _sprite.scale
+		_sprite.rotation = -PI / 2.0 if facing == Vector2i.RIGHT else PI / 2.0
+		_sprite.position = Vector2(0.0, span.y) if facing == Vector2i.RIGHT else Vector2(span.x, 0.0)
 
 
 func _status_text() -> String:
