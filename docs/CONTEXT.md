@@ -17,7 +17,7 @@ Roadmap, phases, decisions and risks: see `docs/PLAN.md`. Read it before startin
   - A machine can have multiple AI chips. Each chip is its own brain: it has exactly one prompt and its own timeout (ex: a maintenance chip, a production chip).
   - Each chip is defined in the chip registry (`ChipRegistry`): name, description and its prompt text. A machine's `ChipComponent` runs a chip taken from it.
 - Chip editor with option to create/update/remove chips in the registry (Chip Registry page + Chip Page popup, see `docs/UI.md`).
-- UI information on click per machine (Machine tooltip, see `docs/UI.md`).
+- UI information on click per machine (Machine tooltip: a panel in the bottom half of the Bar, see `docs/UI.md`).
 
 ## Architecture
 
@@ -40,14 +40,18 @@ Main (Node)
 │  │        └─ Camera2D          (zoom in/out, pan x/y; camera.gd)
 │  └─ Bar (PanelContainer, size_flags_stretch_ratio 1)
 │     └─ VBoxContainer
-│        ├─ PageTabs (TabBar / HBox of page markers at the top)
-│        └─ Pages (each page a Control, only one visible)
-│           ├─ BuildPage          (list of buildable machines + money cost)
-│           └─ ChipRegistryPage (list of chip names, "new chip" button on top)
+│        ├─ KeyStatus (API key state, hidden for mock)
+│        ├─ TopHalf (VBoxContainer, top half of the Bar)
+│        │  ├─ PageTabs (HFlowContainer of page markers at the top)
+│        │  └─ PageScroll (ScrollContainer)
+│        │     └─ Pages (MarginContainer, only one page visible)
+│        │        ├─ BuildPage          (list of buildable machines + money cost)
+│        │        └─ ChipRegistryPage (list of chip names, "new chip" button on top)
+│        ├─ MachineTooltip (PanelContainer, bottom half of the Bar: selected machine info, scrollable)
+│        └─ SettingsButton (far bottom)
 └─ UI (CanvasLayer, popups over everything)
    ├─ ChipPage        (popup, centered; name, description, message; edit/save/remove)
-   ├─ MachineTooltip  (opens on machine click, closes on second click)
-   ├─ ChipLog         (log page opened from the tooltip)
+   ├─ ChipLog         (log page opened from the machine panel)
    └─ SettingsDialog
 ```
 UI rules:

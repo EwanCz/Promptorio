@@ -26,6 +26,11 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("toggle_bar"):
 		_bar.visible = not _bar.visible
 		get_viewport().set_input_as_handled()
+	elif event.is_action_pressed("rotate_placement"):
+		# One key turns both the selected machine and the next placement.
+		_tooltip.rotate_machine()
+		_placement.rotate_facing()
+		get_viewport().set_input_as_handled()
 	elif _placement.handle_input(event):
 		get_viewport().set_input_as_handled()
 

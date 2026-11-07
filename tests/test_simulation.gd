@@ -144,6 +144,83 @@ func test_unattended_smelter_overheats_then_explodes() -> void:
 	check_eq(smelter.temperature, temp, "a destroyed smelter stops simulating")
 
 
+func test_smelter_turns_redder_as_it_heats_up() -> void:
+	var smelter: Smelter = _put("smelter", Vector2i(0, 0)) as Smelter
+	var sprite: Sprite2D = smelter.get_node("Sprite2D") as Sprite2D
+	_ticks(1)
+	check_eq(sprite.modulate, Color.WHITE, "a cool smelter keeps its own colours")
+	var last_green: float = 1.0
+	for temperature: float in [70.0, 90.0, 110.0, 140.0]:
+		smelter.temperature = temperature
+		smelter.apply_tool_call("set_enabled", {"on": false})
+		_ticks(1)
+		check_eq(sprite.modulate.r, 1.0, "red stays full at %d°" % int(temperature))
+		check(sprite.modulate.g < last_green, "greener channels drop as it reaches %d°" % int(temperature))
+		last_green = sprite.modulate.g
+	check(last_green < 0.5, "close to exploding it is clearly red")
+
+
+func test_exploding_smelter_is_destroyed_and_frees_its_cell() -> void:
+	var cell: Vector2i = Vector2i(3, 3)
+	var smelter: Smelter = _put("smelter", cell) as Smelter
+	# It frees itself, so the test must not free it again in after_each.
+	_nodes.erase(smelter)
+	var ref: WeakRef = weakref(smelter)
+	smelter.temperature = Smelter.EXPLODE_AT + 5.0
+	_ticks(1)
+	check_eq(smelter.status, Machine.Status.DOWN, "it explodes first")
+	check_eq(_exploded, [smelter], "machine_exploded is emitted")
+	check_eq(_game.get_machine_at(cell), smelter, "the cell is still held while it burns")
+	var gone: Callable = func() -> bool: return ref.get_ref() == null or (ref.get_ref() as Node).get_parent() == null
+	await wait_until(gone, 3.0)
+	check(gone.call(), "the smelter is removed from the world after the explosion")
+	check_eq(_game.get_machine_at(cell), null, "its cell is free again")
+	await tree.process_frame
+	check(ref.get_ref() == null, "and freed")
+
+
+func test_machines_facing_each_other_pass_nothing() -> void:
+	var smelter: Smelter = _put("smelter", Vector2i(0, 0), Vector2i.RIGHT) as Smelter
+	var belt: Conveyor = _put("conveyor", Vector2i(1, 0), Vector2i.LEFT) as Conveyor
+	smelter.cooling = true
+	smelter.receive("ore")
+	belt.receive("ore")
+	_ticks(60)
+	check_eq(belt.held, "ore", "the conveyor keeps its item: it faces the smelter, which faces it")
+	check_eq(smelter.stock.get("ore", 0), 0, "the smelter crafted its ore")
+	check(smelter.get_events().has("output_full"), "the smelter holds its ingot, it cannot hand it over")
+	check(not belt.receive("ore"), "so the conveyor stays full")
+	check_eq(smelter.stock.get("ingot", 0), 0, "nothing went the other way either")
+
+
+func test_turning_one_machine_away_lets_the_pair_flow_again() -> void:
+	var smelter: Smelter = _put("smelter", Vector2i(0, 0), Vector2i.RIGHT) as Smelter
+	var belt: Conveyor = _put("conveyor", Vector2i(1, 0), Vector2i.LEFT) as Conveyor
+	var collector: Machine = _put("collector", Vector2i(1, 1))
+	smelter.cooling = true
+	smelter.receive("ore")
+	_ticks(60)
+	check(smelter.get_events().has("output_full"), "blocked while facing each other")
+	belt.facing = Vector2i.DOWN
+	_ticks(60)
+	check(not smelter.get_events().has("output_full"), "the ingot moves once the conveyor turns away")
+	check(collector.sold >= 1, "and reaches the collector")
+
+
+func test_head_to_tail_still_flows_and_the_collector_never_blocks() -> void:
+	_put("miner", Vector2i(0, 0), Vector2i.RIGHT)
+	_put("conveyor", Vector2i(1, 0), Vector2i.RIGHT)
+	var collector: Machine = _put("collector", Vector2i(2, 0))
+	_ticks(100)
+	check(collector.sold >= 1, "head to tail still flows")
+	# The collector's default facing points right, at the miner: that must not count as facing it.
+	var left_collector: Machine = _put("collector", Vector2i(5, 5))
+	_put("miner", Vector2i(6, 5), Vector2i.LEFT)
+	check_eq(left_collector.facing, Vector2i.RIGHT, "the collector 'faces' the miner")
+	_ticks(100)
+	check(left_collector.sold >= 1, "yet the miner still delivers to it")
+
+
 func test_cooling_keeps_smelter_stable() -> void:
 	_put("collector", Vector2i(1, 0))
 	var smelter: Machine = _put("smelter", Vector2i(1, 1), Vector2i.UP)

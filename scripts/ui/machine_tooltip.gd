@@ -1,7 +1,8 @@
 class_name MachineTooltip
 extends PanelContainer
-## Opens when a machine is selected (EventBus.machine_selected), closes when it is selected again
-## or when an empty cell is clicked.
+## Machine information panel in the bottom half of the Bar. It shows the machine selected through
+## EventBus.machine_selected, and a hint again once that machine is selected a second time, an empty
+## cell is clicked or the machine goes away.
 
 signal log_requested(machine: Machine)
 
@@ -12,6 +13,8 @@ const NO_WATCH: String = "(never)"
 
 var _machine: Machine = null
 
+@onready var _hint_label: Label = %HintLabel
+@onready var _scroll: ScrollContainer = %Scroll
 @onready var _id_label: Label = %IdLabel
 @onready var _type_label: Label = %TypeLabel
 @onready var _status_label: Label = %StatusLabel
@@ -25,7 +28,6 @@ var _machine: Machine = null
 
 
 func _ready() -> void:
-	visible = false
 	EventBus.machine_selected.connect(_on_machine_selected)
 	EventBus.tick_fired.connect(_on_tick)
 	EventBus.chip_registered.connect(_on_registry_changed)
@@ -44,14 +46,33 @@ func open(machine: Machine) -> void:
 	_type_label.text = "Type: %s" % machine.machine_type
 	_rotate_button.visible = machine.can_rotate()
 	_destroy_button.visible = machine.is_removable()
-	visible = true
+	_show_details(true)
 	_refresh_status()
 	_refresh_chips()
 
 
 func close() -> void:
 	_machine = null
-	visible = false
+	_show_details(false)
+
+
+## True while a machine's details are shown.
+func is_open() -> bool:
+	return _machine != null
+
+
+## Turns the machine shown in the tooltip, the same as the Rotate button. False if none is open
+## or it has no facing.
+func rotate_machine() -> bool:
+	if _machine == null or not is_instance_valid(_machine) or not _machine.can_rotate():
+		return false
+	_on_rotate_pressed()
+	return true
+
+
+func _show_details(shown: bool) -> void:
+	_scroll.visible = shown
+	_hint_label.visible = not shown
 
 
 func _refresh_status() -> void:
@@ -75,13 +96,12 @@ func _refresh_chips() -> void:
 
 func _make_row(component: ChipComponent) -> Control:
 	var box: VBoxContainer = VBoxContainer.new()
-	var row: HBoxContainer = HBoxContainer.new()
-	box.add_child(row)
 	var label: Label = Label.new()
 	label.text = "%s: %s" % [component.chip.name, component.chip.prompt.left(PROMPT_PREVIEW)]
-	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	label.clip_text = true
-	row.add_child(label)
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	box.add_child(label)
+	var row: HFlowContainer = HFlowContainer.new()
+	box.add_child(row)
 	var timeout: SpinBox = SpinBox.new()
 	timeout.min_value = 1
 	timeout.max_value = MAX_TIMEOUT
@@ -103,7 +123,7 @@ func _make_row(component: ChipComponent) -> Control:
 
 ## Threshold trigger: pick a numeric state value and the limit it must rise above.
 func _make_watch_row(component: ChipComponent) -> Control:
-	var row: HBoxContainer = HBoxContainer.new()
+	var row: HFlowContainer = HFlowContainer.new()
 	var title: Label = Label.new()
 	title.text = "Ask when"
 	row.add_child(title)

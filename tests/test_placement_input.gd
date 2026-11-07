@@ -76,3 +76,47 @@ func test_key_selects_then_escape_cancels_and_click_places_nothing() -> void:
 func test_azerty_number_row_selects_through_the_input_system() -> void:
 	await _tap(KEY_5, KEY_PARENLEFT)
 	check_eq(_placement.selected, "conveyor", "physical 5 (typing '(') selects the conveyor")
+
+
+func test_r_turns_both_the_selected_machine_and_the_next_placement() -> void:
+	var cell: Vector2i = Vector2i(8, 8)
+	var smelter: Machine = _placement.place("smelter", cell)
+	smelter.facing = Vector2i.RIGHT
+	# Build mode stays on after a placement, so a machine is clicked with a type still picked.
+	_placement.select("conveyor")
+	var placing: Vector2i = _placement.facing
+	await _click_cell(cell)
+	check((_main.get_node("%MachineTooltip") as MachineTooltip).is_open(), "clicking the machine opens its tooltip")
+
+	await _tap(KEY_R, KEY_R)
+	check_eq(smelter.facing, Vector2i.DOWN, "R turns the selected machine clockwise")
+	await _tap(KEY_R, KEY_R)
+	check_eq(smelter.facing, Vector2i.LEFT, "R turns it again")
+	check_eq(_placement.facing, -placing, "the two presses turned the next placement too")
+	_placement.select("")
+
+	await _click_cell(cell)
+	check(not (_main.get_node("%MachineTooltip") as MachineTooltip).is_open(), "clicking it again closes the tooltip")
+	await _tap(KEY_R, KEY_R)
+	check_eq(smelter.facing, Vector2i.LEFT, "with nothing selected R turns no machine")
+	_game.unregister_machine(cell)
+	smelter.free()
+
+
+func test_r_turns_the_next_placement_when_no_machine_is_selected() -> void:
+	_placement.select("conveyor")
+	var before: Vector2i = _placement.facing
+	await _tap(KEY_R, KEY_R)
+	check_eq(_placement.facing, Vector2i(-before.y, before.x), "R turns the placement")
+	_placement.select("")
+
+
+func test_r_does_nothing_on_the_collector() -> void:
+	var cell: Vector2i = _game.GRID_SIZE / 2
+	var collector: Machine = _game.get_machine_at(cell) as Machine
+	# The collector sits at the map center, outside the headless window, so select it by signal.
+	autoload("EventBus").machine_selected.emit(collector)
+	check((_main.get_node("%MachineTooltip") as MachineTooltip).is_open(), "the collector opens a tooltip")
+	var facing: Vector2i = collector.facing
+	await _tap(KEY_R, KEY_R)
+	check_eq(collector.facing, facing, "R leaves the collector, which has no facing, alone")

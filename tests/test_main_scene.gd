@@ -6,15 +6,30 @@ func test_main_scene_layout() -> void:
 	check(main.get_node_or_null("Game/FactoryView/SubViewport/World/Machines") != null, "world has Machines")
 	check(main.get_node_or_null("Game/FactoryView/SubViewport/World/GridMap2D") is TileMapLayer, "world has GridMap2D")
 	check(main.get_node_or_null("Game/FactoryView/SubViewport/World/Camera2D") != null, "world has Camera2D")
-	check(main.get_node_or_null("Game/Bar/VBoxContainer/PageTabs") != null, "bar has PageTabs")
+	check(main.get_node_or_null("Game/Bar/VBoxContainer/TopHalf/PageTabs") != null, "bar has PageTabs")
 	check(main.get_node_or_null("UI") is CanvasLayer, "UI layer exists")
-	check(main.get_node_or_null("Game/Bar/VBoxContainer/Pages/BuildPage") != null, "bar has the build page")
-	check(main.get_node_or_null("Game/Bar/VBoxContainer/Pages/ChipRegistryPage") != null, "bar has the chip registry page")
-	for popup_name: String in ["ChipPage", "MachineTooltip", "ChipLog", "SettingsDialog"]:
+	check(main.get_node_or_null("Game/Bar/VBoxContainer/TopHalf/PageScroll/Pages/BuildPage") != null, "bar has the build page")
+	check(main.get_node_or_null("Game/Bar/VBoxContainer/TopHalf/PageScroll/Pages/ChipRegistryPage") != null, "bar has the chip registry page")
+	for popup_name: String in ["ChipPage", "ChipLog", "SettingsDialog"]:
 		check(main.get_node_or_null("UI/" + popup_name) != null, "UI has " + popup_name)
 	var factory: Control = main.get_node("Game/FactoryView")
 	var bar: Control = main.get_node("Game/Bar")
 	check_eq(factory.size_flags_stretch_ratio / bar.size_flags_stretch_ratio, 4.0, "factory:bar is 80:20")
+	main.free()
+
+
+func test_bar_is_split_into_pages_machine_info_and_settings() -> void:
+	var main: Node = load("res://scenes/main.tscn").instantiate()
+	var column: Node = main.get_node("Game/Bar/VBoxContainer")
+	var top: Control = column.get_node("TopHalf")
+	var info: Control = main.get_node("%MachineTooltip")
+	check(info.get_parent() == column, "machine info sits in the Bar, not in a popup")
+	check_eq(top.size_flags_stretch_ratio, info.size_flags_stretch_ratio, "the two halves share the height equally")
+	check(top.size_flags_vertical & Control.SIZE_EXPAND != 0 and info.size_flags_vertical & Control.SIZE_EXPAND != 0, "both halves expand")
+	check(top.get_node("PageScroll") is ScrollContainer, "the pages scroll")
+	check(main.get_node("%Pages").get_parent() == top.get_node("PageScroll"), "the pages live in that scroll")
+	check(column.get_child(column.get_child_count() - 1) == main.get_node("%SettingsButton"), "Settings stays at the very bottom")
+	check(top.get_index() < info.get_index() and info.get_index() < main.get_node("%SettingsButton").get_index(), "pages, then machine info, then Settings")
 	main.free()
 
 

@@ -9,22 +9,34 @@ signal chip_decision_applied(chip_id: int, reason: String, applied: int)
 enum Status { NORMAL, DOWN, OVERHEATING }
 
 @export var machine_type: String = "machine"
+## Art seen from the front: used for every facing except up. Unset on the bare base machine.
+@export var front_texture: Texture2D
+## Art seen from behind, used while facing up. Machines without one keep the front art.
+@export var back_texture: Texture2D
+## Turns the front art a quarter turn to face left or right, so its doorway points where the machine
+## outputs. Off: the front art stays upright for those facings.
+@export var turn_front_sideways: bool = false
 
 var machine_id: int = 0
 var cell: Vector2i = Vector2i.ZERO
 var status: Status = Status.NORMAL
 var enabled: bool = true
-## Cell the machine hands its output to (miners, craft machines, conveyors).
-var facing: Vector2i = Vector2i.RIGHT
+## Cell the machine hands its output to (miners, craft machines, conveyors). Setting it redraws the sprite.
+var facing: Vector2i = Vector2i.RIGHT:
+	set(value):
+		facing = value
+		_update_sprite()
 
 ## Chips running on this machine, in attach order. Each is a ChipComponent child.
 var chips: Array[ChipComponent] = []
 
 @onready var _label: Label = get_node_or_null("StatusLabel") as Label
+@onready var _sprite: Sprite2D = get_node_or_null("Sprite2D") as Sprite2D
 
 
 func _ready() -> void:
 	EventBus.tick_fired.connect(_on_tick)
+	_update_sprite()
 
 
 func _exit_tree() -> void:
@@ -160,14 +172,34 @@ func _tick() -> void:
 	pass
 
 
+## Picks the sprite for the current facing. Conveyors override it. Runs before _ready too
+## (placement sets facing first), when there is no sprite yet.
+func _update_sprite() -> void:
+	if _sprite == null or front_texture == null:
+		return
+	_sprite.texture = back_texture if facing == Vector2i.UP and back_texture != null else front_texture
+	_sprite.rotation = 0.0
+	_sprite.position = Vector2.ZERO
+	if turn_front_sideways and facing.y == 0:
+		# The front art has its doorway at the bottom. The sprite turns around its top-left corner,
+		# so it is moved back over the cell: right is a quarter turn counter-clockwise, left clockwise.
+		var span: Vector2 = front_texture.get_size() * _sprite.scale
+		_sprite.rotation = -PI / 2.0 if facing == Vector2i.RIGHT else PI / 2.0
+		_sprite.position = Vector2(0.0, span.y) if facing == Vector2i.RIGHT else Vector2(span.x, 0.0)
+
+
+## Text drawn over the machine. Empty by default: the machine's name is not shown there.
 func _status_text() -> String:
-	return machine_type
+	return ""
 
 
-## Hands an item to the machine in front. False if there is none or it refuses.
+## Hands an item to the machine in front. False if there is none or it refuses. Two machines facing
+## each other (a head-on pair) pass nothing to one another. The Collector has no facing, so it never counts.
 func _push(item: String) -> bool:
 	var target: Machine = GameState.get_machine_at(cell + facing) as Machine
-	return target != null and target.receive(item)
+	if target == null or (target.can_rotate() and target.facing == -facing):
+		return false
+	return target.receive(item)
 
 
 func _on_tick(_tick_number: int) -> void:
