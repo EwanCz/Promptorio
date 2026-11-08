@@ -29,6 +29,8 @@ func _refresh() -> void:
 		var button: DraggableButton = DraggableButton.new()
 		button.text = chip.name
 		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		if chip.created_by != 0:
+			button.tooltip_text = "Created by Orchestrator #%d" % chip.created_by
 		button.drag_payload = {"chip_id": chip.id}
 		button.pressed.connect(chip_requested.emit.bind(chip))
 		_list.add_child(button)

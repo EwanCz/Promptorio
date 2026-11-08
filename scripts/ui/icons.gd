@@ -12,6 +12,8 @@ const WHITE: Color = Color("f4f6f8")
 const FILLS: Dictionary = {
 	"ok": Color("3fa34d"), "bad": Color("d6453d"), "warn": Color("e8912d"), "none": Color("7d8590"),
 	"info": Color("4a8fd8"), "off": Color("4a4f57"), "coin": Color("e0b82e"),
+	# Matches Orchestrator.TINT (scripts/machines/orchestrator.gd): marks a badge as "an Orchestrator did this".
+	"orchestrator": Color(0.68, 0.58, 0.95),
 }
 ## icon name -> [badge fill, glyph]. Glyphs are 8x8 and sit in the middle of the badge.
 const BADGES: Dictionary = {
@@ -50,6 +52,12 @@ const BADGES: Dictionary = {
 	"boost": ["ok", "bolt"],
 	"mode_fast": ["info", "bolt"],
 	"mode_normal": ["off", "bolt"],
+	# An Orchestrator just changed a machine's chip: shown above the machine (ChipIndicator.show_management()),
+	# distinct in color from a chip's own decision result (applied/none/failed above).
+	"managed_created": ["orchestrator", "bolt"],
+	"managed_assigned": ["orchestrator", "plus"],
+	"managed_revised": ["orchestrator", "gear"],
+	"managed_removed": ["orchestrator", "dash"],
 }
 const GLYPHS: Dictionary = {
 	"check": ["........", "......#.", ".....##.", "#...##..", "##.##...", ".###....", "..#.....", "........"],
