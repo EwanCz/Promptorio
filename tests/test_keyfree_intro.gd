@@ -16,6 +16,7 @@ var _saved_money: int = 0
 var _saved_ticks: int = 0
 var _saved_provider: String = ""
 var _saved_api_key: String = ""
+var _saved_env: Dictionary = {}
 var _decisions: Array = []
 var _failures: Array = []
 var _completed_orders: Array = []
@@ -28,8 +29,10 @@ func before_each() -> void:
 	var settings: Node = autoload("Settings")
 	_saved_provider = settings.provider
 	_saved_api_key = settings.api_key
+	_saved_env = settings._env.duplicate()
 	settings.provider = "anthropic"
 	settings.api_key = ""
+	settings._env.clear()
 	_saved_money = _game.money
 	_saved_ticks = _game.tick_count
 	_decisions.clear()
@@ -53,6 +56,7 @@ func after_each() -> void:
 	var settings: Node = autoload("Settings")
 	settings.provider = _saved_provider
 	settings.api_key = _saved_api_key
+	settings._env = _saved_env
 
 
 func _on_decision(id: int, _calls: Array[Dictionary]) -> void:
@@ -118,6 +122,11 @@ func test_the_intro_scenario_fulfills_the_starting_order_with_no_key_and_no_netw
 		check_eq(_completed_orders[0][1], 30, "paid the order's own reward")
 	check(_game.money > money_before, "the order reward was paid")
 	check(_collector().sold >= 5, "every ordered ingot actually reached the collector")
+	while ticks < Miner.PROSPECT_TICKS + Miner.BOOST_TICKS + 10:
+		_bus.tick_fired.emit(ticks)
+		ticks += 1
+	check_eq(_miner().mode, Miner.Mode.PROSPECTING, "the miner's predefined behavior starts prospecting")
+	check(_smelter().cooling, "the smelter's predefined behavior enables cooling")
 	check_eq(_decisions.size(), 0, "no LLM decision was ever received")
 	check_eq(_failures.size(), 0, "no LLM decision ever failed (none was ever requested)")
 	check_eq(_llm._in_flight, 0, "LLMManager never had an in-flight request")
