@@ -32,12 +32,12 @@ func _ready() -> void:
 		SfxEvents.attach_click(button)
 	_save_dialog.use_as_menu()
 	_play_button.pressed.connect(start_game)
-	_load_button.pressed.connect(_save_dialog.open)
-	_chips_button.pressed.connect(_chip_manager.open)
-	_options_button.pressed.connect(_settings_dialog.open)
+	_load_button.pressed.connect(_on_load_pressed)
+	_chips_button.pressed.connect(_on_chips_pressed)
+	_options_button.pressed.connect(_on_options_pressed)
 	_exit_button.pressed.connect(get_tree().quit)
 	_save_dialog.save_picked.connect(start_game)
-	_chip_manager.chip_requested.connect(_chip_page.open)
+	_chip_manager.chip_requested.connect(_on_chip_requested)
 	game_requested.connect(_go_to_game)
 	_play_button.grab_focus()
 
@@ -53,6 +53,38 @@ func start_game(save: Dictionary = {}) -> void:
 func _go_to_game() -> void:
 	if get_tree().current_scene == self:
 		get_tree().change_scene_to_file(GAME_SCENE)
+
+
+## Every popup of the main menu. Closing the others before one opens keeps exactly one visible at a
+## time, same rule as Main (scripts/ui/main.gd).
+func _popups() -> Array[Control]:
+	return [_save_dialog, _chip_manager, _chip_page, _settings_dialog]
+
+
+func _close_popups() -> void:
+	for popup: Control in _popups():
+		if popup.visible:
+			popup.call("close")
+
+
+func _on_load_pressed() -> void:
+	_close_popups()
+	_save_dialog.open()
+
+
+func _on_chips_pressed() -> void:
+	_close_popups()
+	_chip_manager.open()
+
+
+func _on_options_pressed() -> void:
+	_close_popups()
+	_settings_dialog.open()
+
+
+func _on_chip_requested(chip: ChipRessource) -> void:
+	_close_popups()
+	_chip_page.open(chip)
 
 
 ## Gives each button the Icons glyph it shares with the Bar, scaled crisply like Icons.apply_button() does.
