@@ -62,6 +62,30 @@ func clear_contents() -> void:
 	_blocked = false
 
 
+func _save_data() -> Dictionary:
+	return {"stock": stock.duplicate(), "stock_limit": stock_limit, "progress": progress, "output": _output, "blocked": _blocked}
+
+
+## Only the recipe's own items are accepted, each within the stock limit.
+func _load_data(data: Dictionary) -> void:
+	stock_limit = _read_int(data, "stock_limit", MAX_STOCK, 1, MAX_STOCK)
+	stock.clear()
+	_output = ""
+	progress = 0
+	_blocked = false
+	if recipe == null:
+		return
+	var saved_stock: Variant = data.get("stock")
+	if typeof(saved_stock) == TYPE_DICTIONARY:
+		for item: String in recipe.inputs:
+			var count: int = _read_int(saved_stock, item, 0, 0, stock_limit)
+			if count > 0:
+				stock[item] = count
+	progress = _read_int(data, "progress", 0, 0, recipe.ticks)
+	_output = _read_item(data, "output", [recipe.output])
+	_blocked = _output != "" and data.get("blocked") == true
+
+
 func _items_text(items: Dictionary) -> String:
 	if items.is_empty():
 		return "empty"

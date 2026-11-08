@@ -59,6 +59,15 @@ func clear_contents() -> void:
 	_wait = 0
 
 
+func _save_data() -> Dictionary:
+	return {"held": held, "wait": _wait}
+
+
+func _load_data(data: Dictionary) -> void:
+	held = _read_item(data, "held", Collector.PRICES.keys())
+	_wait = _read_int(data, "wait", 0, 0, MOVE_TICKS)
+
+
 func _on_tick(tick_number: int) -> void:
 	super._on_tick(tick_number)
 	_scroll(tick_number)

@@ -52,6 +52,17 @@ func clear_contents() -> void:
 	_progress = 0
 
 
+func _save_data() -> Dictionary:
+	return {"mine_ticks": mine_ticks, "progress": _progress, "held": _held, "blocked": _blocked}
+
+
+func _load_data(data: Dictionary) -> void:
+	mine_ticks = _read_int(data, "mine_ticks", mine_ticks, MIN_MINE_TICKS, MAX_MINE_TICKS)
+	_progress = _read_int(data, "progress", 0, 0, mine_ticks)
+	_held = _read_item(data, "held", [ITEM])
+	_blocked = _held != "" and data.get("blocked") == true
+
+
 func _tick() -> void:
 	if _held != "":
 		_blocked = not _push(_held)

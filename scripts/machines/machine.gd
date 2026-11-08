@@ -8,6 +8,8 @@ signal chip_decision_applied(chip_id: int, reason: String, applied: int)
 
 enum Status { NORMAL, DOWN, OVERHEATING }
 
+const MAX_KEY_LENGTH: int = 40
+
 @export var machine_type: String = "machine"
 ## Art seen from the front: used for every facing except up. Unset on the bare base machine.
 @export var front_texture: Texture2D
@@ -100,6 +102,12 @@ func get_action_text() -> String:
 func destroy() -> bool:
 	if not is_removable():
 		return false
+	discard()
+	return true
+
+
+## Same as destroy() but for any machine, fixed or not. Used when a save replaces the whole map.
+func discard() -> void:
 	clear_contents()
 	for component: ChipComponent in chips.duplicate():
 		detach_chip(component.chip.id)
@@ -108,7 +116,54 @@ func destroy() -> bool:
 	if get_parent() != null:
 		get_parent().remove_child(self)
 	queue_free()
+
+
+## False for a machine that is about to disappear (an exploding Smelter): a save skips it.
+func is_saveable() -> bool:
 	return true
+
+
+## Everything a save file keeps about this machine, as plain JSON types.
+func to_dict() -> Dictionary:
+	var chip_list: Array = []
+	for component: ChipComponent in chips:
+		chip_list.append({
+			"id": component.chip.id,
+			"timeout": component.timeout,
+			"threshold_key": component.threshold_key,
+			"threshold": component.threshold,
+		})
+	return {
+		"type": machine_type,
+		"id": machine_id,
+		"cell": [cell.x, cell.y],
+		"facing": [facing.x, facing.y],
+		"enabled": enabled,
+		"status": status,
+		"chips": chip_list,
+		"data": _save_data(),
+	}
+
+
+## Applies a saved machine (see to_dict) onto a freshly placed one. The file is not trusted: every value
+## is clamped or ignored. Chips whose id is not in the registry are skipped.
+func load_dict(data: Dictionary) -> void:
+	enabled = data.get("enabled", true) == true
+	status = _read_int(data, "status", Status.NORMAL, 0, Status.size() - 1) as Status
+	var saved_data: Variant = data.get("data")
+	if typeof(saved_data) == TYPE_DICTIONARY:
+		_load_data(saved_data)
+	var chip_list: Variant = data.get("chips")
+	if typeof(chip_list) != TYPE_ARRAY:
+		return
+	for entry: Variant in chip_list:
+		if typeof(entry) != TYPE_DICTIONARY:
+			continue
+		var component: ChipComponent = attach_chip(
+			_read_int(entry, "id", 0, 0, 2147483647),
+			_read_int(entry, "timeout", ChipComponent.DEFAULT_TIMEOUT, 1, 100000))
+		if component != null:
+			component.set_threshold(str(entry.get("threshold_key", "")).left(MAX_KEY_LENGTH), _read_float(entry, "threshold", 0.0, -1000000.0, 1000000.0))
 
 
 ## Takes one item from an upstream machine. True if accepted. Machines that take nothing keep the default.
@@ -165,6 +220,39 @@ func log_chip(message: String) -> void:
 ## Drops the machine's stock and held items. Subclasses with contents override.
 func clear_contents() -> void:
 	pass
+
+
+## State specific to the machine type, saved under "data". Subclasses with state override it.
+func _save_data() -> Dictionary:
+	return {}
+
+
+## Reads what _save_data() wrote. Use the _read_* helpers: the values come from a file.
+func _load_data(_data: Dictionary) -> void:
+	pass
+
+
+## A whole number clamped to [low, high], or the fallback when the value is missing or not a number.
+static func _read_int(data: Dictionary, key: String, fallback: int, low: int, high: int) -> int:
+	var value: Variant = data.get(key)
+	if typeof(value) == TYPE_INT:
+		return clampi(value, low, high)
+	if typeof(value) == TYPE_FLOAT and is_finite(value):
+		return clampi(int(value), low, high)
+	return fallback
+
+
+static func _read_float(data: Dictionary, key: String, fallback: float, low: float, high: float) -> float:
+	var value: Variant = data.get(key)
+	if (typeof(value) == TYPE_INT or typeof(value) == TYPE_FLOAT) and is_finite(float(value)):
+		return clampf(float(value), low, high)
+	return fallback
+
+
+## The saved item name when it is one of `allowed`, else "" (no item).
+static func _read_item(data: Dictionary, key: String, allowed: Array) -> String:
+	var value: Variant = data.get(key)
+	return value if typeof(value) == TYPE_STRING and allowed.has(value) else ""
 
 
 ## Simulation step, called once per GameState tick unless the machine is DOWN. Override in subclasses.
