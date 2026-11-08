@@ -6,6 +6,9 @@ extends TileMapLayer
 
 signal cell_hovered(cell: Vector2i)
 signal cell_clicked(cell: Vector2i)
+## The hover highlight or refuse-flash changed. HoverOverlay draws them (not this node, so a machine
+## sprite drawn after GridMap2D in the World tree never hides them) and redraws on this signal.
+signal redraw_requested
 
 const SOURCE_ID: int = 0
 const DIRT_TILE: Vector2i = Vector2i(0, 0)
@@ -79,14 +82,6 @@ func _unhandled_input(event: InputEvent) -> void:
 			cell_clicked.emit(hovered_cell)
 
 
-func _draw() -> void:
-	var tile_size: Vector2 = Vector2(tile_set.tile_size)
-	if GameState.is_in_grid(hovered_cell):
-		draw_rect(Rect2(Vector2(hovered_cell) * tile_size, tile_size), hover_color())
-	if GameState.is_in_grid(_flash_cell):
-		draw_rect(Rect2(Vector2(_flash_cell) * tile_size, tile_size), REFUSE_FLASH_COLOR)
-
-
 ## The placement rule for a machine type: a free cell inside the grid, and miners only on minesites.
 func can_place(type: String, cell: Vector2i) -> bool:
 	return GameState.can_place(cell) and (type != "miner" or is_minesite(cell))
@@ -94,7 +89,7 @@ func can_place(type: String, cell: Vector2i) -> bool:
 
 func set_placement_type(type: String) -> void:
 	placement_type = type
-	queue_redraw()
+	redraw_requested.emit()
 
 
 ## Drives the hover highlight from outside (a drag over the map, which has no mouse motion event of its
@@ -107,24 +102,24 @@ func set_hovered_cell(cell: Vector2i) -> void:
 ## while dragging a chip, which targets a machine, not a free cell.
 func set_hover_check(check: Callable) -> void:
 	_hover_check = check
-	queue_redraw()
+	redraw_requested.emit()
 
 
 func clear_hover_check() -> void:
 	_hover_check = Callable()
-	queue_redraw()
+	redraw_requested.emit()
 
 
 ## A brief red flash on a cell where a drop was refused, so the refusal reads where the player was looking.
 func flash_refused(cell: Vector2i) -> void:
 	_flash_cell = cell
-	queue_redraw()
+	redraw_requested.emit()
 	_flash_timer.start(REFUSE_FLASH_SECONDS)
 
 
 func _clear_flash() -> void:
 	_flash_cell = Vector2i(-1, -1)
-	queue_redraw()
+	redraw_requested.emit()
 
 
 func hover_color() -> Color:
@@ -258,5 +253,5 @@ func _set_hovered(cell: Vector2i) -> void:
 	if cell == hovered_cell:
 		return
 	hovered_cell = cell
-	queue_redraw()
+	redraw_requested.emit()
 	cell_hovered.emit(cell)
