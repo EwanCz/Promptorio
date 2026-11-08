@@ -10,7 +10,7 @@ Deliver a demoable factory loop for a 2-3 person team: Miner -> Smelter -> Assem
 
 - Demo, onboarding and player goals: [#20](https://github.com/EwanCz/Promptorio/issues/20), [#21](https://github.com/EwanCz/Promptorio/issues/21), [#22](https://github.com/EwanCz/Promptorio/issues/22), [#23](https://github.com/EwanCz/Promptorio/issues/23), [#24](https://github.com/EwanCz/Promptorio/issues/24).
 - Release and demo readiness: [#25](https://github.com/EwanCz/Promptorio/issues/25), [#26](https://github.com/EwanCz/Promptorio/issues/26), [#27](https://github.com/EwanCz/Promptorio/issues/27).
-- Proposed mechanics for playtesting: Miner prospecting [#17](https://github.com/EwanCz/Promptorio/issues/17), Assembler modes [#18](https://github.com/EwanCz/Promptorio/issues/18), mergers and splitters [#19](https://github.com/EwanCz/Promptorio/issues/19).
+- Proposed mechanics for playtesting: Assembler modes [#18](https://github.com/EwanCz/Promptorio/issues/18), mergers and splitters [#19](https://github.com/EwanCz/Promptorio/issues/19). Miner prospecting ([#17](https://github.com/EwanCz/Promptorio/issues/17)) is implemented; see "Miner prospecting" below and `docs/IMPLEMENTATION.md`.
 - Later exploration: machine decisions [#28](https://github.com/EwanCz/Promptorio/issues/28), Orchestrator [#29](https://github.com/EwanCz/Promptorio/issues/29), and other prototype conveniences [#30](https://github.com/EwanCz/Promptorio/issues/30).
 
 ## Decisions
@@ -21,6 +21,7 @@ Deliver a demoable factory loop for a 2-3 person team: Miner -> Smelter -> Assem
 - **Simulation:** a fixed 10 Hz physics-driven clock catches up elapsed time and excludes paused time.
 - **Economy:** start with 100 money. Miner costs 20, Smelter 30, Assembler 40 and Conveyor 2. The central Collector is free and fixed. Charge only after valid placement; player removal refunds half, rounded down; explosions do not refund.
 - **Logistics:** ordinary conveyors use deterministic logic. AI on conveyors and logistics nodes is post-MVP.
+- **Miner prospecting:** `start_prospecting` pauses mining for 8s, then mines at 2x the pace for 20s before resuming on its own; refused mid-cycle (restart or resource switch). Starting numbers to retune from playtesting (`Miner.PROSPECT_TICKS`, `BOOST_TICKS`, `BOOST_RATE`); no change recorded yet.
 
 ## Risks
 

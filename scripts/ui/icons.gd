@@ -46,7 +46,9 @@ const BADGES: Dictionary = {
 	"money": ["ok", "coin"],
 	"cooling_on": ["info", "snow"],
 	"cooling_off": ["off", "snow"],
-	"mode_fast": ["ok", "bolt"],
+	"prospecting": ["info", "search"],
+	"boost": ["ok", "bolt"],
+	"mode_fast": ["info", "bolt"],
 	"mode_normal": ["off", "bolt"],
 }
 const GLYPHS: Dictionary = {
@@ -76,6 +78,7 @@ const GLYPHS: Dictionary = {
 	"hammer": ["..####..", ".######.", "..####..", "...##...", "...##...", "...##...", "...##...", "........"],
 	"tray": ["...##...", "...##...", ".######.", "..####..", "...##...", "........", "#......#", "########"],
 	"coin": ["..####..", ".##..##.", ".##.....", "..####..", ".....##.", ".##..##.", "..####..", "........"],
+	"search": ["..####..", ".#....#.", "#......#", "#......#", ".#....#.", "..####..", ".....##.", "......##"],
 }
 ## The key drawn on its own, 12x12, in the coin color.
 const KEY: Array = [
