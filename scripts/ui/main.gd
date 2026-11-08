@@ -9,6 +9,7 @@ extends Node
 @onready var _tooltip: MachineTooltip = %MachineTooltip
 @onready var _chip_log: ChipLog = %ChipLog
 @onready var _settings_dialog: SettingsDialog = %SettingsDialog
+@onready var _save_dialog: SaveDialog = %SaveDialog
 @onready var _placement: Placement = get_node("Game/FactoryView/SubViewport/World/Placement") as Placement
 
 
@@ -17,6 +18,8 @@ func _ready() -> void:
 	_build_page.setup(_placement)
 	_registry_page.chip_requested.connect(_chip_page.open)
 	_tooltip.log_requested.connect(_chip_log.show_machine)
+	_save_dialog.setup(_placement)
+	_bar.saves_requested.connect(_save_dialog.open)
 	_bar.settings_requested.connect(_settings_dialog.open)
 	EventBus.settings_changed.connect(_check_key)
 	_check_key()

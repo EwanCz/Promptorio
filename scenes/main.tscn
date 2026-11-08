@@ -1,124 +1,130 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://b6o7awrl7vegq"]
 
 [ext_resource type="TileSet" path="res://data/tilesets/factory_tileset.tres" id="1_tileset"]
-[ext_resource type="Script" path="res://scripts/world/grid_map_2d.gd" id="2_grid"]
-[ext_resource type="Script" path="res://scripts/world/camera.gd" id="3_camera"]
-[ext_resource type="Script" path="res://scripts/ui/main.gd" id="4_main"]
-[ext_resource type="Script" path="res://scripts/ui/bar_panel.gd" id="5_bar"]
+[ext_resource type="Script" uid="uid://b8oeeol4bsmyo" path="res://scripts/world/grid_map_2d.gd" id="2_grid"]
+[ext_resource type="Script" uid="uid://de246c1obg1pv" path="res://scripts/world/camera.gd" id="3_camera"]
+[ext_resource type="Script" uid="uid://wkjx42pv5064" path="res://scripts/ui/main.gd" id="4_main"]
+[ext_resource type="Script" uid="uid://058vhroiedu0" path="res://scripts/ui/bar_panel.gd" id="5_bar"]
 [ext_resource type="Theme" path="res://data/ui/theme.tres" id="6_theme"]
 [ext_resource type="PackedScene" path="res://scenes/ui/pages/chip_registry_page.tscn" id="7_registry"]
 [ext_resource type="PackedScene" path="res://scenes/ui/popups/chip_page.tscn" id="8_chip_page"]
 [ext_resource type="PackedScene" path="res://scenes/ui/popups/machine_tooltip.tscn" id="9_tooltip"]
 [ext_resource type="PackedScene" path="res://scenes/ui/popups/chip_log.tscn" id="10_log"]
 [ext_resource type="PackedScene" path="res://scenes/ui/popups/settings_dialog.tscn" id="11_settings"]
-[ext_resource type="Script" path="res://scripts/world/placement.gd" id="12_placement"]
+[ext_resource type="Script" uid="uid://wrtngwcfpfw4" path="res://scripts/world/placement.gd" id="12_placement"]
 [ext_resource type="PackedScene" path="res://scenes/ui/pages/build_page.tscn" id="13_build"]
+[ext_resource type="PackedScene" path="res://scenes/ui/popups/save_dialog.tscn" id="14_save"]
 
-[node name="Main" type="Node"]
+[node name="Main" type="Node" unique_id=1179046009]
 script = ExtResource("4_main")
 
-[node name="Game" type="HBoxContainer" parent="."]
+[node name="Game" type="HBoxContainer" parent="." unique_id=1834381060]
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_constants/separation = 0
 theme = ExtResource("6_theme")
+theme_override_constants/separation = 0
 
-[node name="FactoryView" type="SubViewportContainer" parent="Game"]
+[node name="FactoryView" type="SubViewportContainer" parent="Game" unique_id=1651386507]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_stretch_ratio = 4.0
 stretch = true
 
-[node name="SubViewport" type="SubViewport" parent="Game/FactoryView"]
+[node name="SubViewport" type="SubViewport" parent="Game/FactoryView" unique_id=91119752]
 handle_input_locally = false
-size = Vector2i(1024, 720)
+size = Vector2i(921, 648)
 render_target_update_mode = 4
 
-[node name="World" type="Node2D" parent="Game/FactoryView/SubViewport"]
+[node name="World" type="Node2D" parent="Game/FactoryView/SubViewport" unique_id=2012510337]
 
-[node name="GridMap2D" type="TileMapLayer" parent="Game/FactoryView/SubViewport/World"]
+[node name="GridMap2D" type="TileMapLayer" parent="Game/FactoryView/SubViewport/World" unique_id=209097729]
 unique_name_in_owner = true
 tile_set = ExtResource("1_tileset")
 script = ExtResource("2_grid")
 
-[node name="Machines" type="Node2D" parent="Game/FactoryView/SubViewport/World"]
+[node name="Machines" type="Node2D" parent="Game/FactoryView/SubViewport/World" unique_id=700926543]
 
-[node name="Placement" type="Node" parent="Game/FactoryView/SubViewport/World" node_paths=PackedStringArray("grid", "machines")]
+[node name="Placement" type="Node" parent="Game/FactoryView/SubViewport/World" unique_id=724255296 node_paths=PackedStringArray("grid", "machines")]
 script = ExtResource("12_placement")
 grid = NodePath("../GridMap2D")
 machines = NodePath("../Machines")
 
-[node name="Camera2D" type="Camera2D" parent="Game/FactoryView/SubViewport/World"]
+[node name="Camera2D" type="Camera2D" parent="Game/FactoryView/SubViewport/World" unique_id=1574813228]
 anchor_mode = 0
 script = ExtResource("3_camera")
 
-[node name="Bar" type="PanelContainer" parent="Game"]
+[node name="Bar" type="PanelContainer" parent="Game" unique_id=323090928]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
-size_flags_stretch_ratio = 1.0
-mouse_filter = 0
 script = ExtResource("5_bar")
 
-[node name="VBoxContainer" type="VBoxContainer" parent="Game/Bar"]
+[node name="VBoxContainer" type="VBoxContainer" parent="Game/Bar" unique_id=619963063]
 layout_mode = 2
 
-[node name="KeyStatus" type="PanelContainer" parent="Game/Bar/VBoxContainer"]
+[node name="KeyStatus" type="PanelContainer" parent="Game/Bar/VBoxContainer" unique_id=1809501578]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
 
-[node name="KeyStatusLabel" type="Label" parent="Game/Bar/VBoxContainer/KeyStatus"]
+[node name="KeyStatusLabel" type="Label" parent="Game/Bar/VBoxContainer/KeyStatus" unique_id=1499312588]
 unique_name_in_owner = true
 layout_mode = 2
 autowrap_mode = 3
 
-[node name="TopHalf" type="VBoxContainer" parent="Game/Bar/VBoxContainer"]
+[node name="TopHalf" type="VBoxContainer" parent="Game/Bar/VBoxContainer" unique_id=1187879507]
 layout_mode = 2
 size_flags_vertical = 3
-size_flags_stretch_ratio = 1.0
 
-[node name="PageTabs" type="HFlowContainer" parent="Game/Bar/VBoxContainer/TopHalf"]
+[node name="PageTabs" type="HFlowContainer" parent="Game/Bar/VBoxContainer/TopHalf" unique_id=430273903]
 unique_name_in_owner = true
 layout_mode = 2
 
-[node name="PageScroll" type="ScrollContainer" parent="Game/Bar/VBoxContainer/TopHalf"]
+[node name="PageScroll" type="ScrollContainer" parent="Game/Bar/VBoxContainer/TopHalf" unique_id=441775026]
 layout_mode = 2
 size_flags_vertical = 3
 horizontal_scroll_mode = 0
 
-[node name="Pages" type="MarginContainer" parent="Game/Bar/VBoxContainer/TopHalf/PageScroll"]
+[node name="Pages" type="MarginContainer" parent="Game/Bar/VBoxContainer/TopHalf/PageScroll" unique_id=1069112835]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="UI" type="CanvasLayer" parent="."]
-
-[node name="BuildPage" parent="Game/Bar/VBoxContainer/TopHalf/PageScroll/Pages" instance=ExtResource("13_build")]
+[node name="BuildPage" parent="Game/Bar/VBoxContainer/TopHalf/PageScroll/Pages" unique_id=448417407 instance=ExtResource("13_build")]
 unique_name_in_owner = true
 layout_mode = 2
 
-[node name="ChipRegistryPage" parent="Game/Bar/VBoxContainer/TopHalf/PageScroll/Pages" instance=ExtResource("7_registry")]
+[node name="ChipRegistryPage" parent="Game/Bar/VBoxContainer/TopHalf/PageScroll/Pages" unique_id=501517705 instance=ExtResource("7_registry")]
 unique_name_in_owner = true
 layout_mode = 2
 
-[node name="MachineTooltip" parent="Game/Bar/VBoxContainer" instance=ExtResource("9_tooltip")]
+[node name="MachineTooltip" parent="Game/Bar/VBoxContainer" unique_id=609715515 instance=ExtResource("9_tooltip")]
 unique_name_in_owner = true
 layout_mode = 2
 
-[node name="SettingsButton" type="Button" parent="Game/Bar/VBoxContainer"]
+[node name="SavesButton" type="Button" parent="Game/Bar/VBoxContainer" unique_id=1767811997]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Save / Load"
+
+[node name="SettingsButton" type="Button" parent="Game/Bar/VBoxContainer" unique_id=947646898]
 unique_name_in_owner = true
 layout_mode = 2
 text = "Settings"
 
-[node name="ChipPage" parent="UI" instance=ExtResource("8_chip_page")]
+[node name="UI" type="CanvasLayer" parent="." unique_id=1858705596]
+
+[node name="ChipPage" parent="UI" unique_id=456899458 instance=ExtResource("8_chip_page")]
 unique_name_in_owner = true
 
-[node name="ChipLog" parent="UI" instance=ExtResource("10_log")]
+[node name="ChipLog" parent="UI" unique_id=438942852 instance=ExtResource("10_log")]
 unique_name_in_owner = true
 
-[node name="SettingsDialog" parent="UI" instance=ExtResource("11_settings")]
+[node name="SettingsDialog" parent="UI" unique_id=464205155 instance=ExtResource("11_settings")]
+unique_name_in_owner = true
+
+[node name="SaveDialog" parent="UI" unique_id=1204870381 instance=ExtResource("14_save")]
 unique_name_in_owner = true
