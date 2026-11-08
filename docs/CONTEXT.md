@@ -168,24 +168,6 @@ Env: `GODOT` (godot binary, default `godot`), `TEST_TIMEOUT` (seconds, default 1
 - New `class_name` scripts need a class-cache refresh; `tests/run.sh` does it, a bare `godot --headless -s` does not.
 - The real HTTP path is tested offline by replaying scripted responses through `LLMManager._send()` (`tests/test_llm_http.gd`, `tests/support/scripted_llm_manager.gd`). A real network round-trip is still untested.
 
-## Features
-
-### LLM
-The llm system is linked via the `LLMManager`. It stores the providers (`mock`, `anthropic`, `openai`), one `LLMProvider` each.
-It help to call the models via a `request_decision` function. It can be take the message + the related tools.
-The request_decision get a list of tools to call with arguments. It save the machine which made the chat-call to call the functions related to the machine (ex: prompt ask to make a axe. The llm will ask to call the tool "make" with the param axe on the machine which called it).
-> [!Warning]
-> Complete
-
-### SIM
-Need to build the map by making a x/y grid of square tile where machine can be place on.
-Need a tick rate limit to make the game update the ressource position and the machine action completion time. Link to the eventBus.
-> [!Warning]
-> Complete
-
-### UI
-Information in docs/UI.md search any information related to UI in this file.
-
 ## Workflow
 - Branch per feature, small commits (conventional commits, e.g. `feat(llm): add queue`). Don't commit directly to `main` for features. Never commit `.env` or keys.
 - Don't edit `project.godot` or `.tscn` by hand unless necessary. If you must, keep changes minimal. Scenes merge badly, so tell the team which scene you're touching.
