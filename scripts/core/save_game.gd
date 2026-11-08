@@ -7,7 +7,8 @@ extends RefCounted
 ## Format (version 1): {version, tick_count, money, next_machine_id, minesites: [[x, y]] (the cells where a miner can
 ## go; a file without it keeps the current map's), chips: [{id, name, description, prompt}],
 ## machines: [{type, id, cell: [x, y], facing: [x, y], enabled, status, chips: [{id, timeout}],
-## data: {...state of the machine type, see Machine._save_data()}}]}
+## data: {...state of the machine type, see Machine._save_data()}}], memory: {notes, journal} (what the
+## Orchestrator kept, see AgentMemory; a file without it leaves it with a blank memory)}
 
 const VERSION: int = 1
 ## Slots go to `saves/` in the project folder when run from the editor (so a save can be committed and shared),
@@ -67,6 +68,7 @@ static func snapshot(placement: Placement) -> Dictionary:
 		"minesites": placement.grid.minesites.map(func(site: Vector2i) -> Array: return [site.x, site.y]),
 		"chips": chips,
 		"machines": machines,
+		"memory": AgentMemory.snapshot(),
 	}
 
 
@@ -94,6 +96,7 @@ static func restore(placement: Placement, data: Variant) -> String:
 			machine.load_dict(entry)
 			highest_id = maxi(highest_id, id)
 	placement.next_id = maxi(int(save["next_machine_id"]), highest_id + 1)
+	AgentMemory.restore(save.get("memory", {}))
 	GameState.tick_count = int(save["tick_count"])
 	GameState.add_money(int(save["money"]) - GameState.money)
 	return ""
@@ -117,6 +120,10 @@ static func validate(placement: Placement, data: Variant) -> String:
 	var chip_error: String = _validate_chips(save.get("chips"))
 	if chip_error != "":
 		return chip_error
+	if save.has("memory"):
+		var memory_error: String = AgentMemory.validate(save["memory"])
+		if memory_error != "":
+			return memory_error
 	var sites: Variant = placement.grid.minesites if placement != null else null
 	if save.has("minesites"):
 		if not _minesites_valid(save["minesites"]):

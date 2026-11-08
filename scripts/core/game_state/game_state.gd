@@ -39,9 +39,10 @@ func tick_fraction() -> float:
 	return clampf((_tick_accumulator + elapsed) * TICK_RATE, 0.0, 1.0)
 
 
-## Back to the start of a new game: starting money and a stopped clock. Machines unregister themselves
-## when their scene leaves the tree.
+## Back to the start of a new game: starting money, a stopped clock and a blank Orchestrator memory. Machines
+## unregister themselves when their scene leaves the tree.
 func reset() -> void:
+	AgentMemory.clear()
 	tick_count = 0
 	_tick_accumulator = 0.0
 	_last_tick_time_usec = Time.get_ticks_usec()

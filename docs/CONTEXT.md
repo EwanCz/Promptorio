@@ -26,6 +26,7 @@ Read `docs/PLAN.md` for project goals, decisions and risks, and the relevant iss
 - `GameState` (`scripts/core/game_state/`): grid, machine registry, tick clock, resources.
 - `Settings` (`scripts/core/settings.gd`): API key, provider, model, cooldowns. Persisted via `ConfigFile` in `user://settings.cfg`.
 - `EventBus` (`scripts/core/event_bus.gd`): global signals only. No logic.
+- `AgentMemory` (`scripts/chip/agent_memory.gd`): what the Orchestrator keeps between two decisions (see "Agent memory").
 
 ### Scene / node layout
 The project starts on the main menu (`scenes/menu/main_menu.tscn`: Play, Load Game, Chips, Options, Exit, see `docs/UI.md`), which switches to `scenes/main.tscn` below. `GameState` survives scene changes, so a new game calls `GameState.reset()` first; a save picked in the menu waits in `SaveGame.pending` until `Main` restores it.
@@ -113,6 +114,11 @@ By default a failed HTTP call reaches the ChipLog as `HTTP <status> (<error type
 
 ### Save files
 `SaveGame` (`scripts/core/save_game.gd`, static functions, no autoload) saves and restores the whole game as one JSON file (`version` 1). Slots live in `saves/` at the project root in an editor run (so a save can be committed and shared) and in `user://saves/` in an exported build (`SaveGame.default_save_dir()`); Import / Export in the `SaveDialog` popup reach any file. A file is never trusted: `SaveGame.validate()` checks the whole structure before anything is touched, and each machine clamps its own values in `_load_data()`. Machines add their state by overriding `_save_data()` / `_load_data()` (use the `_read_int` / `_read_float` / `_read_item` helpers). The save embeds the chips its machines use; loading overwrites a registry chip with the same id.
+
+### Agent memory
+`AgentMemory` is the store for the Orchestrator (late-game idea, issue #29: it assigns registry chips to machines and tunes chip prompts, and gets more precise from what it learned). Chips have no memory of their own. No SQL: Godot has no built-in database and SQLite needs a native GDExtension per platform, which a few KB of notes do not justify; the API hides the storage, so a real database can replace it later. It is plain data in RAM, saved inside the save file (`memory` key, validated by `SaveGame.validate()`) and cleared by `GameState.reset()`, so it always belongs to the factory it manages. A save without `memory` leaves it blank.
+- Two stores: notes (`remember(key, text)`, `recall`, `forget`, `notes`; an empty text forgets) and a journal (`log_event`, `journal(count)`, oldest dropped first). `context(journal_count)` returns both as the compact Dictionary to put in the Orchestrator's state (empty when there is nothing).
+- Everything is bounded (`MAX_NOTES` 32, `MAX_JOURNAL` 50, key 40, note 1000 and event 300 characters): texts are cut, a new note past the limit is refused (`false`). Not wired yet: nothing reads or writes it until the Orchestrator exists.
 
 ### Session log (local)
 `SessionLog` appends every machine log line to `user://logs/session_<date>_<time>.log` (`time | #id type | message`), flushing each line. Only the message text is written (no request bodies or headers) and configured API keys are replaced by `[redacted]`. It is started by `Main`, skipped in headless runs, and does not change the ChipLog's 200-line cap.
