@@ -23,6 +23,8 @@ const NEIGHBORS: Array[Vector2i] = [Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT
 const MAP_SEED: int = 1337
 const HOVER_OK: Color = Color(0.2, 1.0, 0.3, 0.35)
 const HOVER_BLOCKED: Color = Color(1.0, 0.2, 0.2, 0.35)
+const REFUSE_FLASH_COLOR: Color = Color(1.0, 0.2, 0.2, 0.6)
+const REFUSE_FLASH_SECONDS: float = 0.25
 
 ## Replaces the random minesites when it is not empty. The test runner sets it so layouts are repeatable.
 static var layout_override: Array[Vector2i] = []
@@ -34,11 +36,19 @@ var _ground: Dictionary = {}
 var hovered_cell: Vector2i = Vector2i(-1, -1)
 ## The machine type being placed ("" for none): the highlight follows its rules.
 var placement_type: String = ""
+## Overrides can_place() for the hover highlight while set (a chip drag targets machines, not free cells).
+## Takes a cell, returns whether it is a valid drop target. Cleared by clear_hover_check().
+var _hover_check: Callable = Callable()
+var _flash_cell: Vector2i = Vector2i(-1, -1)
+@onready var _flash_timer: Timer = Timer.new()
 
 
 func _ready() -> void:
 	var tile_pixels: int = tile_set.tile_size.x
 	scale = Vector2.ONE * float(GameState.CELL_SIZE) / float(tile_pixels)
+	_flash_timer.one_shot = true
+	_flash_timer.timeout.connect(_clear_flash)
+	add_child(_flash_timer)
 	_build_ground()
 
 
@@ -52,10 +62,11 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _draw() -> void:
-	if not GameState.is_in_grid(hovered_cell):
-		return
 	var tile_size: Vector2 = Vector2(tile_set.tile_size)
-	draw_rect(Rect2(Vector2(hovered_cell) * tile_size, tile_size), hover_color())
+	if GameState.is_in_grid(hovered_cell):
+		draw_rect(Rect2(Vector2(hovered_cell) * tile_size, tile_size), hover_color())
+	if GameState.is_in_grid(_flash_cell):
+		draw_rect(Rect2(Vector2(_flash_cell) * tile_size, tile_size), REFUSE_FLASH_COLOR)
 
 
 ## The placement rule for a machine type: a free cell inside the grid, and miners only on minesites.
@@ -68,8 +79,39 @@ func set_placement_type(type: String) -> void:
 	queue_redraw()
 
 
+## Drives the hover highlight from outside (a drag over the map, which has no mouse motion event of its
+## own to trigger it through _unhandled_input).
+func set_hovered_cell(cell: Vector2i) -> void:
+	_set_hovered(cell)
+
+
+## While set, `check` decides the hover highlight color instead of can_place(placement_type, cell): used
+## while dragging a chip, which targets a machine, not a free cell.
+func set_hover_check(check: Callable) -> void:
+	_hover_check = check
+	queue_redraw()
+
+
+func clear_hover_check() -> void:
+	_hover_check = Callable()
+	queue_redraw()
+
+
+## A brief red flash on a cell where a drop was refused, so the refusal reads where the player was looking.
+func flash_refused(cell: Vector2i) -> void:
+	_flash_cell = cell
+	queue_redraw()
+	_flash_timer.start(REFUSE_FLASH_SECONDS)
+
+
+func _clear_flash() -> void:
+	_flash_cell = Vector2i(-1, -1)
+	queue_redraw()
+
+
 func hover_color() -> Color:
-	return HOVER_OK if can_place(placement_type, hovered_cell) else HOVER_BLOCKED
+	var ok: bool = _hover_check.call(hovered_cell) if _hover_check.is_valid() else can_place(placement_type, hovered_cell)
+	return HOVER_OK if ok else HOVER_BLOCKED
 
 
 func get_hovered_cell(world_pos: Vector2) -> Vector2i:
