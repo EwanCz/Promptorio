@@ -5,9 +5,21 @@ const TICK_RATE: int = 10
 const GRID_SIZE: Vector2i = Vector2i(32, 20)
 const CELL_SIZE: int = 64
 const START_MONEY: int = 100
+## The first order of a new game: an Ore -> Ingot chain, buildable with the starting money (Miner 20 +
+## Smelter 30), so a new game has a reachable goal right away.
+const STARTING_ORDER_PRODUCT: String = "ingot"
+const ORDER_QUANTITY: int = 5
+## The reward on top of the ordered items' own Collector sale price, so fulfilling an order pays more
+## than selling the same items without one.
+const ORDER_REWARD_MULTIPLIER: int = 2
 
 var tick_count: int = 0
 var money: int = START_MONEY
+## "" while no order is active (only true before the first reset(), e.g. at the main menu).
+var order_product: String = ""
+var order_quantity: int = 0
+var order_progress: int = 0
+var order_reward: int = 0
 
 var _machines: Dictionary = {}
 var _last_tick_time_usec: int = 0
@@ -39,8 +51,8 @@ func tick_fraction() -> float:
 	return clampf((_tick_accumulator + elapsed) * TICK_RATE, 0.0, 1.0)
 
 
-## Back to the start of a new game: starting money and a stopped clock. Machines unregister themselves
-## when their scene leaves the tree.
+## Back to the start of a new game: starting money, a stopped clock and a fresh order. Machines unregister
+## themselves when their scene leaves the tree.
 func reset() -> void:
 	ChipRegistry.release_all_creators()
 	tick_count = 0
@@ -48,6 +60,7 @@ func reset() -> void:
 	_last_tick_time_usec = Time.get_ticks_usec()
 	money = START_MONEY
 	EventBus.money_changed.emit(money)
+	_start_order(STARTING_ORDER_PRODUCT, ORDER_QUANTITY)
 
 
 func is_in_grid(cell: Vector2i) -> bool:
@@ -93,6 +106,49 @@ func world_to_cell(pos: Vector2) -> Vector2i:
 func add_money(amount: int) -> void:
 	money += amount
 	EventBus.money_changed.emit(money)
+
+
+## Counts a Collector sale of `item` toward the current order. A no-op with no active order, an order
+## already complete, or a sale of something else. Pays the reward through add_money, distinct from the
+## item's own sale price, and starts the next order once the quantity is reached.
+func record_order_sale(item: String) -> void:
+	if order_product == "" or item != order_product or order_progress >= order_quantity:
+		return
+	order_progress += 1
+	EventBus.order_progress_changed.emit(order_product, order_progress, order_quantity, order_reward)
+	if order_progress < order_quantity:
+		return
+	var fulfilled: String = order_product
+	var reward: int = order_reward
+	add_money(reward)
+	EventBus.order_completed.emit(fulfilled, reward)
+	_start_next_order()
+
+
+## Restores order state saved by SaveGame. Does not touch money: a saved reward already paid is part of
+## the saved money total.
+func restore_order(product: String, quantity: int, progress: int, reward: int) -> void:
+	order_product = product
+	order_quantity = quantity
+	order_progress = progress
+	order_reward = reward
+	EventBus.order_progress_changed.emit(order_product, order_progress, order_quantity, order_reward)
+
+
+## A new order for `quantity` of `product`, progress at 0, reward computed from the catalog price.
+func _start_order(product: String, quantity: int) -> void:
+	order_product = product
+	order_quantity = quantity
+	order_progress = 0
+	order_reward = ItemCatalog.shared().price_of(product) * quantity * ORDER_REWARD_MULTIPLIER
+	EventBus.order_progress_changed.emit(order_product, order_progress, order_quantity, order_reward)
+
+
+## The simplest follow-up that still demos well: a new order starts right away, for a resource picked at
+## random from the whole catalog, so the goal keeps changing without needing a player trigger.
+func _start_next_order() -> void:
+	var ids: Array[String] = ItemCatalog.shared().get_ids()
+	_start_order(ids[randi() % ids.size()] if not ids.is_empty() else "", ORDER_QUANTITY)
 
 
 func _advance_clock(elapsed: float) -> void:

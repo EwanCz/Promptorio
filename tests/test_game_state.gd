@@ -83,6 +83,10 @@ func test_clock_catches_up_after_stall() -> void:
 func test_reset_starts_a_new_game() -> void:
 	var saved_money: int = _game_state.money
 	var saved_ticks: int = _game_state.tick_count
+	var saved_product: String = _game_state.order_product
+	var saved_quantity: int = _game_state.order_quantity
+	var saved_progress: int = _game_state.order_progress
+	var saved_reward: int = _game_state.order_reward
 	var seen: Array[int] = []
 	var on_money: Callable = func(amount: int) -> void: seen.append(amount)
 	_bus.money_changed.connect(on_money)
@@ -93,5 +97,11 @@ func test_reset_starts_a_new_game() -> void:
 	check_eq(_game_state.money, _game_state.START_MONEY, "money is back to the start value")
 	check_eq(_game_state.tick_count, 0, "the clock restarts")
 	check_eq(seen, [_game_state.START_MONEY], "money_changed announces it")
+	check_eq(_game_state.order_product, _game_state.STARTING_ORDER_PRODUCT, "a fresh order starts too")
+	check_eq(_game_state.order_progress, 0, "at zero progress")
 	_game_state.money = saved_money
 	_game_state.tick_count = saved_ticks
+	_game_state.order_product = saved_product
+	_game_state.order_quantity = saved_quantity
+	_game_state.order_progress = saved_progress
+	_game_state.order_reward = saved_reward
