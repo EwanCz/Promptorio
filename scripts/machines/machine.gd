@@ -7,6 +7,11 @@ signal tool_applied(tool_name: String, args: Dictionary)
 signal chip_decision_applied(chip_id: int, reason: String, applied: int)
 
 enum Status { NORMAL, DOWN, OVERHEATING }
+## PRODUCING: enabled and a job is in progress. STALLED: its output cannot be delivered (wins over
+## PRODUCING, e.g. a full conveyor ahead). IDLE: switched off, or nothing to do right now.
+enum ProductionState { PRODUCING, STALLED, IDLE }
+## Window get_production_rate() reports over, in simulated seconds (so the number reads as items per minute).
+const PRODUCTION_WINDOW_SECONDS: float = 60.0
 
 @export var machine_type: String = "machine"
 ## Art seen from the front: used for every facing except up. Unset on the bare base machine.
@@ -35,11 +40,16 @@ var facing: Vector2i = Vector2i.RIGHT:
 var chips: Array[ChipComponent] = []
 ## The icon above the machine: a spinner while any chip waits for an answer, then the last result.
 var indicator: ChipIndicator
+## The icon at the corner of the machine's cell showing its production state. Null for machines whose
+## shows_production_feedback() is false (they have no timed job to report).
+var production_indicator: ProductionIndicator
 
 ## Where the sprite rests for the current facing, and the temporary offset an effect (the Smelter's shake)
 ## adds on top. The sprite always sits at home + offset, so an offset never accumulates or fights a rotation.
 var _sprite_home: Vector2 = Vector2.ZERO
 var _sprite_offset: Vector2 = Vector2.ZERO
+## Ticks this machine completed a unit of production on, trimmed to PRODUCTION_WINDOW_SECONDS.
+var _production_ticks: Array[int] = []
 
 @onready var _label: Label = get_node_or_null("StatusLabel") as Label
 @onready var _sprite: Sprite2D = get_node_or_null("Sprite2D") as Sprite2D
@@ -50,6 +60,12 @@ func _ready() -> void:
 	indicator = ChipIndicator.new()
 	indicator.position = Vector2(GameState.CELL_SIZE / 2.0, -Icons.SIZE * Icons.SCALE / 2.0 - 2.0)
 	add_child(indicator)
+	if shows_production_feedback():
+		production_indicator = ProductionIndicator.new()
+		var corner: float = GameState.CELL_SIZE - Icons.SIZE * Icons.SCALE / 2.0 - 2.0
+		production_indicator.position = Vector2(corner, corner)
+		add_child(production_indicator)
+		production_indicator.refresh(get_production_state(), get_production_rate())
 	_update_sprite()
 
 
@@ -123,6 +139,28 @@ func get_progress() -> float:
 ## True once a delivery of the output failed and the machine is waiting for the way to clear.
 func is_blocked() -> bool:
 	return false
+
+
+## True for machines that complete a timed production job (Miner, Smelter, Assembler): they get a
+## production_indicator and a production state. False for the Collector and Conveyor, which only move or
+## sell what reaches them and have no such job to report.
+func shows_production_feedback() -> bool:
+	return false
+
+
+## STALLED wins over PRODUCING: a machine blocked mid-delivery is not making progress even if `enabled`.
+func get_production_state() -> ProductionState:
+	if is_blocked():
+		return ProductionState.STALLED
+	if enabled and get_progress() > 0.0:
+		return ProductionState.PRODUCING
+	return ProductionState.IDLE
+
+
+## Units this machine has completed and handed off in the last PRODUCTION_WINDOW_SECONDS of simulated
+## time, as an items-per-minute figure. 0 for a machine that never calls _note_produced().
+func get_production_rate() -> float:
+	return float(_production_ticks.size()) * (60.0 / PRODUCTION_WINDOW_SECONDS)
 
 
 ## Discards everything the machine holds (stock, held item, attached chips), frees its grid cell
@@ -281,6 +319,15 @@ func _tick() -> void:
 	pass
 
 
+## Marks one completed, delivered unit of production right now. Call it only for something the machine
+## itself made (not merely moved, like a Conveyor), right after a successful hand-off.
+func _note_produced() -> void:
+	_production_ticks.append(_tick_number)
+	var window: int = int(PRODUCTION_WINDOW_SECONDS) * GameState.TICK_RATE
+	while not _production_ticks.is_empty() and _production_ticks[0] <= _tick_number - window:
+		_production_ticks.pop_front()
+
+
 ## Picks the sprite for the current facing. Conveyors override it. Runs before _ready too
 ## (placement sets facing first), when there is no sprite yet.
 func _update_sprite() -> void:
@@ -331,6 +378,8 @@ func _on_tick(tick_number: int) -> void:
 	_tick_number = tick_number
 	if status != Status.DOWN:
 		_tick()
+	if production_indicator != null:
+		production_indicator.refresh(get_production_state(), get_production_rate())
 	if _label != null:
 		_label.text = _status_text()
 
