@@ -75,11 +75,13 @@ func test_pending_shows_the_spinner_and_it_animates() -> void:
 	check_eq(asked, ["checking"] as Array[String], "the chip announces the request")
 	check_eq(_machine.indicator.state, "checking", "spinner while waiting")
 	check(_machine.indicator.visible, "visible")
-	var before: PackedByteArray = _machine.indicator.texture.get_image().get_data()
-	await wait_until(func() -> bool: return _machine.indicator.state != "checking" or _machine.indicator.texture.get_image().get_data() != before, 2.0)
-	if _machine.indicator.state == "checking":
-		check(_machine.indicator.texture.get_image().get_data() != before, "the frames change over time")
 	await wait_until(func() -> bool: return not _comps[0].pending)
+	# The animation is checked on a chip held pending by hand, so it never depends on how fast the answer comes.
+	_start(1)
+	var before: PackedByteArray = _machine.indicator.texture.get_image().get_data()
+	await wait_until(func() -> bool: return _machine.indicator.texture.get_image().get_data() != before, 2.0)
+	check(_machine.indicator.texture.get_image().get_data() != before, "the frames change over time")
+	_comps[1].pending = false
 
 
 func test_an_applied_action_shows_its_icon_then_hides() -> void:
