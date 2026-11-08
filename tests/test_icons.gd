@@ -57,3 +57,11 @@ func test_rect_sets_hover_text_and_pixel_filter() -> void:
 	check_eq(with_hint.custom_minimum_size, Vector2(Icons.SIZE * Icons.SCALE, Icons.SIZE * Icons.SCALE), "scaled up")
 	with_hint.free()
 	without.free()
+
+
+func test_action_icons_make_square_buttons_with_a_hover() -> void:
+	for icon_name: String in ["rotate", "destroy", "settings", "add", "ask", "log", "remove"]:
+		var button: Button = Icons.button(icon_name, "hint %s" % icon_name)
+		check(button.icon != null and button.icon.get_size() == Vector2(Icons.SIZE * Icons.SCALE, Icons.SIZE * Icons.SCALE), "%s icon is pre-scaled" % icon_name)
+		check(button.text == "" and button.tooltip_text == "hint %s" % icon_name, "%s: icon only, with a hover" % icon_name)
+		button.free()

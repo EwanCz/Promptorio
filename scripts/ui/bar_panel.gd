@@ -1,6 +1,6 @@
 class_name BarPanel
 extends PanelContainer
-## Right-hand Bar: one named button per page in `Pages`, plus the settings button.
+## Right-hand Bar: one named button per page in `Pages`, plus the settings icon button.
 
 signal settings_requested
 
@@ -24,6 +24,7 @@ func _ready() -> void:
 		button.button_group = group
 		button.pressed.connect(_show_page.bind(_tabs.get_child_count()))
 		_tabs.add_child(button)
+	Icons.apply_button(_settings_button, "settings", "Settings")
 	_settings_button.pressed.connect(settings_requested.emit)
 	EventBus.settings_changed.connect(_on_settings_changed)
 	EventBus.key_checked.connect(_on_key_checked)

@@ -24,7 +24,7 @@ When a chip is clicked in the chip registry page. The game is paused and a popup
 ## Visual feedback rule
 Runtime status is shown with icons, not persistent text. Keep text where it carries content or meaning: machine and chip names, values and prices (money, Smelter temperature), prompts, settings and necessary control labels. Every symbol that is not self-evident has a brief hover description (`tooltip_text`). Icons come from one pixel-art set (`Icons`, `scripts/ui/icons.gd`): 12x12 glyphs on colored badges, drawn at x2 with the nearest filter to match the 16 px machine art, and meaning is in the shape as well as the color. Static labels and text-entry screens (Settings, Chip Page, Chip Registry) are out of this rule. Decision bubbles are not part of the design.
 - Chip activity above each machine (`ChipIndicator`, centered just above the machine's cell): an animated spinner while any attached chip waits for an answer, then briefly (1.5 s) one distinct icon for the last result: check (an action was applied), dash (no action), cross (failure or a rejected call). With several chips the spinner stays until all have answered, so one finishing chip never hides another that still runs.
-- Machine state in the tooltip: one icon (green play: normal, grey cross: down, orange flame: overheating) with the explanation on hover.
+- Machine state in the details panel: one icon (green play: normal, grey cross: down, orange flame: overheating) with the explanation on hover.
 - API key in the Bar: a key icon plus a badge (see "API key status").
 - Placement refusal in the Build page: a coin icon for insufficient funds, a red dash for any other refusal, reason on hover.
 - Chip log: an icon timeline (see "Chip log").
@@ -32,7 +32,13 @@ Runtime status is shown with icons, not persistent text. Keep text where it carr
 ## Machine tooltip
 The Bar is split in two halves of equal height, with the Settings button below them at the very bottom:
 - Top half: the page tabs (Build / Chip Registry) and the current page inside a scroll container, so a long list scrolls instead of growing the Bar.
-- Bottom half: the machine tooltip, a panel of the Bar (not a popup over the map). It shows "Click a machine to see its details." until a machine is clicked. Clicking the same machine or an empty cell goes back to that hint. The details scroll when they do not fit. Show machine id, type, an icon for its state (normal, down, overheating; see "Visual feedback rule"), current action, connected chips with prompt preview and timeout (chip rows wrap to the narrow Bar), an add-chip picker from the registry, a log button, and the Rotate and Destroy actions.
+- Bottom half: the machine details panel (`MachineTooltip`), a panel of the Bar (not a popup over the map). It shows "Select a machine" until a machine is clicked. Clicking the same machine or an empty cell goes back to that hint. The details scroll when they do not fit. Layout, top to bottom, with no section titles or explanatory text:
+  - Header: the state icon (see "Visual feedback rule"), the title "<Type> #<id>", then icon buttons: log, rotate and destroy (rotate and destroy are hidden for machines that cannot use them, e.g. the Collector).
+  - The current operation and its values as text (recipe, stock, state of work, Smelter temperature and cooling, facing, sales).
+  - One block per attached chip: its name (hover shows the prompt), a clock icon with the timer in ticks, an "ask now" bolt button and a "remove" button, then a watch row: an up-arrow icon, the value to watch ("-" = none) and the limit it must rise above.
+  - Last, the chip picker with a plus button that attaches the picked chip.
+  - Every icon button has a hover description: "Chip log", "Rotate", "Destroy this machine", "Ask the chip now", "Remove this chip", "Add the chosen chip", and the clock and arrow explain the timer and the watch. The panel stays narrow enough for the Bar: rows wrap, and long chip names are trimmed with an ellipsis (hover shows the prompt).
+  - The Settings button at the bottom of the Bar is a gear icon (hover: "Settings").
 
 The tooltip hides with the rest of the Bar (`E`).
 

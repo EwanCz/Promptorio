@@ -26,6 +26,15 @@ const BADGES: Dictionary = {
 	"state_normal": ["ok", "play"],
 	"state_down": ["off", "cross"],
 	"state_overheating": ["warn", "flame"],
+	"rotate": ["info", "rotate"],
+	"destroy": ["bad", "trash"],
+	"settings": ["none", "gear"],
+	"add": ["ok", "plus"],
+	"ask": ["warn", "bolt"],
+	"log": ["none", "list"],
+	"remove": ["warn", "dash"],
+	"timer": ["info", "clock"],
+	"watch": ["info", "up"],
 }
 const GLYPHS: Dictionary = {
 	"check": ["........", "......#.", ".....##.", "#...##..", "##.##...", ".###....", "..#.....", "........"],
@@ -36,6 +45,14 @@ const GLYPHS: Dictionary = {
 	"question": ["..####..", ".##..##.", ".....##.", "....##..", "...##...", "...##...", "........", "...##..."],
 	"play": [".#......", ".###....", ".#####..", ".#######", ".#####..", ".###....", ".#......", "........"],
 	"flame": ["....#...", "....##..", "...###..", "..#####.", ".#######", ".###.###", ".##...##", "..#####."],
+	"rotate": ["..####..", ".#....#.", "#...###.", "#....#..", "#.......", "#......#", ".#....#.", "..####.."],
+	"trash": ["..####..", "########", ".######.", ".#.##.#.", ".#.##.#.", ".#.##.#.", ".######.", "........"],
+	"gear": [".#.##.#.", "########", ".##..##.", "###..###", "###..###", ".##..##.", "########", ".#.##.#."],
+	"plus": ["........", "...##...", "...##...", ".######.", ".######.", "...##...", "...##...", "........"],
+	"bolt": [".....##.", "....##..", "...##...", "..#####.", "....##..", "...##...", "..##....", ".##....."],
+	"list": ["........", "##.#####", "........", "##.#####", "........", "##.#####", "........", "........"],
+	"clock": ["..####..", ".#.##.#.", "#..##..#", "#..###.#", "#......#", "#......#", ".#....#.", "..####.."],
+	"up": ["...##...", "..####..", ".######.", "...##...", "...##...", "...##...", "...##...", "........"],
 	"coin": ["..####..", ".##..##.", ".##.....", "..####..", ".....##.", ".##..##.", "..####..", "........"],
 }
 ## The key drawn on its own, 12x12, in the coin color.
@@ -79,6 +96,25 @@ static func rect(icon_name: String, description: String = "") -> TextureRect:
 	var rect_node: TextureRect = TextureRect.new()
 	apply(rect_node, icon_name, description)
 	return rect_node
+
+
+## A flat-looking icon-only Button (names are in the hover text). The icon is pre-scaled with the nearest
+## filter, because a Button cannot scale its icon crisply.
+static func button(icon_name: String, description: String) -> Button:
+	var button_node: Button = Button.new()
+	apply_button(button_node, icon_name, description)
+	return button_node
+
+
+## Turns an existing Button (e.g. one from a scene) into an icon-only button with a hover description.
+static func apply_button(button_node: Button, icon_name: String, description: String) -> void:
+	var image: Image = icon(icon_name).get_image()
+	image.resize(SIZE * SCALE, SIZE * SCALE, Image.INTERPOLATE_NEAREST)
+	button_node.icon = ImageTexture.create_from_image(image)
+	button_node.text = ""
+	button_node.tooltip_text = description
+	button_node.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	button_node.custom_minimum_size = Vector2(SIZE * SCALE + 6, SIZE * SCALE + 6)
 
 
 ## Sets an existing TextureRect (e.g. one from a scene) to the icon and its hover text.

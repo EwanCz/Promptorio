@@ -118,7 +118,7 @@ layout_mode = 2
 [node name="SettingsButton" type="Button" parent="Game/Bar/VBoxContainer"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "Settings"
+size_flags_horizontal = 8
 
 [node name="ChipPage" parent="UI" instance=ExtResource("8_chip_page")]
 unique_name_in_owner = true

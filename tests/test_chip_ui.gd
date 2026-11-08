@@ -96,7 +96,7 @@ func test_tooltip_toggle_and_chips() -> void:
 	var chip: ChipRessource = _add("ui_tip", "prompt text")
 	bus.machine_selected.emit(machine)
 	check(tooltip.is_open(), "selecting a machine opens the tooltip")
-	check_eq((tooltip.get_node("%TypeLabel") as Label).text, "Type: machine", "type shown")
+	check_eq((tooltip.get_node("%IdLabel") as Label).text, "Machine #%d" % machine.machine_id, "type and id in one title")
 	var state: TextureRect = tooltip.get_node("%StatusIcon") as TextureRect
 	check_eq(state.texture.get_image().get_data(), Icons.icon("state_normal").get_image().get_data(), "state shown as an icon")
 	check(state.tooltip_text.contains("normally"), "hover explains it")
@@ -104,10 +104,9 @@ func test_tooltip_toggle_and_chips() -> void:
 	check_eq(machine.chips.size(), 1, "add chip attaches the picked chip")
 	check_eq(tooltip.get_node("%ChipsList").get_child_count(), 1, "attached chip listed")
 	var row: Node = tooltip.get_node("%ChipsList").get_child(0)
-	var main_row: Node = row.get_child(1)
-	(main_row.get_child(0) as SpinBox).value = 7
+	(row.find_child("Timeout", true, false) as SpinBox).value = 7
 	check_eq(machine.chips[0].timeout, 7, "timeout edited from the tooltip")
-	(main_row.get_child(1) as Button).pressed.emit()
+	(row.find_child("Remove", true, false) as Button).pressed.emit()
 	check_eq(machine.chips.size(), 0, "remove button detaches the chip")
 	var logged: Array = []
 	var on_log: Callable = func(m: Machine) -> void: logged.append(m)
@@ -304,6 +303,57 @@ func test_settings_dialog_uses_the_env_key_without_saving_it() -> void:
 		DirAccess.remove_absolute(settings.PATH)
 
 
+func _same_icon(a: Texture2D, icon_name: String) -> bool:
+	var expected: Image = Icons.icon(icon_name).get_image()
+	expected.resize(Icons.SIZE * Icons.SCALE, Icons.SIZE * Icons.SCALE, Image.INTERPOLATE_NEAREST)
+	return a.get_image().get_data() == expected.get_data()
+
+
+func _texts(root: Node) -> Array[String]:
+	var found: Array[String] = []
+	for node: Node in root.find_children("*", "Label", true, false):
+		found.append((node as Label).text)
+	for node: Node in root.find_children("*", "Button", true, false):
+		if (node as Button).text != "":
+			found.append((node as Button).text)
+	return found
+
+
+func test_details_panel_is_compact_and_icon_driven() -> void:
+	var tooltip: MachineTooltip = _spawn("res://scenes/ui/popups/machine_tooltip.tscn")
+	var machine: Machine = _spawn("res://scenes/machines/smelter.tscn")
+	var chip: ChipRessource = _add("ui_compact", "A long prompt that explains everything the chip does in detail")
+	machine.attach_chip(chip.id)
+	autoload("EventBus").machine_selected.emit(machine)
+	check_eq((tooltip.get_node("%IdLabel") as Label).text, "Smelter #%d" % machine.machine_id, "title: type and id")
+	for pair: Array in [["%LogButton", "log", "Chip log"], ["%RotateButton", "rotate", "Rotate"], ["%DestroyButton", "destroy", "Destroy this machine"], ["%AddButton", "add", "Add the chosen chip"]]:
+		var button: Button = tooltip.get_node(pair[0]) as Button
+		check_eq(button.text, "", "%s has no text" % pair[0])
+		check(button.icon != null and _same_icon(button.icon, pair[1]), "%s shows the %s icon" % [pair[0], pair[1]])
+		check_eq(button.tooltip_text, pair[2], "%s explains itself on hover" % pair[0])
+	var row: Node = tooltip.get_node("%ChipsList").get_child(0)
+	var name_label: Label = row.find_child("Name", true, false) as Label
+	check_eq(name_label.text, "ui_compact", "the chip is identified by its name only")
+	check(name_label.tooltip_text.begins_with("A long prompt"), "the prompt is on hover, not in the panel")
+	for pair: Array in [["Ask", "ask", "Ask the chip now"], ["Remove", "remove", "Remove this chip"]]:
+		var button: Button = row.find_child(pair[0], true, false) as Button
+		check(button.text == "" and _same_icon(button.icon, pair[1]) and button.tooltip_text == pair[2], "%s is an icon button with a hover" % pair[0])
+	var texts: Array[String] = _texts(tooltip)
+	for gone: String in ["Type: smelter", "Chips", "Ask when", "Add chip", "Ask now", "Log", "Rotate", "Destroy", "X", "State: normal"]:
+		check(not gone in texts, "no '%s' text" % gone)
+	check(texts.has("ui_compact"), "names stay as text")
+	check(texts.any(func(t: String) -> bool: return t.contains("Temperature")), "values stay as text")
+	check(tooltip.get_combined_minimum_size().x <= 260.0, "narrow enough for the Bar at small window sizes (%d)" % int(tooltip.get_combined_minimum_size().x))
+
+
+func test_collector_panel_hides_rotate_and_destroy_icons() -> void:
+	var tooltip: MachineTooltip = _spawn("res://scenes/ui/popups/machine_tooltip.tscn")
+	var collector: Machine = _spawn("res://scenes/machines/collector.tscn")
+	autoload("EventBus").machine_selected.emit(collector)
+	check(not (tooltip.get_node("%RotateButton") as Button).visible and not (tooltip.get_node("%DestroyButton") as Button).visible, "fixed machine: no rotate, no destroy")
+	check((tooltip.get_node("%LogButton") as Button).visible, "but its log is still there")
+
+
 func test_tooltip_ask_now_and_threshold() -> void:
 	var tooltip: MachineTooltip = _spawn("res://scenes/ui/popups/machine_tooltip.tscn")
 	var machine: Machine = _spawn("res://scenes/machines/smelter.tscn")
@@ -315,10 +365,9 @@ func test_tooltip_ask_now_and_threshold() -> void:
 	settings.chip_cooldown = 0.0
 	autoload("EventBus").machine_selected.emit(machine)
 	var box: Node = tooltip.get_node("%ChipsList").get_child(0)
-	(box.get_child(1).get_child(2) as Button).pressed.emit()
+	(box.find_child("Ask", true, false) as Button).pressed.emit()
 	check(machine.chips[0].pending, "Ask now sends a request")
-	var watch: Node = box.get_child(2)
-	var keys: OptionButton = watch.get_child(1) as OptionButton
+	var keys: OptionButton = box.find_child("Key", true, false) as OptionButton
 	var index: int = -1
 	for i: int in keys.item_count:
 		if keys.get_item_text(i) == "temperature":
@@ -326,7 +375,7 @@ func test_tooltip_ask_now_and_threshold() -> void:
 	check(index > 0, "numeric state values are offered")
 	keys.select(index)
 	keys.item_selected.emit(index)
-	(watch.get_child(2) as SpinBox).value = 90
+	(box.find_child("Limit", true, false) as SpinBox).value = 90
 	check_eq(machine.chips[0].threshold_key, "temperature", "watched value set from the tooltip")
 	check_eq(machine.chips[0].threshold, 90.0, "limit set from the tooltip")
 	keys.select(0)
