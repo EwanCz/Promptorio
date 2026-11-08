@@ -12,7 +12,8 @@ const WHITE: Color = Color("f4f6f8")
 const FILLS: Dictionary = {
 	"ok": Color("3fa34d"), "bad": Color("d6453d"), "warn": Color("e8912d"), "none": Color("7d8590"),
 	"info": Color("4a8fd8"), "off": Color("4a4f57"), "coin": Color("e0b82e"),
-	# Matches Orchestrator.TINT (scripts/machines/orchestrator.gd): marks a badge as "an Orchestrator did this".
+	# Lavender marks a badge as "an Orchestrator did this" (assign/remove/create/revise), independent of
+	# the Orchestrator's own sprite art.
 	"orchestrator": Color(0.68, 0.58, 0.95),
 }
 ## icon name -> [badge fill, glyph]. Glyphs are 8x8 and sit in the middle of the badge.
