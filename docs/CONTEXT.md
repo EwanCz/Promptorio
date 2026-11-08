@@ -24,7 +24,7 @@ Read `docs/PLAN.md` for project goals, decisions and risks, and the relevant iss
 ### Autoloads (singletons)
 - `LLMManager` (`scripts/llm/llm_manager.gd`): the only code allowed to do HTTP. Queue, concurrency cap, timeouts, retries.
 - `GameState` (`scripts/core/game_state/`): grid, machine registry, tick clock, resources.
-- `Settings` (`scripts/core/settings.gd`): API key, provider, model, cooldowns. Persisted via `ConfigFile` in `user://settings.cfg`.
+- `Settings` (`scripts/core/settings.gd`): API key, provider, model, cooldowns, and audio (`master_volume` 0.8, `sfx_volume` 1.0, both 0..1, and `muted`, in the `[audio]` section; clamped on load; `apply_audio()` pushes them to the buses). Persisted via `ConfigFile` in `user://settings.cfg`.
 - `EventBus` (`scripts/core/event_bus.gd`): global signals only. No logic.
 
 ### Scene / node layout
