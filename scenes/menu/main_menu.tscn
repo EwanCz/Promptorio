@@ -2,7 +2,6 @@
 
 [ext_resource type="Script" path="res://scripts/ui/main_menu.gd" id="1_script"]
 [ext_resource type="Theme" path="res://data/ui/theme.tres" id="2_theme"]
-[ext_resource type="Script" path="res://scripts/ui/pixel_button.gd" id="3_pixel"]
 [ext_resource type="PackedScene" path="res://scenes/ui/popups/chip_manager.tscn" id="4_chips"]
 [ext_resource type="PackedScene" path="res://scenes/ui/popups/chip_page.tscn" id="5_chip_page"]
 [ext_resource type="PackedScene" path="res://scenes/ui/popups/save_dialog.tscn" id="6_save"]
@@ -25,7 +24,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-color = Color(0.039, 0.043, 0.078, 1)
+color = Color(0.051, 0.067, 0.11, 1)
 
 [node name="Center" type="CenterContainer" parent="."]
 layout_mode = 1
@@ -35,60 +34,71 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="Column" type="VBoxContainer" parent="Center"]
+[node name="Panel" type="PanelContainer" parent="Center"]
+layout_mode = 2
+theme_type_variation = &"MainMenuPanel"
+
+[node name="Margin" type="MarginContainer" parent="Center/Panel"]
+layout_mode = 2
+theme_override_constants/margin_left = 40
+theme_override_constants/margin_top = 32
+theme_override_constants/margin_right = 40
+theme_override_constants/margin_bottom = 32
+
+[node name="Column" type="VBoxContainer" parent="Center/Panel/Margin"]
 layout_mode = 2
 theme_override_constants/separation = 16
 
-[node name="Title" type="Label" parent="Center/Column"]
+[node name="Title" type="Label" parent="Center/Panel/Margin/Column"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.5, 0.56, 0.88, 1)
+theme_override_colors/font_color = Color(0.878, 0.722, 0.18, 1)
 theme_override_font_sizes/font_size = 72
 text = "PROMPTORIO"
 horizontal_alignment = 1
 
-[node name="Spacer" type="Control" parent="Center/Column"]
+[node name="Spacer" type="Control" parent="Center/Panel/Margin/Column"]
 custom_minimum_size = Vector2(0, 24)
 layout_mode = 2
 
-[node name="PlayButton" type="Button" parent="Center/Column"]
+[node name="PlayButton" type="Button" parent="Center/Panel/Margin/Column"]
 unique_name_in_owner = true
+custom_minimum_size = Vector2(260, 56)
 layout_mode = 2
 size_flags_horizontal = 4
-script = ExtResource("3_pixel")
-texture_base = "res://assets/pixel_art_buttons_pack/btn_play"
-fallback_text = "PLAY"
+theme_type_variation = &"MainMenuButton"
+text = "PLAY"
 
-[node name="LoadButton" type="Button" parent="Center/Column"]
+[node name="LoadButton" type="Button" parent="Center/Panel/Margin/Column"]
 unique_name_in_owner = true
+custom_minimum_size = Vector2(260, 56)
 layout_mode = 2
 size_flags_horizontal = 4
-script = ExtResource("3_pixel")
-texture_base = "res://assets/pixel_art_buttons_pack/btn_load"
-fallback_text = "LOAD GAME"
+theme_type_variation = &"MainMenuButton"
+text = "LOAD GAME"
 
-[node name="ChipsButton" type="Button" parent="Center/Column"]
+[node name="ChipsButton" type="Button" parent="Center/Panel/Margin/Column"]
 unique_name_in_owner = true
+custom_minimum_size = Vector2(260, 56)
 layout_mode = 2
 size_flags_horizontal = 4
-script = ExtResource("3_pixel")
-texture_base = "res://assets/pixel_art_buttons_pack/btn_chips"
-fallback_text = "CHIPS"
+theme_type_variation = &"MainMenuButton"
+text = "CHIPS"
 
-[node name="OptionsButton" type="Button" parent="Center/Column"]
+[node name="OptionsButton" type="Button" parent="Center/Panel/Margin/Column"]
 unique_name_in_owner = true
+custom_minimum_size = Vector2(260, 56)
 layout_mode = 2
 size_flags_horizontal = 4
-script = ExtResource("3_pixel")
-texture_base = "res://assets/pixel_art_buttons_pack/btn_options"
-fallback_text = "OPTIONS"
+theme_type_variation = &"MainMenuButton"
+text = "OPTIONS"
 
-[node name="ExitButton" type="Button" parent="Center/Column"]
+[node name="ExitButton" type="Button" parent="Center/Panel/Margin/Column"]
 unique_name_in_owner = true
+custom_minimum_size = Vector2(260, 56)
 layout_mode = 2
 size_flags_horizontal = 4
-script = ExtResource("3_pixel")
-texture_base = "res://assets/pixel_art_buttons_pack/btn_exit"
-fallback_text = "EXIT"
+theme_type_variation = &"MainMenuButton"
+text = "EXIT"
 
 [node name="ChipManager" parent="." instance=ExtResource("4_chips")]
 unique_name_in_owner = true
