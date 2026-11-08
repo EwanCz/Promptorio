@@ -20,6 +20,8 @@ const MAX_KEY_LENGTH: int = 40
 @export var turn_front_sideways: bool = false
 
 var machine_id: int = 0
+## The last tick this machine handled.
+var _tick_number: int = 0
 ## Why the last tool call was refused by _apply(): the sentence written to the log. Set by the machine before it returns false.
 var refusal: String = ""
 var cell: Vector2i = Vector2i.ZERO
@@ -292,10 +294,20 @@ func _push(item: String) -> bool:
 	var target: Machine = GameState.get_machine_at(cell + facing) as Machine
 	if target == null or (target.can_rotate() and target.facing == -facing):
 		return false
-	return target.receive(item)
+	if not target.receive(item):
+		return false
+	target.note_sender(cell, _tick_number)
+	return true
 
 
-func _on_tick(_tick_number: int) -> void:
+## Called on the receiver right after it accepted an item pushed by the machine on `sender_cell` during tick
+## `sender_tick`. Machines that animate the item coming in override it.
+func note_sender(_sender_cell: Vector2i, _sender_tick: int) -> void:
+	pass
+
+
+func _on_tick(tick_number: int) -> void:
+	_tick_number = tick_number
 	if status != Status.DOWN:
 		_tick()
 	if _label != null:

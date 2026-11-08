@@ -29,6 +29,16 @@ func _notification(what: int) -> void:
 		_last_tick_time_usec = Time.get_ticks_usec()
 
 
+## How far the clock is into the current tick, 0 to 1, up to this very frame (the clock itself only moves
+## with the physics steps, so a frame in between would otherwise show the same value twice). Lets visuals
+## glide between two ticks. Frozen while the game is paused.
+func tick_fraction() -> float:
+	var elapsed: float = 0.0
+	if not get_tree().paused:
+		elapsed = float(Time.get_ticks_usec() - _last_tick_time_usec) / 1000000.0
+	return clampf((_tick_accumulator + elapsed) * TICK_RATE, 0.0, 1.0)
+
+
 func is_in_grid(cell: Vector2i) -> bool:
 	return cell.x >= 0 and cell.y >= 0 and cell.x < GRID_SIZE.x and cell.y < GRID_SIZE.y
 

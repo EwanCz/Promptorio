@@ -1,12 +1,5 @@
 {
-	"chips": [
-		{
-			"description": "Stops a Smelter from overheating.",
-			"id": 2,
-			"name": "Smelter Cooler",
-			"prompt": "You control a Smelter. Working heats it up, and it explodes if it gets too hot. Cooling is the normal way to manage the heat, but crafts take twice as long while it is on, so use it only when needed. Stopping is for emergencies only, and it is done with set_emergency_stop, never set_enabled.\nCheck the state in this order and call at most one tool:\n- If temperature is 130 or higher and enabled is true, call set_emergency_stop with on=true (emergency pause).\n- If emergency_stop is true and temperature is 80 or lower, call set_emergency_stop with on=false (resume your emergency pause). If enabled is false while emergency_stop is false, keep it disabled; the state does not say why it was disabled.\n- If temperature is 100 or higher and cooling is false, call set_cooling with on=true.\n- If temperature is 70 or lower and cooling is true, call set_cooling with on=false.\n- Otherwise do nothing. Never pause for routine temperature control; the gap between 100 and 70 stops cooling from toggling every turn."
-		}
-	],
+	"chips": [],
 	"machines": [
 		{
 			"cell": [
@@ -16,8 +9,8 @@
 			"chips": [],
 			"data": {
 				"accepting": true,
-				"earned": 6,
-				"sold": 2
+				"earned": 54,
+				"sold": 18
 			},
 			"enabled": true,
 			"facing": [
@@ -30,20 +23,21 @@
 		},
 		{
 			"cell": [
-				5,
-				4
+				11,
+				8
 			],
 			"chips": [],
 			"data": {
 				"blocked": false,
 				"held": "",
+				"item": "ore",
 				"mine_ticks": 20,
-				"progress": 19
+				"progress": 2
 			},
 			"enabled": true,
 			"facing": [
-				1,
-				0
+				0,
+				1
 			],
 			"id": 2,
 			"status": 0,
@@ -51,41 +45,27 @@
 		},
 		{
 			"cell": [
-				6,
-				4
+				11,
+				9
 			],
-			"chips": [
-				{
-					"id": 2,
-					"threshold": 0.0,
-					"threshold_key": "",
-					"timeout": 100
-				}
-			],
+			"chips": [],
 			"data": {
-				"blocked": false,
-				"cooling": false,
-				"output": "",
-				"progress": 5,
-				"stock": {
-					"ore": 4
-				},
-				"stock_limit": 10,
-				"temperature": 63.2000000000001
+				"held": "ore",
+				"wait": 2
 			},
 			"enabled": true,
 			"facing": [
-				1,
-				0
+				0,
+				1
 			],
 			"id": 3,
 			"status": 0,
-			"type": "smelter"
+			"type": "conveyor"
 		},
 		{
 			"cell": [
-				7,
-				4
+				11,
+				10
 			],
 			"chips": [],
 			"data": {
@@ -103,8 +83,8 @@
 		},
 		{
 			"cell": [
-				8,
-				4
+				12,
+				10
 			],
 			"chips": [],
 			"data": {
@@ -122,32 +102,13 @@
 		},
 		{
 			"cell": [
-				9,
-				4
+				14,
+				10
 			],
 			"chips": [],
 			"data": {
-				"held": "",
-				"wait": 5
-			},
-			"enabled": true,
-			"facing": [
-				1,
-				0
-			],
-			"id": 6,
-			"status": 0,
-			"type": "conveyor"
-		},
-		{
-			"cell": [
-				10,
-				4
-			],
-			"chips": [],
-			"data": {
-				"held": "",
-				"wait": 5
+				"held": "ingot",
+				"wait": 4
 			},
 			"enabled": true,
 			"facing": [
@@ -160,13 +121,13 @@
 		},
 		{
 			"cell": [
-				11,
-				4
+				15,
+				10
 			],
 			"chips": [],
 			"data": {
-				"held": "ingot",
-				"wait": 1
+				"held": "",
+				"wait": 5
 			},
 			"enabled": true,
 			"facing": [
@@ -179,13 +140,22 @@
 		},
 		{
 			"cell": [
-				12,
-				4
+				13,
+				10
 			],
 			"chips": [],
 			"data": {
-				"held": "",
-				"wait": 5
+				"blocked": false,
+				"cooling": false,
+				"making": "ingot",
+				"output": "",
+				"product": "ingot",
+				"progress": 17,
+				"stock": {
+					"ore": 2
+				},
+				"stock_limit": 10,
+				"temperature": 113.0
 			},
 			"enabled": true,
 			"facing": [
@@ -193,183 +163,62 @@
 				0
 			],
 			"id": 9,
-			"status": 0,
-			"type": "conveyor"
-		},
-		{
-			"cell": [
-				13,
-				4
-			],
-			"chips": [],
-			"data": {
-				"held": "",
-				"wait": 5
-			},
-			"enabled": true,
-			"facing": [
-				1,
-				0
-			],
-			"id": 10,
-			"status": 0,
-			"type": "conveyor"
-		},
-		{
-			"cell": [
-				14,
-				4
-			],
-			"chips": [],
-			"data": {
-				"held": "",
-				"wait": 5
-			},
-			"enabled": true,
-			"facing": [
-				1,
-				0
-			],
-			"id": 11,
-			"status": 0,
-			"type": "conveyor"
-		},
-		{
-			"cell": [
-				15,
-				4
-			],
-			"chips": [],
-			"data": {
-				"held": "",
-				"wait": 5
-			},
-			"enabled": true,
-			"facing": [
-				1,
-				0
-			],
-			"id": 12,
-			"status": 0,
-			"type": "conveyor"
-		},
-		{
-			"cell": [
-				16,
-				4
-			],
-			"chips": [],
-			"data": {
-				"held": "ingot",
-				"wait": 3
-			},
-			"enabled": true,
-			"facing": [
-				0,
-				1
-			],
-			"id": 13,
-			"status": 0,
-			"type": "conveyor"
-		},
-		{
-			"cell": [
-				16,
-				5
-			],
-			"chips": [],
-			"data": {
-				"held": "",
-				"wait": 5
-			},
-			"enabled": true,
-			"facing": [
-				0,
-				1
-			],
-			"id": 14,
-			"status": 0,
-			"type": "conveyor"
-		},
-		{
-			"cell": [
-				16,
-				6
-			],
-			"chips": [],
-			"data": {
-				"held": "",
-				"wait": 5
-			},
-			"enabled": true,
-			"facing": [
-				0,
-				1
-			],
-			"id": 15,
-			"status": 0,
-			"type": "conveyor"
-		},
-		{
-			"cell": [
-				16,
-				7
-			],
-			"chips": [],
-			"data": {
-				"held": "",
-				"wait": 5
-			},
-			"enabled": true,
-			"facing": [
-				0,
-				1
-			],
-			"id": 16,
-			"status": 0,
-			"type": "conveyor"
-		},
-		{
-			"cell": [
-				16,
-				8
-			],
-			"chips": [],
-			"data": {
-				"held": "",
-				"wait": 5
-			},
-			"enabled": true,
-			"facing": [
-				0,
-				1
-			],
-			"id": 17,
-			"status": 0,
-			"type": "conveyor"
-		},
-		{
-			"cell": [
-				16,
-				9
-			],
-			"chips": [],
-			"data": {
-				"held": "",
-				"wait": 5
-			},
-			"enabled": true,
-			"facing": [
-				0,
-				1
-			],
-			"id": 18,
-			"status": 0,
-			"type": "conveyor"
+			"status": 2,
+			"type": "smelter"
 		}
 	],
-	"money": 26,
-	"next_machine_id": 19,
-	"tick_count": 241,
+	"minesites": [
+		[
+			19,
+			2
+		],
+		[
+			20,
+			2
+		],
+		[
+			20,
+			3
+		],
+		[
+			10,
+			8
+		],
+		[
+			11,
+			8
+		],
+		[
+			10,
+			7
+		],
+		[
+			26,
+			18
+		],
+		[
+			27,
+			18
+		],
+		[
+			26,
+			19
+		],
+		[
+			2,
+			13
+		],
+		[
+			2,
+			14
+		],
+		[
+			2,
+			15
+		]
+	],
+	"money": 64,
+	"next_machine_id": 10,
+	"tick_count": 666,
 	"version": 1
 }
