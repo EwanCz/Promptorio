@@ -72,10 +72,16 @@ unique_name_in_owner = true
 visible = false
 layout_mode = 2
 
-[node name="KeyStatusLabel" type="Label" parent="Game/Bar/VBoxContainer/KeyStatus" unique_id=1499312588]
+[node name="KeyStatusRow" type="HBoxContainer" parent="Game/Bar/VBoxContainer/KeyStatus"]
+layout_mode = 2
+
+[node name="KeyIcon" type="TextureRect" parent="Game/Bar/VBoxContainer/KeyStatus/KeyStatusRow"]
 unique_name_in_owner = true
 layout_mode = 2
-autowrap_mode = 3
+
+[node name="KeyBadge" type="TextureRect" parent="Game/Bar/VBoxContainer/KeyStatus/KeyStatusRow"]
+unique_name_in_owner = true
+layout_mode = 2
 
 [node name="TopHalf" type="VBoxContainer" parent="Game/Bar/VBoxContainer" unique_id=1187879507]
 layout_mode = 2
@@ -125,7 +131,7 @@ text = "Save / Load"
 [node name="SettingsButton" type="Button" parent="Game/Bar/VBoxContainer" unique_id=947646898]
 unique_name_in_owner = true
 layout_mode = 2
-text = "Settings"
+size_flags_horizontal = 8
 
 [node name="UI" type="CanvasLayer" parent="." unique_id=1858705596]
 

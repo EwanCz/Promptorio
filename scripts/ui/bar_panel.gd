@@ -1,6 +1,6 @@
 class_name BarPanel
 extends PanelContainer
-## Right-hand Bar: one named button per page in `Pages`, plus the resources and settings buttons.
+## Right-hand Bar: one named button per page, plus resource, save, menu and settings controls.
 
 signal resources_requested
 signal settings_requested
@@ -8,10 +8,13 @@ signal saves_requested
 signal menu_requested
 
 var _verdict: String = ""
+var _spin_time: float = 0.0
+var _frames: Array[Texture2D] = []
 var _detail: String = ""
 
 @onready var _key_status: PanelContainer = %KeyStatus
-@onready var _key_label: Label = %KeyStatusLabel
+@onready var _key_icon: TextureRect = %KeyIcon
+@onready var _key_badge: TextureRect = %KeyBadge
 @onready var _tabs: HFlowContainer = %PageTabs
 @onready var _pages: Control = %Pages
 @onready var _resources_button: Button = %ResourcesButton
@@ -31,10 +34,13 @@ func _ready() -> void:
 		_tabs.add_child(button)
 	_resources_button.pressed.connect(resources_requested.emit)
 	_saves_button.pressed.connect(saves_requested.emit)
+	Icons.apply_button(_settings_button, "settings", "Settings")
 	_settings_button.pressed.connect(settings_requested.emit)
 	_menu_button.pressed.connect(menu_requested.emit)
 	EventBus.settings_changed.connect(_on_settings_changed)
 	EventBus.key_checked.connect(_on_key_checked)
+	_frames = Icons.spinner_frames()
+	set_process(false)
 	_refresh_key_status()
 	(_tabs.get_child(0) as Button).button_pressed = true
 	_show_page(0)
@@ -57,25 +63,35 @@ func _on_key_checked(state: String, detail: String) -> void:
 	_refresh_key_status()
 
 
-## Hidden for providers without a key; otherwise says whether the key is missing, being checked,
-## accepted, rejected, or could not be verified.
+## Animates the checking spinner while a check is pending (the process only runs then).
+func _process(delta: float) -> void:
+	_spin_time += delta
+	_key_badge.texture = _frames[int(_spin_time / ChipIndicator.FRAME_SECONDS) % _frames.size()]
+
+
+## Hidden for providers without a key. Otherwise a key icon with a badge: "!" missing, spinner being checked,
+## check accepted, cross rejected, "?" could not be verified. Hover for the explanation.
 func _refresh_key_status() -> void:
 	_key_status.visible = Settings.ENV_VARS.has(Settings.provider)
+	set_process(false)
 	if not _key_status.visible:
 		return
+	var badge: String = "checking"
 	var text: String = "Checking the API key..."
-	var tint: Color = Color(0.7, 0.7, 0.7)
 	if Settings.needs_api_key():
+		badge = "warn"
 		text = "No active API key: AI chips cannot reach the LLM. Add one in Settings."
-		tint = Color(1, 0.55, 0.1)
 	elif _verdict == "valid":
+		badge = "applied"
 		text = "API key verified."
-		tint = Color(0.35, 0.8, 0.35)
 	elif _verdict == "invalid":
+		badge = "failed"
 		text = "API key rejected (%s). Fix it in Settings." % _detail
-		tint = Color(0.9, 0.25, 0.25)
 	elif _verdict == "error":
+		badge = "unknown"
 		text = "Could not verify the API key (%s)." % _detail
-		tint = Color(1, 0.55, 0.1)
-	_key_label.text = text
-	_key_status.self_modulate = tint
+	Icons.apply(_key_icon, "key", text)
+	Icons.apply(_key_badge, badge, text)
+	_key_status.tooltip_text = text
+	_spin_time = 0.0
+	set_process(badge == "checking")

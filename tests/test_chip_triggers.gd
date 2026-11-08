@@ -32,6 +32,8 @@ func after_each() -> void:
 
 
 func _spawn(path: String) -> ChipComponent:
+	if _machine != null:
+		_machine.free()
 	_machine = (load(path) as PackedScene).instantiate() as Machine
 	tree.root.add_child(_machine)
 	var chip: ChipComponent = _machine.attach_chip(_res.id, 100000)
@@ -52,73 +54,72 @@ func _finish(chip: ChipComponent) -> void:
 	await wait_until(func() -> bool: return not chip.pending)
 
 
-func test_event_fires_when_it_appears() -> void:
-	var chip: ChipComponent = _spawn(MINER)
-	_tick(5)
-	check(not chip.pending, "nothing happening, no request")
-	_tick((_machine as Miner).mine_ticks + 2)
-	check(chip.pending, "output full wakes the chip")
-	await _finish(chip)
-	check_eq(_reason, "event:output_full", "reason names the event")
+var _started: int = 0
 
 
-func test_event_held_over_does_not_refire() -> void:
-	var chip: ChipComponent = _spawn(MINER)
-	_tick((_machine as Miner).mine_ticks + 2)
-	await _finish(chip)
-	_tick(10)
-	check(not chip.pending, "same event is not raised again every tick")
+func _on_started(_id: int) -> void:
+	_started += 1
 
 
-func test_event_already_true_at_attach_does_not_fire() -> void:
-	var chip: ChipComponent = _spawn(ASSEMBLER)
-	check("input_empty" in _machine.get_events(), "an empty assembler has the input_empty event")
-	_tick(5)
-	check(not chip.pending, "starting state is not a new event")
-
-
-func test_error_event_when_machine_not_normal() -> void:
-	var chip: ChipComponent = _spawn(MINER)
-	_tick(1)
-	_machine.status = Machine.Status.DOWN
-	_tick(1)
-	check(chip.pending, "leaving normal wakes the chip")
-	await _finish(chip)
-	check_eq(_reason, "event:error", "reason is error")
-
-
-func test_threshold_fires_on_crossing_only() -> void:
+func test_state_and_status_changes_never_wake_a_chip() -> void:
+	var bus: Node = autoload("EventBus")
+	_started = 0
+	bus.llm_request_started.connect(_on_started)
 	var chip: ChipComponent = _spawn(SMELTER)
-	chip.set_threshold("temperature", 60.0)
-	_tick(1)
-	check(not chip.pending, "below the threshold")
-	(_machine as Smelter).temperature = 90.0
-	_tick(1)
-	check(chip.pending, "crossing the threshold wakes the chip")
-	await _finish(chip)
-	check_eq(_reason, "threshold:temperature", "reason names the value")
-	_reason = ""
-	_tick(1)
-	check(not chip.pending, "still above, no new request")
-	(_machine as Smelter).temperature = 30.0
-	_tick(1)
-	(_machine as Smelter).temperature = 90.0
-	_tick(1)
-	check(chip.pending, "crossing again fires again")
-	await _finish(chip)
+	var smelter: Smelter = _machine as Smelter
+	var before: Array = [smelter.enabled, smelter.cooling, smelter.emergency_stop]
+	smelter.temperature = 90.0
+	_tick(3)
+	check(not chip.pending, "a temperature rise does not wake the chip")
+	smelter.temperature = Smelter.OVERHEAT_AT + 5.0
+	_tick(3)
+	check_eq(smelter.status, Machine.Status.OVERHEATING, "the smelter really is overheating")
+	check(not chip.pending, "becoming OVERHEATING does not wake it either")
+	smelter.status = Machine.Status.DOWN
+	_tick(3)
+	check(not chip.pending, "nor a machine going down")
+	check_eq([smelter.enabled, smelter.cooling, smelter.emergency_stop], before, "no machine setting changed")
+	var miner: ChipComponent = _spawn(MINER)
+	_tick((_machine as Miner).mine_ticks + 5)
+	check(_machine.get_state()["blocked"] and not miner.pending, "a blocked output does not wake a chip")
+	var assembler: ChipComponent = _spawn(ASSEMBLER)
+	_tick(3)
+	check(not assembler.pending, "nor an empty input")
+	bus.llm_request_started.disconnect(_on_started)
+	check_eq(_started, 0, "the LLM was never called")
+	check_eq(_reason, "", "no decision was ever asked for")
 
 
-func test_threshold_off_by_default_and_ignores_non_numbers() -> void:
+func test_there_is_no_event_or_threshold_api() -> void:
+	var chip: ChipComponent = _spawn(SMELTER)
+	check(not chip.has_method("set_threshold") and not "threshold_key" in chip, "no threshold trigger")
+	check(not _machine.has_method("get_events"), "no machine events")
+
+
+func test_timer_trigger_still_fires() -> void:
+	var chip: ChipComponent = _spawn(MINER)
+	chip.set_timeout(5)
+	_tick(4)
+	check(not chip.pending, "not before the timeout")
+	_tick(1)
+	check(chip.pending, "the timer wakes the chip")
+	await _finish(chip)
+	check_eq(_reason, "timer", "reason is timer")
+
+
+func test_state_is_sent_when_the_chip_is_asked() -> void:
 	var chip: ChipComponent = _spawn(SMELTER)
 	(_machine as Smelter).temperature = 90.0
-	_tick(1)
-	check(not chip.pending, "no threshold set, nothing fires")
-	chip.set_threshold("status", 0.0)
+	var seen: Array[Dictionary] = []
+	var on_started: Callable = func(_id: int) -> void: seen.append(_machine.get_state())
+	autoload("EventBus").llm_request_started.connect(on_started)
+	chip.set_timeout(2)
 	_tick(2)
-	check(not chip.pending, "a text value never crosses a threshold")
-	chip.set_threshold("missing", 0.0)
-	_tick(2)
-	check(not chip.pending, "an unknown key never fires")
+	autoload("EventBus").llm_request_started.disconnect(on_started)
+	check_eq(_reason, "", "not applied yet")
+	await _finish(chip)
+	check_eq(_reason, "timer", "the timer asked")
+	check(seen.size() == 1 and seen[0].has("temperature") and seen[0].has("status") and seen[0].has("enabled") and seen[0].has("cooling") and seen[0].has("emergency_stop"), "temperature, status, enabled, cooling and emergency_stop are in the state")
 
 
 func test_manual_trigger_uses_cooldown() -> void:

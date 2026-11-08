@@ -190,7 +190,7 @@ func test_machines_facing_each_other_pass_nothing() -> void:
 	_ticks(60)
 	check_eq(belt.held, "ore", "the conveyor keeps its item: it faces the smelter, which faces it")
 	check_eq(smelter.stock.get("ore", 0), 0, "the smelter crafted its ore")
-	check(smelter.get_events().has("output_full"), "the smelter holds its ingot, it cannot hand it over")
+	check(_is_blocked(smelter), "the smelter holds its ingot, it cannot hand it over")
 	check(not belt.receive("ore"), "so the conveyor stays full")
 	check_eq(smelter.stock.get("ingot", 0), 0, "nothing went the other way either")
 
@@ -202,10 +202,10 @@ func test_turning_one_machine_away_lets_the_pair_flow_again() -> void:
 	smelter.cooling = true
 	smelter.receive("ore")
 	_ticks(60)
-	check(smelter.get_events().has("output_full"), "blocked while facing each other")
+	check(_is_blocked(smelter), "blocked while facing each other")
 	belt.facing = Vector2i.DOWN
 	_ticks(60)
-	check(not smelter.get_events().has("output_full"), "the ingot moves once the conveyor turns away")
+	check(not _is_blocked(smelter), "the ingot moves once the conveyor turns away")
 	check(collector.sold >= 1, "and reaches the collector")
 
 
@@ -229,33 +229,67 @@ func _smelter_with_collector(cell: Vector2i) -> Array:
 	return [smelter, collector]
 
 
-func test_cooling_doubles_the_craft_duration() -> void:
+func test_cooling_off_crafts_fast_and_cooling_on_crafts_slow() -> void:
 	var plain: Machine = _smelter_with_collector(Vector2i(1, 0))[0]
 	var cooled: Machine = _smelter_with_collector(Vector2i(5, 0))[0]
 	cooled.apply_tool_call("set_cooling", {"on": true})
 	plain.receive("ore")
 	cooled.receive("ore")
 	_ticks(1)
-	check_eq(plain.progress, plain.get_product().ticks, "a craft takes the product's ticks")
-	check_eq(cooled.progress, plain.get_product().ticks * 2, "twice as long while cooling")
+	check_eq(plain.progress, plain.get_product().ticks / Smelter.UNCOOLED_SPEEDUP, "cooling off: the product time divided by the speedup")
+	check_eq(cooled.progress, plain.get_product().ticks * Smelter.COOLED_CRAFT_FACTOR, "cooling on: the product time times the factor")
+	check_eq(cooled.progress / plain.progress, Smelter.UNCOOLED_SPEEDUP * Smelter.COOLED_CRAFT_FACTOR, "so cooling off is that many times faster")
 
 
-func test_cooled_smelter_keeps_producing_at_reduced_throughput() -> void:
-	var plain_pair: Array = _smelter_with_collector(Vector2i(1, 0))
-	var cooled_pair: Array = _smelter_with_collector(Vector2i(5, 0))
-	var plain: Machine = plain_pair[0]
-	var cooled: Machine = cooled_pair[0]
-	cooled.apply_tool_call("set_cooling", {"on": true})
-	for i: int in 150:
-		plain.receive("ore")
-		cooled.receive("ore")
+## Same feed, same period, one smelter with cooling off and one with it on.
+func _sold_over(ticks: int, cooling_on: bool) -> Array:
+	var pair: Array = _smelter_with_collector(Vector2i(1, 0) if not cooling_on else Vector2i(5, 0))
+	var smelter: Machine = pair[0]
+	smelter.apply_tool_call("set_cooling", {"on": cooling_on})
+	for i: int in ticks:
+		smelter.receive("ore")
 		_ticks(1)
-	var plain_sold: int = plain_pair[1].sold
-	var cooled_sold: int = cooled_pair[1].sold
-	check(cooled_sold >= 2, "it keeps producing")
-	check(cooled_sold < plain_sold, "but slower than an uncooled smelter")
-	check(absi(plain_sold - 2 * cooled_sold) <= 2, "about half the throughput (%d vs %d)" % [cooled_sold, plain_sold])
-	check_eq(plain.status, Machine.Status.NORMAL, "still within limits after 15 s")
+	return [pair[1].sold, smelter]
+
+
+func test_cooling_off_has_clearly_better_throughput_than_cooling_on() -> void:
+	var fast: Array = _sold_over(150, false)
+	var slow: Array = _sold_over(150, true)
+	print("  throughput over 150 ticks: cooling off %d ingots, cooling on %d ingots" % [fast[0], slow[0]])
+	check(slow[0] >= 3, "cooling on keeps producing")
+	check(fast[0] >= 3 * slow[0], "cooling off makes at least three times as many ingots (%d vs %d)" % [fast[0], slow[0]])
+	check(fast[1].temperature > Smelter.AMBIENT + 40.0, "and it runs hot (%d degrees)" % int(fast[1].temperature))
+	check(slow[1].temperature < Smelter.OVERHEAT_AT and slow[1].status == Machine.Status.NORMAL, "while the cooled one stays safe")
+
+
+func test_cooling_off_still_overheats_and_explodes_when_left_alone() -> void:
+	var smelter: Machine = _smelter_with_collector(Vector2i(1, 0))[0]
+	var saw_overheat: Array[bool] = [false]
+	var ticks: Array[int] = [0]
+	_feed(smelter, 600, func(m: Machine) -> bool:
+		ticks[0] += 1
+		saw_overheat[0] = saw_overheat[0] or m.status == Machine.Status.OVERHEATING
+		return m.status == Machine.Status.DOWN)
+	print("  unattended fast smelter exploded after %d ticks" % ticks[0])
+	check(saw_overheat[0], "it overheats first")
+	check_eq(smelter.status, Machine.Status.DOWN, "and explodes: the heat risk is real")
+	check(ticks[0] > 150 and ticks[0] < 400, "after a demoable 15 to 40 s, not instantly (%d ticks)" % ticks[0])
+	check_eq(_exploded, [smelter], "exploded once")
+
+
+func test_a_fast_smelter_stopped_in_time_survives_and_resumes() -> void:
+	var pair: Array = _smelter_with_collector(Vector2i(1, 0))
+	var smelter: Machine = pair[0]
+	_feed(smelter, 600, func(m: Machine) -> bool: return m.status == Machine.Status.OVERHEATING)
+	check_eq(smelter.status, Machine.Status.OVERHEATING, "got hot")
+	smelter.apply_tool_call("set_emergency_stop", {"on": true})
+	_ticks(40)
+	check(smelter.temperature < Smelter.EXPLODE_AT and _exploded.is_empty(), "the emergency stop saved it")
+	_cool_down(smelter)
+	smelter.apply_tool_call("set_emergency_stop", {"on": false})
+	var sold: int = pair[1].sold
+	_feed(smelter, 60)
+	check(pair[1].sold > sold, "and it produces again at full speed")
 
 
 func test_temperature_falls_during_cooled_production() -> void:
@@ -373,16 +407,23 @@ func test_machine_unregisters_when_freed() -> void:
 	check(_game.get_machine_at(Vector2i(3, 3)) == null, "cell freed with the machine")
 
 
-## Counts how often "output_full" appears (false -> true) over `count` ticks, and whether it is on at the end.
-func _output_full_rises(machine: Machine, count: int) -> int:
+## True once a delivery attempt failed: the Miner's "blocked" state, a craft machine's "output blocked" text.
+func _is_blocked(machine: Machine) -> bool:
+	if machine is Miner:
+		return machine.get_state()["blocked"]
+	return machine.get_action_text().contains("output blocked")
+
+
+## How often the machine turns blocked (false -> true) over `count` ticks.
+func _blocked_rises(machine: Machine, count: int) -> int:
 	var rises: int = 0
-	var was_on: bool = machine.get_events().has("output_full")
+	var was_blocked: bool = _is_blocked(machine)
 	for i: int in count:
 		_ticks(1)
-		var is_on: bool = machine.get_events().has("output_full")
-		if is_on and not was_on:
+		var is_blocked: bool = _is_blocked(machine)
+		if is_blocked and not was_blocked:
 			rises += 1
-		was_on = is_on
+		was_blocked = is_blocked
 	return rises
 
 
@@ -390,26 +431,25 @@ func test_deliverable_miner_output_is_never_blocked() -> void:
 	var miner: Miner = _put("miner", Vector2i(0, 0)) as Miner
 	miner.mine_ticks = 5
 	var collector: Machine = _put("collector", Vector2i(1, 0))
-	check_eq(_output_full_rises(miner, 100), 0, "a deliverable ore does not raise output_full")
-	check(not miner.get_events().has("output_full"), "and none is shown at the end")
+	check_eq(_blocked_rises(miner, 100), 0, "a deliverable ore does not turn blocked")
 	check(not miner.get_state()["blocked"], "state is not blocked")
 	check(not miner.get_action_text().contains("blocked"), "action text is not blocked")
 	check(collector.sold >= 10, "ore flowed")
 
 
-func test_miner_failed_delivery_raises_output_full_once_then_again_after_clearing() -> void:
+func test_miner_failed_delivery_turns_blocked_once_then_again_after_clearing() -> void:
 	var miner: Miner = _put("miner", Vector2i(0, 0)) as Miner
 	miner.mine_ticks = 5
-	check_eq(_output_full_rises(miner, 5), 0, "a freshly mined ore is not blocked before a delivery attempt")
-	check_eq(_output_full_rises(miner, 1), 1, "the failed delivery raises it")
+	check_eq(_blocked_rises(miner, 5), 0, "a freshly mined ore is not blocked before a delivery attempt")
+	check_eq(_blocked_rises(miner, 1), 1, "the failed delivery blocks it")
 	check(miner.get_state()["blocked"], "state is blocked")
 	check(miner.get_action_text().contains("output blocked"), "action text is blocked")
-	check_eq(_output_full_rises(miner, 50), 0, "it does not repeat while still blocked")
+	check_eq(_blocked_rises(miner, 50), 0, "it does not repeat while still blocked")
 	miner.clear_contents()
-	check(not miner.get_events().has("output_full"), "clearing removes the event")
+	check(not _is_blocked(miner), "clearing unblocks it")
 	check(not miner.get_state()["blocked"], "and the blocked state")
 	check(not miner.get_action_text().contains("blocked"), "and the action text")
-	check_eq(_output_full_rises(miner, 10), 1, "the blockage coming back raises it again")
+	check_eq(_blocked_rises(miner, 10), 1, "the blockage coming back blocks it again")
 
 
 func test_deliverable_craft_output_is_never_blocked() -> void:
@@ -417,21 +457,40 @@ func test_deliverable_craft_output_is_never_blocked() -> void:
 	var collector: Machine = _put("collector", Vector2i(1, 0))
 	for i: int in 3:
 		smelter.receive("ore")
-	check_eq(_output_full_rises(smelter, 100), 0, "a deliverable ingot does not raise output_full")
+	check_eq(_blocked_rises(smelter, 100), 0, "a deliverable ingot does not turn blocked")
 	check(not smelter.get_action_text().contains("blocked"), "action text is not blocked")
 	check_eq(collector.sold, 3, "the ingots were delivered")
 
 
-func test_craft_failed_delivery_raises_output_full_once_then_again_after_clearing() -> void:
+func test_craft_failed_delivery_turns_blocked_once_then_again_after_clearing() -> void:
 	var smelter: Machine = _put("smelter", Vector2i(1, 1), Vector2i.UP)
 	smelter.receive("ore")
-	var ticks_to_craft: int = (smelter as Smelter).get_product().ticks + 1
-	check_eq(_output_full_rises(smelter, ticks_to_craft), 0, "a finished ingot is not blocked before a delivery attempt")
-	check_eq(_output_full_rises(smelter, 1), 1, "the failed delivery raises it")
+	var ticks_to_craft: int = (smelter as Smelter).get_product().ticks / Smelter.UNCOOLED_SPEEDUP + 1
+	check_eq(_blocked_rises(smelter, ticks_to_craft), 0, "a finished ingot is not blocked before a delivery attempt")
+	check_eq(_blocked_rises(smelter, 1), 1, "the failed delivery blocks it")
 	check(smelter.get_action_text().contains("output blocked"), "action text is blocked")
-	check_eq(_output_full_rises(smelter, 50), 0, "it does not repeat while still blocked")
+	check_eq(_blocked_rises(smelter, 50), 0, "it does not repeat while still blocked")
 	smelter.clear_contents()
-	check(not smelter.get_events().has("output_full"), "clearing removes the event")
+	check(not _is_blocked(smelter), "clearing removes the event")
 	check(not smelter.get_action_text().contains("blocked"), "and the action text")
 	smelter.receive("ore")
-	check_eq(_output_full_rises(smelter, ticks_to_craft + 1), 1, "the blockage coming back raises it again")
+	check_eq(_blocked_rises(smelter, ticks_to_craft + 1), 1, "the blockage coming back blocks it again")
+
+
+func test_set_cooling_description_matches_the_real_durations() -> void:
+	var plain: Smelter = _put("smelter", Vector2i(1, 1)) as Smelter
+	var cooled: Smelter = _put("smelter", Vector2i(5, 1)) as Smelter
+	cooled.apply_tool_call("set_cooling", {"on": true})
+	plain.receive("ore")
+	cooled.receive("ore")
+	_ticks(1)
+	check_eq([plain.progress, cooled.progress], [10, 40], "10 ticks without cooling, 40 with it, for the current recipe")
+	var description: String = ""
+	for schema: Dictionary in cooled.get_tool_schemas():
+		if schema["name"] == "set_cooling":
+			description = schema["description"]
+	check(description.contains("four times as long") and description.contains("rounding"), "the tool describes the trade-off for any product")
+	check(description.contains("when a craft starts"), "and that the duration is chosen when a craft starts")
+	check(not description.contains("twice"), "no stale 'twice'")
+	cooled.cooling = false
+	check_eq(cooled.progress, 40, "a craft already started keeps the duration it started with")

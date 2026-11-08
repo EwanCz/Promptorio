@@ -56,15 +56,6 @@ func get_state() -> Dictionary:
 	return super.get_state().merged({"product": product_id, "needs": needs, "stock": stock, "working": is_working()})
 
 
-func get_events() -> Array[String]:
-	var events: Array[String] = super.get_events()
-	if _blocked:
-		events.append("output_full")
-	elif progress == 0 and not _can_start():
-		events.append("input_empty")
-	return events
-
-
 func get_action_text() -> String:
 	var product: ItemData = get_product()
 	if product == null:
@@ -139,7 +130,7 @@ func _load_data(data: Dictionary) -> void:
 			if count > 0:
 				stock[item] = count
 	_making = _read_item(data, "making", catalog.get_built_by_ids(machine_type))
-	progress = _read_int(data, "progress", 0, 0, catalog.ticks_of(_making))
+	progress = _read_int(data, "progress", 0, 0, _max_saved_progress(_making))
 	_output = _read_item(data, "output", catalog.get_ids())
 	_blocked = _output != "" and data.get("blocked") == true
 
@@ -176,6 +167,11 @@ func _tick() -> void:
 ## Duration of a craft starting now (the product being made). Subclasses can slow it down.
 func _craft_ticks() -> int:
 	return ItemCatalog.shared().ticks_of(_making)
+
+
+## Maximum duration a saved craft could have started with.
+func _max_saved_progress(item: String) -> int:
+	return ItemCatalog.shared().ticks_of(item)
 
 
 func _can_start() -> bool:

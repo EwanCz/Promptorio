@@ -94,3 +94,24 @@ func test_unwritable_directory_is_reported_not_fatal() -> void:
 	check(not _log.start(BLOCKER + "/logs"), "a directory under a plain file cannot be created")
 	_machine("miner", 1).log_chip("ignored")
 	check_eq(_log.path, "", "no file")
+
+
+func test_the_session_log_keeps_the_technical_entries_the_chip_log_simplifies() -> void:
+	_log.start(DIR)
+	var chip_log: ChipLog = (load("res://scenes/ui/popups/chip_log.tscn") as PackedScene).instantiate() as ChipLog
+	tree.root.add_child(chip_log)
+	_nodes.append(chip_log)
+	var machine: Machine = _machine("smelter", 4)
+	var technical: Array[String] = [
+		"asking chip Smelter Cooler (event:error)",
+		"set_cooling({\"on\":true})",
+		"no tool calls",
+		"ignored set_cooling: bad value for 'on'",
+		"chip request failed: HTTP 401 (authentication_error)",
+	]
+	for message: String in technical:
+		machine.log_chip(message)
+	var text: String = FileAccess.get_file_as_string(_log.path)
+	for message: String in technical:
+		check(text.contains(" | #4 smelter | " + message), "session log keeps: %s" % message)
+	check(not chip_log.get_lines(machine).has(technical[0]), "while the chip log shows the short form")

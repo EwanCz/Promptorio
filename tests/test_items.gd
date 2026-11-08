@@ -319,7 +319,8 @@ func test_a_full_stock_of_something_else_does_not_block_the_recipe() -> void:
 	for i: int in CraftMachine.MAX_STOCK:
 		smelter.receive("redstone")
 	check(smelter.receive("ore"), "ore still fits")
-	check(smelter.get_events().find("input_empty") == -1, "and the smelter can start")
+	_ticks(1)
+	check(smelter.is_working(), "and the smelter can start")
 
 
 func test_state_tells_the_chip_what_is_built_and_needed() -> void:

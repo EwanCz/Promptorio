@@ -205,6 +205,10 @@ func test_failed_save_is_reported_and_keeps_the_edit() -> void:
 
 
 ## The starter prompt reaches installs whose user file still holds an older one.
+const OLD_MINER: String = """You control a Miner. Every decision, check the state.
+- If "blocked" is true (ore is waiting for a free output), call set_mine_ticks with 40 so it slows down.
+- If "blocked" is false and mine_ticks is above 10, call set_mine_ticks with 10 to mine faster.
+- Otherwise do nothing. Call at most one tool."""
 const OLD_COOLER_V1: String = """You control a Smelter. Working heats it up, and it explodes if it gets too hot.
 - If temperature is 70 or higher, call set_cooling with on=true.
 - If temperature is 40 or lower, call set_cooling with on=false.
@@ -232,7 +236,16 @@ Check the state in this order and call at most one tool:
 - Otherwise do nothing. Never pause for routine temperature control; the gap between 60 and 40 stops cooling from toggling every turn."""
 
 
-func _save_user_library(smelter_prompt: String, smelter_name: String = "Smelter Cooler") -> void:
+const OLD_COOLER_V5: String = """You control a Smelter. Working heats it up, and it explodes if it gets too hot. Cooling is the normal way to manage the heat, but crafts take twice as long while it is on, so use it only when needed. Stopping is for emergencies only, and it is done with set_emergency_stop, never set_enabled.
+Check the state in this order and call at most one tool:
+- If temperature is 130 or higher and enabled is true, call set_emergency_stop with on=true (emergency pause).
+- If emergency_stop is true and temperature is 80 or lower, call set_emergency_stop with on=false (resume your emergency pause). If enabled is false while emergency_stop is false, keep it disabled; the state does not say why it was disabled.
+- If temperature is 100 or higher and cooling is false, call set_cooling with on=true.
+- If temperature is 70 or lower and cooling is true, call set_cooling with on=false.
+- Otherwise do nothing. Never pause for routine temperature control; the gap between 100 and 70 stops cooling from toggling every turn."""
+
+
+func _save_user_library(smelter_prompt: String, smelter_name: String = "Smelter Cooler", miner_prompt: String = "") -> void:
 	var library: ChipLibrary = ChipLibrary.new()
 	for chip: ChipRessource in _registry.get_all():
 		var copy: ChipRessource = ChipRessource.new()
@@ -240,6 +253,8 @@ func _save_user_library(smelter_prompt: String, smelter_name: String = "Smelter 
 		copy.name = chip.name
 		copy.description = chip.description
 		copy.prompt = chip.prompt
+		if chip.id == 1 and miner_prompt != "":
+			copy.prompt = miner_prompt
 		if chip.id == 2:
 			copy.name = smelter_name
 			copy.prompt = smelter_prompt
@@ -248,10 +263,24 @@ func _save_user_library(smelter_prompt: String, smelter_name: String = "Smelter 
 	ResourceSaver.save(library, TMP_PATH)
 
 
+func test_miner_starter_upgrade_respects_resource_limits_and_custom_edits() -> void:
+	_use_tmp_path()
+	var shipped: String = _registry.get_from_id(1).prompt
+	var smelter_prompt: String = _registry.get_from_id(2).prompt
+	check(shipped.contains("allowed minimum") and shipped.contains("current resource"), "starter follows the current resource's tool range")
+	_save_user_library(smelter_prompt, "Smelter Cooler", OLD_MINER)
+	_registry.load_registry()
+	check_eq(_registry.get_from_id(1).prompt, shipped, "unedited old Miner starter upgraded")
+	_save_user_library(smelter_prompt, "Smelter Cooler", OLD_MINER + "\nMy own rule.")
+	_registry.load_registry()
+	check_eq(_registry.get_from_id(1).prompt, OLD_MINER + "\nMy own rule.", "custom Miner prompt kept")
+	_restore_path()
+
+
 func test_outdated_starter_prompt_is_replaced_and_saved() -> void:
 	_use_tmp_path()
 	var shipped: String = _smelter_cooler(_registry.get_all()).prompt
-	for old: String in [OLD_COOLER_V1, OLD_COOLER_V2, OLD_COOLER_V3, OLD_COOLER_V4]:
+	for old: String in [OLD_COOLER_V1, OLD_COOLER_V2, OLD_COOLER_V3, OLD_COOLER_V4, OLD_COOLER_V5]:
 		_save_user_library(old)
 		_registry.load_registry()
 		check_eq(_registry.get_from_id(2).prompt, shipped, "unedited older prompt upgraded")

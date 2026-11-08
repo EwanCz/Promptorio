@@ -56,7 +56,7 @@ func _chip(chip_name: String, prompt: String = "prompt") -> ChipRessource:
 	return chip
 
 
-## One machine of each kind, with contents, a chip with a threshold, and non-default money and tick.
+## One machine of each kind, with contents, a chip, and non-default money and tick.
 func _build_world() -> void:
 	var miner: Miner = _placement.place("miner", _site())
 	miner.mine_ticks = 33
@@ -72,8 +72,7 @@ func _build_world() -> void:
 	smelter.cooling = true
 	smelter.status = Machine.Status.OVERHEATING
 	var chip: ChipRessource = _chip("save_chip", "keep it cool")
-	var component: ChipComponent = smelter.attach_chip(chip.id, 55)
-	component.set_threshold("temperature", 90.0)
+	smelter.attach_chip(chip.id, 55)
 	var assembler: Assembler = _placement.place("assembler", Vector2i(10, 8))
 	assembler.stock = {"ingot": 2}
 	_placement.facing = Vector2i.DOWN
@@ -127,11 +126,40 @@ func test_snapshot_restore_round_trip() -> void:
 	check_eq(smelter.status, Machine.Status.OVERHEATING, "status restored")
 	check_eq(smelter.chips.size(), 1, "chip reattached")
 	check_eq(smelter.chips[0].timeout, 55, "chip timeout restored")
-	check_eq(smelter.chips[0].threshold_key, "temperature", "chip threshold key restored")
-	check_eq(smelter.chips[0].threshold, 90.0, "chip threshold restored")
+	check(not smelter.chips[0].has_method("set_threshold"), "restored chip has no threshold trigger")
 	check(_game.get_machine_at(Vector2i(20, 12)) == null, "a machine that is not in the save is gone")
 	check_eq(_game.money, 77, "money restored")
 	check_eq(_game.tick_count, 1234, "tick restored")
+
+
+func test_legacy_chip_threshold_is_ignored() -> void:
+	_build_world()
+	var save: Dictionary = SaveGame.snapshot(_placement)
+	var saved_smelter: Dictionary = _machine_dict(save, "smelter")
+	var saved_chip: Dictionary = saved_smelter["chips"][0]
+	saved_chip["threshold_key"] = "temperature"
+	saved_chip["threshold"] = 90.0
+	check_eq(SaveGame.restore(_placement, save), "", "older threshold fields are accepted")
+	var restored: Smelter = _game.get_machine_at(Vector2i(8, 8))
+	check_eq(restored.chips[0].timeout, 55, "the chip timer is preserved")
+	check(not restored.chips[0].has_method("set_threshold"), "the removed trigger is not restored")
+	var resaved_chip: Dictionary = _machine_dict(SaveGame.snapshot(_placement), "smelter")["chips"][0]
+	check(not resaved_chip.has("threshold_key") and not resaved_chip.has("threshold"), "new saves omit old trigger fields")
+
+
+func test_smelter_save_keeps_emergency_stop_and_cooled_craft_progress() -> void:
+	var smelter: Smelter = _placement.place("smelter", Vector2i(8, 8))
+	smelter._making = "ingot"
+	smelter.progress = 35
+	smelter.cooling = false
+	smelter.apply_tool_call("set_emergency_stop", {"on": true})
+	var save: Dictionary = SaveGame.snapshot(_placement)
+	check_eq(SaveGame.restore(_placement, save), "", "restore accepts a stopped smelter")
+	var restored: Smelter = _game.get_machine_at(Vector2i(8, 8))
+	check_eq(restored.progress, 35, "a craft started with cooling retains its remaining ticks")
+	check(restored.emergency_stop and not restored.enabled, "the emergency stop survives loading")
+	restored.apply_tool_call("set_emergency_stop", {"on": false})
+	check(restored.enabled and not restored.emergency_stop, "the chip can resume its own stop")
 
 
 func test_round_trip_through_a_file() -> void:
@@ -185,7 +213,7 @@ func test_money_label_follows_a_restore() -> void:
 	var before: Dictionary = SaveGame.snapshot(_placement)
 	_game.money = 5
 	SaveGame.restore(_placement, before)
-	check_eq((_main.get_node("%BuildPage").get_node("%MoneyLabel") as Label).text, "Money: 77", "the Build page shows the restored money")
+	check_eq((_main.get_node("%BuildPage").get_node("%MoneyLabel") as Label).text, "77", "the Build page shows the restored money beside the money icon")
 
 
 func test_exploding_smelter_is_not_saved() -> void:

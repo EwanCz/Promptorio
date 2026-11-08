@@ -47,3 +47,13 @@ func test_toggle_bar_action() -> void:
 	main._unhandled_input(press)
 	check(bar.visible, "action shows the bar again")
 	main.free()
+
+
+func test_settings_is_an_icon_button_with_a_hover() -> void:
+	var main: Node = load("res://scenes/main.tscn").instantiate()
+	tree.root.add_child(main)
+	var button: Button = main.get_node("%SettingsButton") as Button
+	check_eq(button.text, "", "no text")
+	check(button.icon != null, "an icon")
+	check_eq(button.tooltip_text, "Settings", "the hover names it")
+	main.free()

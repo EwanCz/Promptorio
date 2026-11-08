@@ -44,6 +44,18 @@ func test_request_round_trip() -> void:
 	check(_applied >= 0, "decision applied")
 
 
+func test_empty_decision_is_logged_as_no_tool_calls() -> void:
+	var logged: Array[String] = []
+	var on_log: Callable = func(_machine: Node, message: String) -> void: logged.append(message)
+	autoload("EventBus").chip_log_added.connect(on_log)
+	var no_calls: Array[Dictionary] = []
+	_chip.pending = true
+	autoload("LLMManager").decision_received.emit(_chip.get_instance_id(), no_calls)
+	autoload("EventBus").chip_log_added.disconnect(on_log)
+	check("no tool calls" in logged, "a successful answer without tool calls is logged")
+	check(not _chip.pending, "and the chip can ask again")
+
+
 func test_second_request_ignored_while_pending() -> void:
 	_chip.call_llm("manual")
 	check(not _chip.call_llm("manual"), "ignored while pending")

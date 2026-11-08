@@ -1,7 +1,9 @@
 class_name Smelter
 extends CraftMachine
-## Smelts ore into ingots. Working heats it up and idling cools it. Cooling is a trade-off: crafts take
-## COOLED_CRAFT_FACTOR times longer (the factor applies to the next craft) and the smelter cools even while working.
+## Smelts ore into ingots. Working heats it up and idling cools it. Cooling is a trade-off. Cooling off runs
+## flat out: crafts take 1/UNCOOLED_SPEEDUP of the recipe time, and it heats up while working. Cooling on
+## takes COOLED_CRAFT_FACTOR times the recipe time and the smelter cools even while working. The factor
+## applies to the next craft.
 ## Above OVERHEAT_AT it is OVERHEATING; at EXPLODE_AT it explodes (fail state): it goes DOWN, flashes and
 ## fades out, then is destroyed and frees its cell. The art turns redder as it heats up.
 
@@ -13,6 +15,8 @@ const COOLING_EXTRA_PER_TICK: float = 0.3
 ## Net change per tick while working with cooling on: the temperature falls.
 const COOLED_WORK_PER_TICK: float = -0.2
 const COOLED_CRAFT_FACTOR: int = 2
+## Cooling off: crafts are this many times faster than the recipe time.
+const UNCOOLED_SPEEDUP: int = 2
 const OVERHEAT_AT: float = 100.0
 const SAFE_AT: float = 80.0
 const EXPLODE_AT: float = 150.0
@@ -32,7 +36,7 @@ var emergency_stop: bool = false
 func _own_tool_schemas() -> Array:
 	return [{
 		"name": "set_cooling",
-		"description": "Turn the cooling on or off. While on, the smelter cools down even while working but crafts take twice as long; it also cools faster while idle.",
+		"description": "Turn cooling on or off. While on, the smelter cools even while working but crafts take about four times as long as with cooling off (rounding can affect the ratio); duration is chosen when a craft starts. Cooling also speeds recovery while idle.",
 		"input_schema": {"type": "object", "properties": {"on": {"type": "boolean"}}},
 	}, {
 		"name": "set_emergency_stop",
@@ -45,23 +49,20 @@ func get_state() -> Dictionary:
 	return super.get_state().merged({"temperature": roundi(temperature), "cooling": cooling, "emergency_stop": emergency_stop})
 
 
-func get_action_text() -> String:
-	return "%s\nTemperature: %d°, cooling %s" % [super.get_action_text(), roundi(temperature), "on" if cooling else "off"]
-
-
 ## An exploding smelter is already lost, so a save leaves it out.
 func is_saveable() -> bool:
 	return temperature < EXPLODE_AT
 
 
 func _save_data() -> Dictionary:
-	return super._save_data().merged({"temperature": temperature, "cooling": cooling})
+	return super._save_data().merged({"temperature": temperature, "cooling": cooling, "emergency_stop": emergency_stop})
 
 
 func _load_data(data: Dictionary) -> void:
 	super._load_data(data)
 	temperature = _read_float(data, "temperature", AMBIENT, AMBIENT, EXPLODE_AT - 1.0)
 	cooling = data.get("cooling") == true
+	emergency_stop = data.get("emergency_stop") == true and not enabled
 	_update_heat_tint()
 
 
@@ -99,7 +100,13 @@ func _tick() -> void:
 
 
 func _craft_ticks() -> int:
-	return super._craft_ticks() * (COOLED_CRAFT_FACTOR if cooling else 1)
+	if cooling:
+		return super._craft_ticks() * COOLED_CRAFT_FACTOR
+	return maxi(1, super._craft_ticks() / UNCOOLED_SPEEDUP)
+
+
+func _max_saved_progress(item: String) -> int:
+	return super._max_saved_progress(item) * COOLED_CRAFT_FACTOR
 
 
 func _status_text() -> String:

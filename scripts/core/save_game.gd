@@ -6,8 +6,8 @@ extends RefCounted
 ##
 ## Format (version 1): {version, tick_count, money, next_machine_id, minesites: [[x, y]] (the cells where a miner can
 ## go; a file without it keeps the current map's), chips: [{id, name, description, prompt}],
-## machines: [{type, id, cell: [x, y], facing: [x, y], enabled, status, chips: [{id, timeout, threshold_key,
-## threshold}], data: {...state of the machine type, see Machine._save_data()}}]}
+## machines: [{type, id, cell: [x, y], facing: [x, y], enabled, status, chips: [{id, timeout}],
+## data: {...state of the machine type, see Machine._save_data()}}]}
 
 const VERSION: int = 1
 ## Slots go to `saves/` in the project folder when run from the editor (so a save can be committed and shared),

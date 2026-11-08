@@ -65,13 +65,6 @@ func set_mined_item(new_item: String) -> bool:
 	return true
 
 
-func get_events() -> Array[String]:
-	var events: Array[String] = super.get_events()
-	if _blocked:
-		events.append("output_full")
-	return events
-
-
 func get_action_text() -> String:
 	return "Mining 1 %s every %d ticks%s" % [item, mine_ticks, " (output blocked)" if _blocked else ""]
 

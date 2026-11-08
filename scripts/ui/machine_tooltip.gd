@@ -6,21 +6,28 @@ extends PanelContainer
 
 signal log_requested(machine: Machine)
 
-const PROMPT_PREVIEW: int = 40
+const NAME_MIN_WIDTH: int = 80
 const MAX_TIMEOUT: int = 100000
-const MAX_LIMIT: int = 100000
-const NO_WATCH: String = "(never)"
+const STATE_HINTS: Dictionary = {
+	"normal": "Running normally",
+	"down": "Down: this machine is out of service",
+	"overheating": "Overheating: it explodes if it keeps heating up",
+	"paused": "Paused: switched off, it does nothing until it is switched on",
+}
 
 var _machine: Machine = null
 
 @onready var _hint_label: Label = %HintLabel
 @onready var _scroll: ScrollContainer = %Scroll
 @onready var _id_label: Label = %IdLabel
-@onready var _type_label: Label = %TypeLabel
-@onready var _status_label: Label = %StatusLabel
+@onready var _status_icon: TextureRect = %StatusIcon
 @onready var _action_label: Label = %ActionLabel
 @onready var _rotate_button: Button = %RotateButton
 @onready var _destroy_button: Button = %DestroyButton
+@onready var _heat_row: HBoxContainer = %HeatRow
+@onready var _thermo_icon: TextureRect = %ThermoIcon
+@onready var _temp_label: Label = %TempLabel
+@onready var _cool_icon: TextureRect = %CoolIcon
 @onready var _chips_list: VBoxContainer = %ChipsList
 @onready var _picker: OptionButton = %ChipPicker
 @onready var _add_button: Button = %AddButton
@@ -34,6 +41,11 @@ func _ready() -> void:
 	EventBus.chip_removed.connect(_on_registry_changed)
 	EventBus.chip_updated.connect(_on_registry_changed)
 	EventBus.machine_unregistered.connect(_on_machine_unregistered)
+	Icons.apply_button(_rotate_button, "rotate", "Rotate")
+	Icons.apply_button(_destroy_button, "destroy", "Destroy this machine")
+	Icons.apply_button(_add_button, "add", "Add the chosen chip")
+	Icons.apply_button(_log_button, "log", "Chip log")
+	_picker.tooltip_text = "Chip to add"
 	_rotate_button.pressed.connect(_on_rotate_pressed)
 	_destroy_button.pressed.connect(_on_destroy_pressed)
 	_add_button.pressed.connect(_on_add_pressed)
@@ -42,8 +54,7 @@ func _ready() -> void:
 
 func open(machine: Machine) -> void:
 	_machine = machine
-	_id_label.text = "Machine #%d" % machine.machine_id
-	_type_label.text = "Type: %s" % machine.machine_type
+	_id_label.text = "%s #%d" % [machine.machine_type.capitalize(), machine.machine_id]
 	_rotate_button.visible = machine.can_rotate()
 	_destroy_button.visible = machine.is_removable()
 	_show_details(true)
@@ -76,9 +87,30 @@ func _show_details(shown: bool) -> void:
 
 
 func _refresh_status() -> void:
-	_status_label.text = "State: %s" % Machine.Status.keys()[_machine.status].to_lower()
+	var status: String = Machine.Status.keys()[_machine.status].to_lower()
+	var paused: bool = not _machine.enabled and _machine.honors_enabled()
+	var shown: String = status
+	if status == "normal" and paused:
+		shown = "paused"
+	var hint: String = STATE_HINTS[shown]
+	if status == "overheating" and paused:
+		hint += " (and paused)"
+	Icons.apply(_status_icon, "state_" + shown, hint)
 	_action_label.text = _machine.get_action_text()
 	_action_label.visible = _action_label.text != ""
+	var state: Dictionary = _machine.get_state()
+	_heat_row.visible = state.has("temperature")
+	if _heat_row.visible:
+		var heat: float = float(state["temperature"])
+		var fraction: float = inverse_lerp(Smelter.AMBIENT, Smelter.EXPLODE_AT, heat)
+		_thermo_icon.texture = Icons.thermometer(fraction)
+		_thermo_icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		_thermo_icon.custom_minimum_size = Vector2(Icons.SIZE * Icons.SCALE, Icons.SIZE * Icons.SCALE)
+		_thermo_icon.tooltip_text = "Temperature (explodes at %d)" % int(Smelter.EXPLODE_AT)
+		_thermo_icon.mouse_filter = Control.MOUSE_FILTER_STOP
+		_temp_label.text = "%d°" % int(heat)
+		var cooling: bool = state.get("cooling", false)
+		Icons.apply(_cool_icon, "cooling_on" if cooling else "cooling_off", "Cooling on" if cooling else "Cooling off")
 
 
 func _refresh_chips() -> void:
@@ -94,58 +126,40 @@ func _refresh_chips() -> void:
 	_add_button.disabled = _picker.item_count == 0
 
 
+## One chip: its name (hover for the prompt), the timer in ticks, ask now and remove. Icons carry the
+## meaning; each has a hover description.
 func _make_row(component: ChipComponent) -> Control:
 	var box: VBoxContainer = VBoxContainer.new()
-	var label: Label = Label.new()
-	label.text = "%s: %s" % [component.chip.name, component.chip.prompt.left(PROMPT_PREVIEW)]
-	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	box.add_child(label)
 	var row: HFlowContainer = HFlowContainer.new()
+	row.name = "Main"
 	box.add_child(row)
+	var chip_name: Label = Label.new()
+	chip_name.name = "Name"
+	chip_name.text = component.chip.name
+	chip_name.tooltip_text = component.chip.prompt
+	chip_name.mouse_filter = Control.MOUSE_FILTER_STOP
+	chip_name.custom_minimum_size.x = NAME_MIN_WIDTH
+	chip_name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	chip_name.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	row.add_child(chip_name)
 	var timeout: SpinBox = SpinBox.new()
+	timeout.name = "Timeout"
 	timeout.min_value = 1
 	timeout.max_value = MAX_TIMEOUT
-	timeout.suffix = "ticks"
 	timeout.value = component.timeout
+	timeout.tooltip_text = "Ticks between automatic checks"
 	timeout.value_changed.connect(_on_timeout_changed.bind(component))
+	row.add_child(Icons.rect("timer", "Ticks between automatic checks"))
 	row.add_child(timeout)
-	var remove: Button = Button.new()
-	remove.text = "X"
-	remove.pressed.connect(_on_remove_pressed.bind(component))
-	row.add_child(remove)
-	var ask: Button = Button.new()
-	ask.text = "Ask now"
+	var ask: Button = Icons.button("ask", "Ask the chip now")
+	ask.name = "Ask"
 	ask.pressed.connect(_on_ask_pressed.bind(component))
 	row.add_child(ask)
-	box.add_child(_make_watch_row(component))
+	var remove: Button = Icons.button("remove", "Remove this chip")
+	remove.name = "Remove"
+	remove.pressed.connect(_on_remove_pressed.bind(component))
+	row.add_child(remove)
 	return box
-
-
-## Threshold trigger: pick a numeric state value and the limit it must rise above.
-func _make_watch_row(component: ChipComponent) -> Control:
-	var row: HFlowContainer = HFlowContainer.new()
-	var title: Label = Label.new()
-	title.text = "Ask when"
-	row.add_child(title)
-	var keys: OptionButton = OptionButton.new()
-	keys.add_item(NO_WATCH, 0)
-	var state: Dictionary = _machine.get_state()
-	for key: String in state:
-		if state[key] is int or state[key] is float:
-			keys.add_item(key)
-			if key == component.threshold_key:
-				keys.select(keys.item_count - 1)
-	keys.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_child(keys)
-	var limit: SpinBox = SpinBox.new()
-	limit.min_value = -MAX_LIMIT
-	limit.max_value = MAX_LIMIT
-	limit.prefix = ">"
-	limit.value = component.threshold
-	row.add_child(limit)
-	keys.item_selected.connect(_on_watch_changed.bind(keys, limit, component))
-	limit.value_changed.connect(_on_limit_changed.bind(keys, limit, component))
-	return row
 
 
 func _on_machine_selected(machine: Node) -> void:
@@ -199,19 +213,6 @@ func _on_remove_pressed(component: ChipComponent) -> void:
 
 func _on_ask_pressed(component: ChipComponent) -> void:
 	component.call_llm("manual")
-
-
-func _on_watch_changed(_index: int, keys: OptionButton, limit: SpinBox, component: ChipComponent) -> void:
-	_apply_watch(keys, limit, component)
-
-
-func _on_limit_changed(_value: float, keys: OptionButton, limit: SpinBox, component: ChipComponent) -> void:
-	_apply_watch(keys, limit, component)
-
-
-func _apply_watch(keys: OptionButton, limit: SpinBox, component: ChipComponent) -> void:
-	var key: String = "" if keys.selected == 0 else keys.get_item_text(keys.selected)
-	component.set_threshold(key, limit.value)
 
 
 func _on_timeout_changed(value: float, component: ChipComponent) -> void:
