@@ -52,6 +52,7 @@ Main (Node)
 └─ UI (CanvasLayer, popups over everything)
    ├─ ChipPage        (popup, centered; name, description, message; edit/save/remove)
    ├─ ChipLog         (log page opened from the machine panel)
+   ├─ SaveDialog      (save slots, import/export a save file; pauses the game)
    └─ SettingsDialog
 ```
 UI rules:
@@ -105,6 +106,9 @@ Requests go to the official endpoint (`https://api.anthropic.com`, `https://api.
 By default a failed HTTP call reaches the ChipLog as `HTTP <status> (<error type>)` only, because a provider's message can echo part of the key. To see the message while debugging, launch the editor (or the project from it) with `PROMPTORIO_DEBUG_LLM=1`, e.g. `PROMPTORIO_DEBUG_LLM=1 godot --editor`; the log line becomes `HTTP 400 (invalid_request_error): <message>`.
 - Limits: only the exact value `1` enables it, and only when `OS.has_feature("editor")`, so exported builds ignore it. It adds the provider's error `message` for non-200 answers and nothing else; no headers, request body or raw response body is ever logged, and a non-JSON body adds nothing.
 - The message is made one line, the configured API key and any 20+ character token-like run are replaced by `[redacted]`, and it is cut at 200 characters (`...` marks the cut). The token mask is a heuristic (`shortcut:`): it can hide a long identifier and cannot catch a key shorter than 20 characters that is not the configured one.
+
+### Save files
+`SaveGame` (`scripts/core/save_game.gd`, static functions, no autoload) saves and restores the whole game as one JSON file (`version` 1). Slots live in `user://saves/`; Import / Export in the `SaveDialog` popup reach any file. A file is never trusted: `SaveGame.validate()` checks the whole structure before anything is touched, and each machine clamps its own values in `_load_data()`. Machines add their state by overriding `_save_data()` / `_load_data()` (use the `_read_int` / `_read_float` / `_read_item` helpers). The save embeds the chips its machines use; loading overwrites a registry chip with the same id.
 
 ### Session log (local)
 `SessionLog` appends every machine log line to `user://logs/session_<date>_<time>.log` (`time | #id type | message`), flushing each line. Only the message text is written (no request bodies or headers) and configured API keys are replaced by `[redacted]`. It is started by `Main`, skipped in headless runs, and does not change the ChipLog's 200-line cap.

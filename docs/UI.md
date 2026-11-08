@@ -66,6 +66,13 @@ Open Settings from the Bar. Offer `mock`, `anthropic`, and `openai` providers. F
 
 For `anthropic` and `openai`, an optional "Base URL" field (blank by default, saved per provider) lets the player use a compatible relay; it takes precedence over the editor-only `ANTHROPIC_BASE_URL` / `OPENAI_BASE_URL` environment and .env overrides (see "Provider base URL" in `CLAUDE.md`). A malformed value is not blocked in the dialog: the Bar's key status reports that the base URL is invalid and nothing is sent.
 
+### Save / Load dialog
+The "Save / Load" button (Bar, above Settings) opens `SaveDialog`, a popup that pauses the game like `ChipPage`. A name field and "Save" write a slot to `user://saves/<name>.json`; the list below shows each slot with its date, a "Load" and a "Delete" button. "Import a file..." and "Export to a file..." use the system file dialog to read or write a save anywhere on the disk. A successful load or import replaces the whole game and closes the dialog. Messages never show a path or the file content.
+- Slot names: 40 characters at most, a valid file name, not starting with a dot.
+- A refused file (bad JSON, wrong version, unknown machine type, cell outside the grid or taken, miner off a minesite, no Collector, ...) leaves the current game untouched and says why.
+- The save embeds the chips its machines use. Loading overwrites a registry chip that has the same id (the save wins); a name already used by another chip gets a number appended.
+- Not saved: requests in flight, chip cooldowns, chip logs. An exploding Smelter is left out.
+
 ### API key status
 At the top of the Bar (above the page tabs), a colored `KeyStatus` panel reports the state of the selected provider's key. It is hidden for `mock`, which needs no key. States:
 - Orange, "No active API key": neither a saved key nor a `.env` one (`Settings.needs_api_key()`).
