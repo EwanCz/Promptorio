@@ -1,10 +1,13 @@
 class_name ChipLog
 extends PanelContainer
 ## Keeps the last chip log lines of every machine (EventBus.chip_log_added) and shows one machine's log.
+## Lines are shown in plain language (see _format); the technical entries stay in the session log.
 
 const MAX_LINES: int = 200
 
 var _machine: Machine = null
+var _asking: RegEx = RegEx.create_from_string("^asking chip (.*) \\([^()]*\\)$")
+var _tool_call: RegEx = RegEx.create_from_string("^(\\w+)\\((\\{.*\\})\\)$")
 ## Machine instance id -> Array of lines.
 var _lines: Dictionary = {}
 
@@ -45,9 +48,48 @@ func _refresh() -> void:
 func _on_log_added(machine: Node, message: String) -> void:
 	var id: int = machine.get_instance_id()
 	var lines: Array = _lines.get(id, [])
-	lines.append(message)
+	lines.append(_format(message))
 	if lines.size() > MAX_LINES:
 		lines.pop_front()
 	_lines[id] = lines
 	if visible and machine == _machine:
 		_refresh()
+
+
+## Short readable text for the known technical messages; anything else is shown as is. Tool results say what
+## was asked ("set"), never that something changed, because the command may have been a no-op.
+func _format(message: String) -> String:
+	var asking: RegExMatch = _asking.search(message)
+	if asking != null:
+		return "Checking: %s" % asking.get_string(1)
+	if message == "no tool calls":
+		return "No action"
+	if message.begins_with("chip request failed"):
+		return "Request failed"
+	if message.begins_with("ignored "):
+		return "Action rejected"
+	var call: RegExMatch = _tool_call.search(message)
+	if call != null:
+		return _tool_label(call.get_string(1), JSON.parse_string(call.get_string(2)))
+	return message
+
+
+func _tool_label(tool_name: String, args: Variant) -> String:
+	var values: Dictionary = args if typeof(args) == TYPE_DICTIONARY else {}
+	var on: bool = values.get("on", false) == true
+	match tool_name:
+		"set_enabled":
+			return "Machine set to running" if on else "Machine set to paused"
+		"set_cooling":
+			return "Cooling set on" if on else "Cooling set off"
+		"set_emergency_stop":
+			return "Emergency stop set" if on else "Emergency stop release requested"
+		"set_accepting":
+			return "Accepting items set on" if on else "Accepting items set off"
+		"set_mine_ticks":
+			return "Mining pace set to %d ticks per ore" % int(values.get("ticks", 0))
+		"set_stock_limit":
+			return "Stock limit set to %d" % int(values.get("limit", 0))
+		"set_direction":
+			return "Direction set"
+	return "Action requested"

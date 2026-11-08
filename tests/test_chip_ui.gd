@@ -135,6 +135,41 @@ func test_chip_log_capture_and_cap() -> void:
 	check(log.visible, "show_machine opens the log")
 
 
+func _shown(log: ChipLog, machine: Machine, message: String) -> String:
+	machine.log_chip(message)
+	var lines: Array[String] = log.get_lines(machine)
+	return lines[lines.size() - 1]
+
+
+func test_chip_log_shows_short_plain_language_entries() -> void:
+	var log: ChipLog = _spawn("res://scenes/ui/popups/chip_log.tscn")
+	var machine: Machine = _spawn("res://scenes/machines/machine.tscn")
+	log.show_machine(machine)
+	check_eq(_shown(log, machine, "asking chip Smelter Cooler (event:error)"), "Checking: Smelter Cooler", "request, without the trigger name")
+	check_eq(_shown(log, machine, "asking chip Cooler (v2) (threshold:temperature)"), "Checking: Cooler (v2)", "a chip name with parentheses survives")
+	check_eq(_shown(log, machine, "no tool calls"), "No action", "no-action answer")
+	check_eq(_shown(log, machine, "set_cooling({\"on\":true})"), "Cooling set on", "cooling")
+	check_eq(_shown(log, machine, "set_enabled({\"on\":false})"), "Machine set to paused", "pause")
+	check_eq(_shown(log, machine, "set_mine_ticks({\"ticks\":40})"), "Mining pace set to 40 ticks per ore", "mining pace")
+	check_eq(_shown(log, machine, "set_emergency_stop({\"on\":false})"), "Emergency stop release requested", "a release that may be a no-op is not claimed as done")
+	check_eq(_shown(log, machine, "ignored set_cooling: bad value for 'on'"), "Action rejected", "rejected action")
+	check_eq(_shown(log, machine, "ignored unknown tool 'launch_missiles'"), "Action rejected", "unknown tool")
+	check_eq(_shown(log, machine, "chip request failed: HTTP 401 (authentication_error)"), "Request failed", "failure")
+	check_eq(_shown(log, machine, "exploded at 150°"), "exploded at 150°", "other messages are untouched")
+
+
+func test_chip_log_never_shows_raw_tool_names_or_json() -> void:
+	var log: ChipLog = _spawn("res://scenes/ui/popups/chip_log.tscn")
+	var machine: Machine = _spawn("res://scenes/machines/machine.tscn")
+	log.show_machine(machine)
+	for message: String in ["set_stock_limit({\"limit\":6})", "set_direction({\"direction\":2})", "set_accepting({\"on\":true})", "set_unheard_of({\"x\":1})", "set_cooling({broken})"]:
+		var shown: String = _shown(log, machine, message)
+		check(not shown.contains("set_") and not shown.contains("{") and not shown.contains("\""), "readable: %s" % shown)
+	check_eq(_shown(log, machine, "set_unheard_of({\"x\":1})"), "Action requested", "an unknown call is not claimed as applied")
+	var text: String = (log.get_node("%Text") as RichTextLabel).text
+	check(not text.contains("event:") and not text.contains("threshold:"), "no raw trigger reasons")
+
+
 func test_settings_dialog_saves_per_provider() -> void:
 	var settings: Node = autoload("Settings")
 	var backup: Array = [settings.api_key, settings.provider, settings.model, settings.openai_api_key, settings.openai_model]

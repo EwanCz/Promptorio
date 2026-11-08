@@ -105,6 +105,8 @@ func _on_decision_received(requester_id: int, tool_calls: Array[Dictionary]) -> 
 	var machine: Machine = get_parent() as Machine
 	if machine == null:
 		return
+	if tool_calls.is_empty():
+		machine.log_chip("no tool calls")
 	var applied: int = 0
 	for tool_call: Dictionary in tool_calls:
 		var args: Variant = tool_call.get("args", {})
