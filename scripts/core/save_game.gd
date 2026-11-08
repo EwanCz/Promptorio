@@ -258,6 +258,15 @@ static func _validate_machines(machines: Variant, chip_ids: Dictionary, sites: V
 		has_collector = has_collector or machine["type"] == "collector"
 	if not has_collector:
 		return "The save has no Collector."
+	var orchestrators: Dictionary = {}
+	for machine: Dictionary in machines:
+		if machine["type"] == "orchestrator":
+			orchestrators[int(machine["id"])] = true
+	for machine: Dictionary in machines:
+		for chip: Dictionary in machine.get("chips", []):
+			var owner: Variant = chip.get("assigned_by", 0)
+			if not _is_whole(owner) or int(owner) < 0 or (int(owner) != 0 and not orchestrators.has(int(owner))):
+				return "The save has a chip with an invalid Orchestrator owner."
 	return ""
 
 

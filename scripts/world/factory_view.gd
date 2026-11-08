@@ -68,9 +68,8 @@ func _attach_chip(cell: Vector2i, chip_id: int) -> void:
 		grid.flash_refused(cell)
 		return
 	if machine.attach_chip(chip_id) == null:
-		machine.indicator.show_result("failed")
+		grid.flash_refused(cell)
 		return
-	machine.indicator.show_result("applied")
 
 
 ## World position of `at_position` (local to this control) through the viewport's own camera, then the

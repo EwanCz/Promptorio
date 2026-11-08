@@ -7,6 +7,7 @@ extends Node2D
 
 ## "producing", "idle" or "blocked". Kept so set_state() is a no-op when nothing changed.
 var state: String = "idle"
+var show_blocked_badge: bool = true
 
 var _particles: CPUParticles2D
 var _badge: Sprite2D
@@ -17,7 +18,7 @@ func _ready() -> void:
 	_particles.z_index = -1
 	_particles.amount = 6
 	_particles.lifetime = 0.8
-	_particles.position = Vector2.ONE * GameState.CELL_SIZE / 2.0
+	_particles.position = Vector2(8.0, 2.0)
 	_particles.emission_shape = CPUParticles2D.EMISSION_SHAPE_SPHERE
 	_particles.emission_sphere_radius = 6.0
 	_particles.direction = Vector2.UP
@@ -45,4 +46,4 @@ func set_state(new_state: String) -> void:
 		return
 	state = new_state
 	_particles.emitting = state == "producing"
-	_badge.visible = state == "blocked"
+	_badge.visible = state == "blocked" and show_blocked_badge

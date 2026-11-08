@@ -64,6 +64,7 @@ func test_prospecting_preserves_partial_mining_progress() -> void:
 	miner.start_prospecting()
 	_ticks(Miner.PROSPECT_TICKS - 1)
 	check_eq(miner.get_progress(), 0.9, "prospecting preserves the unfinished unit")
+	check_eq(miner.get_production_state(), Machine.ProductionState.IDLE, "prospecting is idle even with unfinished mining progress")
 	_ticks(1)
 	check_eq(miner.get_progress(), 0.9, "progress is rescaled when boost starts")
 	_ticks(1)
@@ -97,6 +98,8 @@ func test_mode_badge_does_not_overlap_chip_indicator() -> void:
 		var badge_rect: Rect2 = Rect2(badge.position - Vector2.ONE * Icons.SIZE, Vector2.ONE * Icons.SIZE * Icons.SCALE)
 		var chip_rect: Rect2 = Rect2(miner.indicator.position - Vector2.ONE * Icons.SIZE, Vector2.ONE * Icons.SIZE * Icons.SCALE)
 		check(not badge_rect.intersects(chip_rect), "badge and chip indicator do not overlap")
+		var production_rect: Rect2 = Rect2(miner.production_indicator.position - Vector2.ONE * Icons.SIZE, Vector2.ONE * Icons.SIZE * Icons.SCALE)
+		check(not badge_rect.intersects(production_rect), "badge and production indicator do not overlap")
 
 
 func test_cannot_restart_prospecting_while_prospecting_or_boosted() -> void:

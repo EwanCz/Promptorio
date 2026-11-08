@@ -140,6 +140,24 @@ func test_dragging_a_chip_onto_an_empty_cell_attaches_nothing() -> void:
 	check(_game.get_machine_at(cell) == null, "still nothing here")
 
 
+func test_chip_drop_does_not_interrupt_pending_indicator() -> void:
+	await _wait_for_camera()
+	var cell: Vector2i = Vector2i(8, 8)
+	var smelter: Smelter = _placement.place("smelter", cell)
+	var chip: ChipRessource = _registry.add("pending_drop_chip", "p")
+	_chip_ids.append(chip.id)
+	var component: ChipComponent = smelter.attach_chip(chip.id)
+	component.pending = true
+	smelter.indicator.show_pending()
+	_view._drop_data(_at(cell), {"chip_id": chip.id})
+	check_eq(smelter.indicator.state, "checking", "refused duplicate preserves the pending spinner")
+	var other: ChipRessource = _registry.add("new_drop_chip", "p")
+	_chip_ids.append(other.id)
+	_view._drop_data(_at(cell), {"chip_id": other.id})
+	check(smelter.get_chip(other.id) != null, "new chip attaches")
+	check_eq(smelter.indicator.state, "checking", "successful drop preserves the pending spinner")
+
+
 func test_hover_highlight_follows_the_dragged_kind() -> void:
 	await _wait_for_camera()
 	var machine_cell: Vector2i = Vector2i(8, 8)

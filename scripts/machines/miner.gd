@@ -139,10 +139,21 @@ func is_producing() -> bool:
 	return enabled and mode != Mode.PROSPECTING
 
 
+func shows_production_feedback() -> bool:
+	return true
+
+
+func get_production_state() -> ProductionState:
+	if mode == Mode.PROSPECTING and not is_blocked():
+		return ProductionState.IDLE
+	return super.get_production_state()
+
+
 func clear_contents() -> void:
 	_held = ""
 	_blocked = false
 	_progress = 0
+	_production_ticks.clear()
 	mode = Mode.MINING
 	mode_ticks_left = 0
 
@@ -172,6 +183,7 @@ func _tick() -> void:
 	if _held != "":
 		_blocked = not _push(_held)
 		if not _blocked:
+			_note_produced()
 			_held = ""
 	if enabled:
 		var current_mode: Mode = mode

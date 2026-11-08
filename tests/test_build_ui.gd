@@ -42,12 +42,12 @@ func _buttons() -> Array[Button]:
 
 func test_start_money_and_catalog() -> void:
 	check(_game.START_MONEY > 0, "the game starts with some money")
-	check_eq(Placement.COSTS, {"miner": 20, "smelter": 30, "assembler": 40, "conveyor": 2}, "catalog costs")
+	check_eq(Placement.COSTS, {"miner": 20, "smelter": 30, "assembler": 40, "conveyor": 2, "orchestrator": 150}, "catalog costs")
 
 
 func test_page_lists_machines_with_cost_and_money() -> void:
 	var buttons: Array[Button] = _buttons()
-	check_eq(buttons.size(), 4, "one button per buildable machine")
+	check_eq(buttons.size(), 5, "one button per buildable machine")
 	check_eq(buttons[0].text, "20", "the cost is just a number")
 	var price_icon: Image = Icons.icon("money").get_image()
 	price_icon.resize(Icons.SIZE * Icons.SCALE, Icons.SIZE * Icons.SCALE, Image.INTERPOLATE_NEAREST)
@@ -56,11 +56,11 @@ func test_page_lists_machines_with_cost_and_money() -> void:
 		var at: Vector2i = Vector2i(BuildPage.ART_SIZE + BuildPage.COIN_GAP, (BuildPage.ART_SIZE - price_icon.get_height()) / 2)
 		check(strip.get_region(Rect2i(0, 0, BuildPage.ART_SIZE, BuildPage.ART_SIZE)).get_data() != Image.create_empty(BuildPage.ART_SIZE, BuildPage.ART_SIZE, false, Image.FORMAT_RGBA8).get_data(), "%s: the machine art is still there" % button.tooltip_text)
 		check_eq(strip.get_region(Rect2i(at, price_icon.get_size())).get_data(), price_icon.get_data(), "%s: the money icon sits between the art and the number, so it reads as a price" % button.tooltip_text)
-	check_eq([buttons[1].text, buttons[2].text, buttons[3].text], ["30", "40", "2"], "every cost beside its machine")
+	check_eq([buttons[1].text, buttons[2].text, buttons[3].text, buttons[4].text], ["30", "40", "2", "150"], "every cost beside its machine")
 	for i: int in buttons.size():
 		check(buttons[i].icon != null, "%s shows its machine art" % buttons[i].tooltip_text)
 	check(buttons[0].get_combined_minimum_size().x < 200.0, "buttons stay small however many times the page is built")
-	check_eq(buttons.map(func(b: Button) -> String: return b.tooltip_text), ["Miner", "Smelter", "Assembler", "Conveyor"], "names on hover")
+	check_eq(buttons.map(func(b: Button) -> String: return b.tooltip_text), ["Miner", "Smelter", "Assembler", "Conveyor", "Orchestrator"], "names on hover")
 	check_eq((_page.get_node("%MoneyLabel") as Label).text, "100", "money is a bare amount")
 	var coin: TextureRect = _page.get_node("%MoneyIcon") as TextureRect
 	check_eq(coin.texture.get_image().get_data(), Icons.icon("money").get_image().get_data(), "beside a coin icon")
@@ -193,6 +193,7 @@ func test_refund_is_half_the_price_rounded_down() -> void:
 	check_eq(Placement.refund_for("smelter"), 15, "smelter")
 	check_eq(Placement.refund_for("assembler"), 20, "assembler")
 	check_eq(Placement.refund_for("conveyor"), 1, "conveyor")
+	check_eq(Placement.refund_for("orchestrator"), 75, "orchestrator")
 	check_eq(Placement.refund_for("collector"), 0, "the Collector is not for sale")
 
 

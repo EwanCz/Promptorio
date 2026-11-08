@@ -108,3 +108,14 @@ func test_effect_toggles_particles_and_badge_per_state() -> void:
 	check(not effect._particles.emitting, "idle emits nothing")
 	check(not effect._badge.visible, "idle shows no badge either")
 	effect.free()
+
+
+func test_particles_are_visible_above_the_machine_and_status_badges_are_not_duplicated() -> void:
+	var smelter: Smelter = _put("smelter", Vector2i(8, 8)) as Smelter
+	var effect: ProductionEffect = smelter.production_effect
+	check(effect._particles.position.y - effect._particles.emission_sphere_radius < 0.0, "particles start outside the opaque sprite")
+	effect.set_state("blocked")
+	check(not effect._badge.visible and smelter.production_indicator != null, "timed machines use their existing production badge")
+	var conveyor: Conveyor = _put("conveyor", Vector2i(9, 8)) as Conveyor
+	conveyor.production_effect.set_state("blocked")
+	check(conveyor.production_effect._badge.visible, "conveyors retain a blocked badge")
