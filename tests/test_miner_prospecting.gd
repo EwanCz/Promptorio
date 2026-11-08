@@ -57,6 +57,48 @@ func test_start_prospecting_pauses_mining_and_exposes_mode() -> void:
 	check_eq(miner.mode, Miner.Mode.PROSPECTING, "still prospecting one tick before it ends")
 
 
+func test_prospecting_preserves_partial_mining_progress() -> void:
+	var miner: Miner = _put("miner", Vector2i(0, 0)) as Miner
+	_ticks(18)
+	check_eq(miner.get_progress(), 0.9, "ore is almost finished")
+	miner.start_prospecting()
+	_ticks(Miner.PROSPECT_TICKS - 1)
+	check_eq(miner.get_progress(), 0.9, "prospecting preserves the unfinished unit")
+	_ticks(1)
+	check_eq(miner.get_progress(), 0.9, "progress is rescaled when boost starts")
+	_ticks(1)
+	check_eq(miner.get_progress(), 0.0, "the boosted unit finishes on the next tick")
+
+
+func test_expiring_boost_preserves_partial_progress() -> void:
+	var miner: Miner = _put("miner", Vector2i(0, 0)) as Miner
+	var saved: Dictionary = miner.to_dict()
+	saved["data"]["mode"] = Miner.Mode.BOOST
+	saved["data"]["mode_ticks_left"] = 1
+	saved["data"]["progress"] = 3
+	miner.load_dict(saved)
+	_ticks(1)
+	check_eq(miner.mode, Miner.Mode.MINING, "boost expires")
+	check_eq(miner.get_progress(), 0.4, "last boosted tick is counted before rescaling")
+
+
+func test_mode_badge_does_not_overlap_chip_indicator() -> void:
+	var miner: Miner = _put("miner", Vector2i(0, 0)) as Miner
+	miner.start_prospecting()
+	_ticks(1)
+	var badge: Sprite2D = null
+	for child: Node in miner.get_children():
+		if child is Sprite2D and child != miner.indicator:
+			var sprite: Sprite2D = child as Sprite2D
+			if sprite.texture != null and sprite.texture.get_image().get_data() == Icons.icon("prospecting").get_image().get_data():
+				badge = sprite
+	check(badge != null, "prospecting badge is visible")
+	if badge != null:
+		var badge_rect: Rect2 = Rect2(badge.position - Vector2.ONE * Icons.SIZE, Vector2.ONE * Icons.SIZE * Icons.SCALE)
+		var chip_rect: Rect2 = Rect2(miner.indicator.position - Vector2.ONE * Icons.SIZE, Vector2.ONE * Icons.SIZE * Icons.SCALE)
+		check(not badge_rect.intersects(chip_rect), "badge and chip indicator do not overlap")
+
+
 func test_cannot_restart_prospecting_while_prospecting_or_boosted() -> void:
 	var miner: Miner = _put("miner", Vector2i(0, 0)) as Miner
 	miner.start_prospecting()

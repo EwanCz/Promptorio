@@ -149,7 +149,7 @@ func _refresh_operation() -> void:
 	elif _machine is Miner:
 		var miner: Miner = _machine as Miner
 		op.append(_item_entry(miner.item, "", "Mines %s"))
-		op.append(_icon_entry("timer", str(miner.mine_ticks), "Ticks per unit"))
+		op.append(_icon_entry("timer", str(miner.get_mining_ticks()), "Ticks per unit"))
 		if miner.mode == Miner.Mode.PROSPECTING:
 			op.append(_icon_entry("prospecting", str(miner.mode_ticks_left), "Prospecting: %d ticks left" % miner.mode_ticks_left))
 		elif miner.mode == Miner.Mode.BOOST:

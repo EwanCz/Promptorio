@@ -76,7 +76,7 @@ The machine tooltip panel provides the actions that apply to an existing machine
 - Remove: immediately free the machine's grid cell and remove it from the scene. Discard its stock, held item, and attached chips; refund half of its purchase price (`Placement.refund_for()`, rounded down: Miner 10, Smelter 15, Assembler 20, Conveyor 1), only when the player destroys it from the tooltip; a Smelter that explodes gives nothing. Do not offer removal for the fixed Collector. The freed cell can be rebuilt using normal placement checks and cost.
 
 Tooltip current-action content:
-- Miner: production rate (one unit of its resource per `mine_ticks`, which depends on the resource) and whether its output is blocked. While prospecting or boosted, an extra icon (magnifying glass / bolt) shows the ticks left in that span.
+- Miner: effective production rate (ticks per unit, including the boost) and whether its output is blocked. While prospecting or boosted, an extra icon (magnifying glass / bolt) shows the ticks left in that span.
 - Smelter / Assembler: recipe inputs and output, stock, idle/working/output-blocked state, and remaining craft time while working.
 - Smelter additionally shows temperature and whether cooling is enabled.
 - Conveyor: facing direction and whether it holds an item (and the item type when occupied).

@@ -47,7 +47,7 @@ func _ready() -> void:
 	_mode_sprite = Sprite2D.new()
 	_mode_sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	_mode_sprite.scale = Vector2(Icons.SCALE, Icons.SCALE)
-	_mode_sprite.position = Vector2(GameState.CELL_SIZE - Icons.SIZE * Icons.SCALE / 2.0 - 2.0, -Icons.SIZE * Icons.SCALE / 2.0 - 2.0)
+	_mode_sprite.position = Vector2(GameState.CELL_SIZE - Icons.SIZE * Icons.SCALE / 2.0 - 2.0, Icons.SIZE * Icons.SCALE / 2.0 + 2.0)
 	_mode_sprite.z_index = 10
 	_mode_sprite.visible = false
 	add_child(_mode_sprite)
@@ -119,13 +119,15 @@ func start_prospecting() -> bool:
 		return false
 	mode = Mode.PROSPECTING
 	mode_ticks_left = PROSPECT_TICKS
-	_progress = 0
 	return true
 
 
+func get_mining_ticks() -> int:
+	return _boosted_mine_ticks() if mode == Mode.BOOST else mine_ticks
+
+
 func get_progress() -> float:
-	var denominator: int = _boosted_mine_ticks() if mode == Mode.BOOST else mine_ticks
-	return clampf(float(_progress) / float(maxi(denominator, 1)), 0.0, 1.0)
+	return clampf(float(_progress) / float(maxi(get_mining_ticks(), 1)), 0.0, 1.0)
 
 
 func is_blocked() -> bool:
@@ -170,25 +172,28 @@ func _tick() -> void:
 		var current_mode: Mode = mode
 		if current_mode != Mode.MINING:
 			mode_ticks_left -= 1
-			if mode_ticks_left <= 0:
-				_advance_mode()
 		if current_mode != Mode.PROSPECTING and _held == "":
 			_progress += 1
 			if _progress >= (_boosted_mine_ticks() if current_mode == Mode.BOOST else mine_ticks):
 				_progress = 0
 				_held = item
+		if current_mode != Mode.MINING and mode_ticks_left <= 0:
+			_advance_mode()
 	_update_mode_sprite()
 
 
 ## PROSPECTING -> BOOST (a fresh BOOST_TICKS span) or BOOST -> MINING. Called once the current span's ticks
 ## run out; the tick that empties it still behaves as the span that just ended (see _tick()).
 func _advance_mode() -> void:
+	var old_ticks: int = get_mining_ticks()
 	if mode == Mode.PROSPECTING:
 		mode = Mode.BOOST
 		mode_ticks_left = BOOST_TICKS
 	else:
 		mode = Mode.MINING
 		mode_ticks_left = 0
+	var new_ticks: int = get_mining_ticks()
+	_progress = mini(roundi(float(_progress) * new_ticks / maxi(old_ticks, 1)), new_ticks - 1)
 
 
 func _boosted_mine_ticks() -> int:

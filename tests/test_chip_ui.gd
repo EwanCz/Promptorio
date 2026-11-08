@@ -537,6 +537,22 @@ func test_a_blocked_machine_shows_a_blocked_icon() -> void:
 	check(_hints(tooltip.get_node("%OpRow")).has("Ticks per unit"), "the mining pace is a clock icon with the number")
 
 
+func test_miner_tooltip_shows_effective_boosted_rate() -> void:
+	var tooltip: MachineTooltip = _spawn("res://scenes/ui/popups/machine_tooltip.tscn")
+	var miner: Miner = _spawn("res://scenes/machines/miner.tscn") as Miner
+	var bus: Node = autoload("EventBus")
+	bus.machine_selected.emit(miner)
+	miner.start_prospecting()
+	for i: int in Miner.PROSPECT_TICKS:
+		bus.tick_fired.emit(i)
+	bus.tick_fired.emit(Miner.PROSPECT_TICKS)
+	var entries: Array[Array] = _entries(tooltip.get_node("%OpRow"))
+	var rates: Array = entries.filter(func(entry: Array) -> bool: return entry[2] == "Ticks per unit")
+	check_eq(rates.size(), 1, "one mining rate is displayed")
+	if rates.size() == 1:
+		check_eq(rates[0][1], str(miner.mine_ticks / Miner.BOOST_RATE), "displayed rate reflects the boost")
+
+
 func test_conveyor_and_collector_panels_use_icons() -> void:
 	var tooltip: MachineTooltip = _spawn("res://scenes/ui/popups/machine_tooltip.tscn")
 	var belt: Conveyor = _spawn("res://scenes/machines/conveyor.tscn") as Conveyor
