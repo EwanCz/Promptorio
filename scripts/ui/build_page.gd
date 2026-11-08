@@ -2,7 +2,8 @@ class_name BuildPage
 extends VBoxContainer
 ## Build page: money (coin icon and amount), one button per buildable machine (its art and the cost as a
 ## number, the name on hover, disabled when unaffordable), the selected type and an icon for the last
-## placement refusal (hover for the reason). Selecting only enters placement mode.
+## placement refusal (hover for the reason). Clicking only enters placement mode (click a cell to place);
+## dragging a button onto the map (see FactoryView) places it directly on drop.
 
 const ART_SIZE: int = 32
 const COIN_GAP: int = 4
@@ -18,10 +19,11 @@ var _buttons: Dictionary = {}
 
 func _ready() -> void:
 	for type: String in Placement.COSTS:
-		var button: Button = Button.new()
+		var button: DraggableButton = DraggableButton.new()
 		button.toggle_mode = true
 		button.tooltip_text = type.capitalize()
 		button.icon = _art(type)
+		button.drag_payload = {"machine_type": type}
 		button.pressed.connect(_on_button_pressed.bind(type))
 		_list.add_child(button)
 		_buttons[type] = button
