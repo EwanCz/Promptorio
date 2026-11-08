@@ -147,6 +147,38 @@ func test_reassigning_replaces_its_own_previous_chip() -> void:
 	check_eq(miner.chips.size(), 1, "only one chip owned by this Orchestrator at a time")
 
 
+func test_repeated_and_rejected_assignments_preserve_existing_chip() -> void:
+	var orchestrator: Orchestrator = _put("orchestrator", Vector2i(5, 5), 1) as Orchestrator
+	var miner: Machine = _put("miner", Vector2i(6, 5), 2)
+	var owned: ChipRessource = _chip("owned")
+	var manual: ChipRessource = _chip("manual")
+	miner.attach_chip(manual.id)
+	orchestrator.assign_chip(miner.machine_id, owned.id)
+	var component: ChipComponent = miner.get_chip(owned.id)
+	component.set_timeout(42)
+	component.pending = true
+	check(orchestrator.assign_chip(miner.machine_id, owned.id), "repeated assignment succeeds")
+	check(miner.get_chip(owned.id) == component and component.pending and component.timeout == 42, "same component and pending request retained")
+	check(not orchestrator.assign_chip(miner.machine_id, manual.id), "player chip cannot be reassigned")
+	check(miner.get_chip(owned.id) == component and miner.get_chip(manual.id) != null, "rejected replacement leaves both chips intact")
+
+
+func test_open_tooltip_tracks_automatic_assignments() -> void:
+	var orchestrator: Orchestrator = _put("orchestrator", Vector2i(5, 5), 1) as Orchestrator
+	var miner: Machine = _put("miner", Vector2i(6, 5), 2)
+	var chip: ChipRessource = _chip("tooltip_chip")
+	var tooltip: MachineTooltip = load("res://scenes/ui/popups/machine_tooltip.tscn").instantiate() as MachineTooltip
+	tree.root.add_child(tooltip)
+	_nodes.append(tooltip)
+	tooltip.open(miner)
+	check_eq(tooltip.get_node("%ChipsList").get_child_count(), 0, "starts empty")
+	orchestrator.assign_chip(miner.machine_id, chip.id)
+	check_eq(tooltip.get_node("%ChipsList").get_child_count(), 1, "automatic assignment appears immediately")
+	orchestrator.remove_chip(miner.machine_id)
+	check_eq(tooltip.get_node("%ChipsList").get_child_count(), 0, "automatic removal clears the row")
+	tooltip.close()
+
+
 func test_shrinking_range_blocks_managing_an_owned_machine_until_it_grows_back() -> void:
 	var orchestrator: Orchestrator = _put("orchestrator", Vector2i(5, 5), 1) as Orchestrator
 	var miner: Machine = _put("miner", Vector2i(7, 5), 2)

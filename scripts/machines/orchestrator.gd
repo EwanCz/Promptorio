@@ -115,6 +115,12 @@ func assign_chip(target_id: int, chip_id: int) -> bool:
 		refusal = "machine #%d's assignment is already owned by another Orchestrator" % target_id
 		return false
 	var existing: ChipComponent = _owned_component(target)
+	var requested: ChipComponent = target.get_chip(chip_id)
+	if requested != null:
+		if requested == existing:
+			return true
+		refusal = "machine #%d already runs that chip" % target_id
+		return false
 	if existing != null:
 		target.detach_chip(existing.chip.id)
 	if target.attach_chip(chip_id, ChipComponent.DEFAULT_TIMEOUT, machine_id) == null:

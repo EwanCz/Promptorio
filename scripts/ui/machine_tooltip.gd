@@ -58,7 +58,10 @@ func _ready() -> void:
 
 
 func open(machine: Machine) -> void:
+	if _machine != null and is_instance_valid(_machine):
+		_machine.chips_changed.disconnect(_refresh_chips)
 	_machine = machine
+	_machine.chips_changed.connect(_refresh_chips)
 	_id_label.text = "%s #%d" % [machine.machine_type.capitalize(), machine.machine_id]
 	_rotate_button.visible = machine.can_rotate()
 	_destroy_button.visible = machine.is_removable()
@@ -68,6 +71,8 @@ func open(machine: Machine) -> void:
 
 
 func close() -> void:
+	if _machine != null and is_instance_valid(_machine):
+		_machine.chips_changed.disconnect(_refresh_chips)
 	_machine = null
 	_show_details(false)
 

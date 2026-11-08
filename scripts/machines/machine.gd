@@ -5,6 +5,7 @@ extends Node2D
 
 signal tool_applied(tool_name: String, args: Dictionary)
 signal chip_decision_applied(chip_id: int, reason: String, applied: int)
+signal chips_changed
 
 enum Status { NORMAL, DOWN, OVERHEATING }
 ## PRODUCING: enabled and a job is in progress. STALLED: its output cannot be delivered (wins over
@@ -90,6 +91,7 @@ func attach_chip(chip_id: int, timeout_ticks: int = ChipComponent.DEFAULT_TIMEOU
 	component.activity_changed.connect(_on_chip_activity)
 	add_child(component)
 	chips.append(component)
+	chips_changed.emit()
 	return component
 
 
@@ -100,6 +102,7 @@ func detach_chip(chip_id: int) -> void:
 	chips.erase(component)
 	component.queue_free()
 	_on_chip_activity("")
+	chips_changed.emit()
 
 
 ## Null if the chip is not attached.
