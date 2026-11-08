@@ -68,6 +68,10 @@ func is_blocked() -> bool:
 	return _blocked
 
 
+func shows_production_feedback() -> bool:
+	return true
+
+
 func clear_contents() -> void:
 	stock.clear()
 	progress = 0
@@ -75,6 +79,7 @@ func clear_contents() -> void:
 	_making = ""
 	_output = ""
 	_blocked = false
+	_production_ticks.clear()
 
 
 func _own_tool_schemas() -> Array:
@@ -141,6 +146,7 @@ func _tick() -> void:
 	if _output != "":
 		_blocked = not _push(_output)
 		if not _blocked:
+			_note_produced()
 			_output = ""
 		return
 	if not enabled:

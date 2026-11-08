@@ -73,10 +73,15 @@ func is_blocked() -> bool:
 	return _blocked
 
 
+func shows_production_feedback() -> bool:
+	return true
+
+
 func clear_contents() -> void:
 	_held = ""
 	_blocked = false
 	_progress = 0
+	_production_ticks.clear()
 
 
 func _save_data() -> Dictionary:
@@ -97,6 +102,7 @@ func _tick() -> void:
 	if _held != "":
 		_blocked = not _push(_held)
 		if not _blocked:
+			_note_produced()
 			_held = ""
 		return
 	if not enabled:
