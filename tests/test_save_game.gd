@@ -125,6 +125,45 @@ func test_orchestrator_owner_is_validated_and_round_trips() -> void:
 	check_eq(restored.get_chip(chip.id).assigned_by, owner, "ownership survives restore")
 
 
+func test_chip_creator_is_validated_and_round_trips() -> void:
+	var orchestrator: Orchestrator = _placement.place("orchestrator", Vector2i(8, 8)) as Orchestrator
+	var smelter: Machine = _placement.place("smelter", Vector2i(9, 8))
+	check(orchestrator.apply_tool_call("create_chip", {"name": "save_generated", "description": "d", "prompt": "p"}), "chip created")
+	var chip: ChipRessource = null
+	for candidate: ChipRessource in _registry.get_all():
+		if candidate.name == "save_generated":
+			chip = candidate
+	_chip_ids.append(chip.id)
+	check(orchestrator.assign_chip(smelter.machine_id, chip.id), "assigned so it is embedded in the save")
+	var save: Dictionary = SaveGame.snapshot(_placement)
+	var saved_chip: Dictionary = save["chips"][0]
+	check_eq(saved_chip["created_by"], orchestrator.machine_id, "created_by is embedded")
+	var creator: int = orchestrator.machine_id
+	for invalid: Variant in [999999, -1, "invalid"]:
+		saved_chip["created_by"] = invalid
+		check(SaveGame.validate(_placement, save) != "", "invalid creator is rejected")
+	saved_chip["created_by"] = creator
+	check_eq(SaveGame.restore(_placement, save), "", "valid creator restores")
+	var restored: ChipRessource = _registry.get_from_id(chip.id)
+	check_eq(restored.created_by, creator, "ownership survives restore")
+
+
+func test_unassigned_created_chip_restores_and_other_game_ownership_is_cleared() -> void:
+	var orchestrator: Orchestrator = _placement.place("orchestrator", Vector2i(8, 8)) as Orchestrator
+	var creator_id: int = orchestrator.machine_id
+	var generated: ChipRessource = _registry.add("unassigned_generated", "original", "", orchestrator.machine_id)
+	_chip_ids.append(generated.id)
+	var save: Dictionary = SaveGame.snapshot(_placement)
+	check_eq(save["chips"].size(), 1, "unassigned generated chip is embedded")
+	var unrelated: ChipRessource = _registry.add("other_game_generated", "other", "", orchestrator.machine_id)
+	_chip_ids.append(unrelated.id)
+	check_eq(SaveGame.restore(_placement, save), "", "save restores")
+	check_eq(generated.created_by, creator_id, "saved creator is restored")
+	check_eq(unrelated.created_by, 0, "unrelated creator is released")
+	_game.reset()
+	check_eq(generated.created_by, 0, "new game releases creator")
+
+
 func test_snapshot_restore_round_trip() -> void:
 	_build_world()
 	var before: Dictionary = SaveGame.snapshot(_placement)
@@ -137,6 +176,25 @@ func test_snapshot_restore_round_trip() -> void:
 	_game.tick_count = 1
 	check_eq(SaveGame.restore(_placement, before), "", "restore accepts its own snapshot")
 	check_eq(_text(SaveGame.snapshot(_placement)), _text(before), "the game is identical after restoring")
+
+
+func test_chip_default_timeout_round_trips_through_save() -> void:
+	_build_world()
+	var chip: ChipRessource = autoload("ChipRegistry").get_from_id(_machine_dict(SaveGame.snapshot(_placement), "smelter")["chips"][0]["id"])
+	chip.default_timeout = 30
+	var save: Dictionary = SaveGame.snapshot(_placement)
+	var saved_chip: Dictionary = save["chips"][0]
+	check_eq(saved_chip.get("default_timeout", -1), 30, "chip default is saved")
+	chip.default_timeout = 0
+	check_eq(SaveGame.restore(_placement, save), "", "save restores")
+	check_eq(chip.default_timeout, 30, "chip default is restored")
+	saved_chip["default_timeout"] = -2
+	check(SaveGame.validate(_placement, save) != "", "negative timeout rejected")
+	saved_chip["default_timeout"] = "30"
+	check(SaveGame.validate(_placement, save) != "", "non-numeric timeout rejected")
+	saved_chip.erase("default_timeout")
+	check_eq(SaveGame.restore(_placement, save), "", "older saves still restore")
+	check_eq(chip.default_timeout, 30, "older saves preserve an existing default")
 	var smelter: Smelter = _game.get_machine_at(Vector2i(8, 8))
 	check(smelter != null, "the destroyed smelter is back")
 	check_eq(smelter.stock, {"ore": 4}, "stock restored")

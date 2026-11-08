@@ -7,6 +7,7 @@
 size_flags_vertical = 3
 size_flags_stretch_ratio = 1.0
 theme = ExtResource("2_theme")
+theme_type_variation = &"BarSection"
 script = ExtResource("1_script")
 
 [node name="Margin" type="MarginContainer" parent="."]
@@ -104,5 +105,26 @@ layout_mode = 2
 size_flags_horizontal = 3
 
 [node name="AddButton" type="Button" parent="Margin/Scroll/VBox/AddRow"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="PredefinedList" type="VBoxContainer" parent="Margin/Scroll/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="PredefinedRow" type="HBoxContainer" parent="Margin/Scroll/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="PredefinedIcon" type="TextureRect" parent="Margin/Scroll/VBox/PredefinedRow"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="PredefinedPicker" type="OptionButton" parent="Margin/Scroll/VBox/PredefinedRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="AddPredefinedButton" type="Button" parent="Margin/Scroll/VBox/PredefinedRow"]
 unique_name_in_owner = true
 layout_mode = 2

@@ -78,6 +78,7 @@ layout_mode = 2
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
+theme_type_variation = &"BarSection"
 
 [node name="KeyStatusRow" type="HBoxContainer" parent="Game/Bar/VBoxContainer/KeyStatus"]
 layout_mode = 2
@@ -87,6 +88,29 @@ unique_name_in_owner = true
 layout_mode = 2
 
 [node name="KeyBadge" type="TextureRect" parent="Game/Bar/VBoxContainer/KeyStatus/KeyStatusRow"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="OrderStatus" type="PanelContainer" parent="Game/Bar/VBoxContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="OrderRow" type="HBoxContainer" parent="Game/Bar/VBoxContainer/OrderStatus"]
+layout_mode = 2
+
+[node name="OrderIcon" type="TextureRect" parent="Game/Bar/VBoxContainer/OrderStatus/OrderRow"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="OrderProgressLabel" type="Label" parent="Game/Bar/VBoxContainer/OrderStatus/OrderRow"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="OrderRewardIcon" type="TextureRect" parent="Game/Bar/VBoxContainer/OrderStatus/OrderRow"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="OrderRewardLabel" type="Label" parent="Game/Bar/VBoxContainer/OrderStatus/OrderRow"]
 unique_name_in_owner = true
 layout_mode = 2
 
@@ -124,6 +148,11 @@ layout_mode = 2
 unique_name_in_owner = true
 layout_mode = 2
 alignment = 2
+
+[node name="SpeedButton" type="Button" parent="Game/Bar/VBoxContainer/BarButtons"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "1x"
 
 [node name="MenuButton" type="Button" parent="Game/Bar/VBoxContainer/BarButtons"]
 unique_name_in_owner = true

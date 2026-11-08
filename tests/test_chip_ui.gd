@@ -122,6 +122,45 @@ func test_tooltip_toggle_and_chips() -> void:
 	check(chip != null, "chip fixture exists")
 
 
+## GR2-6: the predefined-behavior picker/list is a separate control from the chip picker/list, so a
+## canned behavior is never mistaken for a real chip prompt at the point of selection.
+func test_tooltip_distinguishes_predefined_behaviors_from_chip_prompts() -> void:
+	var tooltip: MachineTooltip = _spawn("res://scenes/ui/popups/machine_tooltip.tscn")
+	var miner: Machine = _spawn("res://scenes/machines/miner.tscn")
+	var bus: Node = autoload("EventBus")
+	var chip: ChipRessource = _add("ui_distinct", "a real prompt an LLM would read")
+	bus.machine_selected.emit(miner)
+	var predefined_row: HBoxContainer = tooltip.get_node("%PredefinedRow")
+	var predefined_picker: OptionButton = tooltip.get_node("%PredefinedPicker")
+	var chip_picker: OptionButton = tooltip.get_node("%ChipPicker")
+	check(predefined_row.visible, "a miner offers predefined behaviors")
+	check_eq(predefined_picker.item_count, 2, "the miner's fixed list, not the chip registry")
+	check_eq(chip_picker.item_count, autoload("ChipRegistry").get_all().size(), "the chip picker lists the whole chip registry, independently of the fixed list")
+	(tooltip.get_node("%AddPredefinedButton") as Button).pressed.emit()
+	check_eq(miner.predefined_behaviors.size(), 1, "add attaches a predefined behavior")
+	check_eq(miner.chips.size(), 0, "not a chip")
+	check_eq(tooltip.get_node("%PredefinedList").get_child_count(), 1, "listed in its own section")
+	check_eq(tooltip.get_node("%ChipsList").get_child_count(), 0, "not mixed into the chip list")
+	var row: Node = tooltip.get_node("%PredefinedList").get_child(0)
+	var row_name: Label = row.find_child("Name", true, false) as Label
+	check(row_name.tooltip_text.contains("Canned, no AI"), "hover names it canned, not a chip prompt")
+	check(not row_name.tooltip_text.contains("a real prompt"), "never shows chip prompt text")
+	check(row.find_child("Timeout", true, false) == null, "no timer control: its schedule is fixed, not a chip setting")
+	(tooltip.get_node("%AddButton") as Button).pressed.emit()
+	check_eq(miner.chips.size(), 1, "the chip picker still attaches an ordinary chip")
+	check_eq(tooltip.get_node("%ChipsList").get_child_count(), 1, "into the chip list, not the predefined one")
+	check_eq(tooltip.get_node("%PredefinedList").get_child_count(), 1, "predefined list unaffected")
+	check(chip != null, "chip fixture exists")
+
+
+func test_tooltip_hides_predefined_picker_for_a_machine_type_with_none() -> void:
+	var tooltip: MachineTooltip = _spawn("res://scenes/ui/popups/machine_tooltip.tscn")
+	var collector: Machine = _spawn("res://scenes/machines/collector.tscn")
+	var bus: Node = autoload("EventBus")
+	bus.machine_selected.emit(collector)
+	check(not (tooltip.get_node("%PredefinedRow") as HBoxContainer).visible, "nothing predefined to offer a Collector")
+
+
 func test_chip_log_capture_and_cap() -> void:
 	var log: ChipLog = _spawn("res://scenes/ui/popups/chip_log.tscn")
 	var machine: Machine = _spawn("res://scenes/machines/machine.tscn")
@@ -158,9 +197,17 @@ func test_chip_log_shows_short_plain_language_entries() -> void:
 	for pair: Array in [[0, "right"], [1, "down"], [2, "left"], [3, "up"]]:
 		check_eq(_shown(log, machine, "set_direction({\"direction\":%d})" % pair[0]), "Direction set to %s" % pair[1], "direction %d" % pair[0])
 	check_eq(_shown(log, machine, "set_emergency_stop({\"on\":false})"), "Emergency stop release requested", "a release that may be a no-op is not claimed as done")
-	check_eq(_shown(log, machine, "ignored set_cooling: bad value for 'on'"), "Action rejected", "rejected action")
-	check_eq(_shown(log, machine, "ignored unknown tool 'launch_missiles'"), "Action rejected", "unknown tool")
-	check_eq(_shown(log, machine, "chip request failed: HTTP 401 (authentication_error)"), "Request failed", "failure")
+	var orchestrator_chip: ChipRessource = _add("log_orchestrator_chip")
+	check_eq(_shown(log, machine, "assign_chip({\"chip_id\":%d,\"machine_id\":7})" % orchestrator_chip.id), "Assigned chip 'log_orchestrator_chip' to machine #7", "assignment names the chip, not its id")
+	check_eq(_shown(log, machine, "remove_chip({\"machine_id\":7})"), "Removed its chip from machine #7", "removal")
+	check_eq(_shown(log, machine, "set_range({\"cells\":3})"), "Range set to 3 cells", "range")
+	check_eq(_shown(log, machine, "create_chip({\"description\":\"d\",\"name\":\"new_chip\",\"prompt\":\"p\"})"), "Created chip 'new_chip'", "creation names the new chip")
+	check_eq(_shown(log, machine, "revise_chip({\"chip_id\":%d,\"description\":\"d2\",\"prompt\":\"p2\"})" % orchestrator_chip.id), "Revised chip 'log_orchestrator_chip'", "revision names the chip, not its id")
+	check_eq(_shown(log, machine, "ignored set_cooling: bad value for 'on'"), "Rejected: an invalid value for 'on'", "rejected action names the bad field")
+	check_eq(_shown(log, machine, "ignored set_mine_ticks: missing 'ticks'"), "Rejected: missing 'ticks'", "rejected action names the missing field")
+	check_eq(_shown(log, machine, "ignored unknown tool 'launch_missiles'"), "Rejected: an unrecognized action", "unknown tool")
+	check_eq(_shown(log, machine, "ignored set_mined_item({\"item\":\"ingot\"}): 'ingot' cannot be made by this miner: it is built by smelters"), "Rejected: 'ingot' cannot be made by this miner: it is built by smelters", "rejection surfaces the machine's own reason, not a generic label")
+	check_eq(_shown(log, machine, "chip request failed: HTTP 401 (authentication_error)"), "Request failed: HTTP 401 (authentication_error)", "failure keeps its reason")
 	check_eq(_shown(log, machine, "exploded at 150°"), "exploded at 150°", "other messages are untouched")
 
 
@@ -183,7 +230,7 @@ func test_chip_log_is_an_icon_timeline_with_hover_text() -> void:
 	for icon: Node in timeline.get_children():
 		tips.append((icon as TextureRect).tooltip_text)
 		check((icon as TextureRect).texture != null and (icon as Control).mouse_filter == Control.MOUSE_FILTER_STOP, "each icon has art and can show its hover")
-	check_eq(tips, ["Checking: Smelter Cooler", "Cooling set on", "No action", "Action rejected", "Request failed", "exploded at 150°"] as Array[String], "hover text explains each icon")
+	check_eq(tips, ["Checking: Smelter Cooler", "Cooling set on", "No action", "Rejected: an invalid value for 'on'", "Request failed: HTTP 500", "exploded at 150°"] as Array[String], "hover text explains each icon")
 	check_eq(log.find_children("*", "Label", true, false).size() - 1, 0, "no text entries beyond the title")
 	var first: Image = (timeline.get_child(0) as TextureRect).texture.get_image()
 	check_eq(first.get_data(), Icons.icon("checking").get_image().get_data(), "a check shows the checking icon")
@@ -195,7 +242,7 @@ func test_chip_log_never_shows_raw_tool_names_or_json() -> void:
 	var log: ChipLog = _spawn("res://scenes/ui/popups/chip_log.tscn")
 	var machine: Machine = _spawn("res://scenes/machines/machine.tscn")
 	log.show_machine(machine)
-	for message: String in ["set_stock_limit({\"limit\":6})", "set_direction({\"direction\":2})", "set_accepting({\"on\":true})", "set_unheard_of({\"x\":1})", "set_cooling({broken})"]:
+	for message: String in ["set_stock_limit({\"limit\":6})", "set_direction({\"direction\":2})", "set_accepting({\"on\":true})", "set_unheard_of({\"x\":1})", "set_cooling({broken})", "ignored set_cooling: bad value for 'on'", "ignored set_mined_item({\"item\":\"ingot\"}): 'ingot' cannot be made by this miner: it is built by smelters"]:
 		var shown: String = _shown(log, machine, message)
 		check(not shown.contains("set_") and not shown.contains("{") and not shown.contains("\""), "readable: %s" % shown)
 	check_eq(_shown(log, machine, "set_unheard_of({\"x\":1})"), "Action requested", "an unknown call is not claimed as applied")

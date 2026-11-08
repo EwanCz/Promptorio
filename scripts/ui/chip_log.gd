@@ -11,6 +11,11 @@ const DIRECTIONS: Array[String] = ["right", "down", "left", "up"]
 var _machine: Machine = null
 var _asking: RegEx = RegEx.create_from_string("^asking chip (.*) \\([^()]*\\)$")
 var _tool_call: RegEx = RegEx.create_from_string("^(\\w+)\\((\\{.*\\})\\)$")
+## The three shapes apply_tool_call() logs an "ignored ..." line in (see machine.gd); each captures the
+## player-facing reason, never the tool's own raw name or its JSON arguments.
+var _ignored_call: RegEx = RegEx.create_from_string("^ignored \\w+\\(.*\\): (.+)$")
+var _ignored_missing: RegEx = RegEx.create_from_string("^ignored \\w+: missing '(.+)'$")
+var _ignored_bad_value: RegEx = RegEx.create_from_string("^ignored \\w+: bad value for '(.+)'$")
 ## Machine instance id -> Array of {kind: icon name, text: hover explanation}.
 var _lines: Dictionary = {}
 
@@ -88,15 +93,31 @@ func _describe(message: String) -> Dictionary:
 	if message == "no tool calls":
 		return {"kind": "none", "text": "No action"}
 	if message.begins_with("chip request failed"):
-		return {"kind": "failed", "text": "Request failed"}
+		return {"kind": "failed", "text": "Request failed: %s" % message.trim_prefix("chip request failed: ")}
 	if message.begins_with("ignored "):
-		return {"kind": "failed", "text": "Action rejected"}
+		return {"kind": "failed", "text": "Rejected: %s" % _rejection_reason(message)}
 	var call: RegExMatch = _tool_call.search(message)
 	if call != null:
 		var json: JSON = JSON.new()
 		var args: Variant = json.data if json.parse(call.get_string(2)) == OK else null
 		return {"kind": "applied", "text": _tool_label(call.get_string(1), args)}
 	return {"kind": "info", "text": message}
+
+
+## The player-facing reason inside an "ignored ..." log line (see apply_tool_call() in machine.gd): the
+## tool's own raw name and any JSON arguments are stripped out, never shown (see
+## test_chip_log_never_shows_raw_tool_names_or_json).
+func _rejection_reason(message: String) -> String:
+	var call: RegExMatch = _ignored_call.search(message)
+	if call != null:
+		return call.get_string(1)
+	var missing: RegExMatch = _ignored_missing.search(message)
+	if missing != null:
+		return "missing '%s'" % missing.get_string(1)
+	var bad_value: RegExMatch = _ignored_bad_value.search(message)
+	if bad_value != null:
+		return "an invalid value for '%s'" % bad_value.get_string(1)
+	return "an unrecognized action"
 
 
 func _tool_label(tool_name: String, args: Variant) -> String:
@@ -125,4 +146,19 @@ func _tool_label(tool_name: String, args: Variant) -> String:
 			return "Stock limit set to %d" % int(values.get("limit", 0))
 		"set_direction":
 			return "Direction set to %s" % DIRECTIONS[clampi(int(values.get("direction", 0)), 0, DIRECTIONS.size() - 1)]
+		"assign_chip":
+			return "Assigned chip '%s' to machine #%d" % [_chip_name(int(values.get("chip_id", 0))), int(values.get("machine_id", 0))]
+		"remove_chip":
+			return "Removed its chip from machine #%d" % int(values.get("machine_id", 0))
+		"set_range":
+			return "Range set to %d cells" % int(values.get("cells", 0))
+		"create_chip":
+			return "Created chip '%s'" % str(values.get("name", ""))
+		"revise_chip":
+			return "Revised chip '%s'" % _chip_name(int(values.get("chip_id", 0)))
 	return "Action requested"
+
+
+func _chip_name(chip_id: int) -> String:
+	var chip: ChipRessource = ChipRegistry.get_from_id(chip_id)
+	return chip.name if chip != null else "?"

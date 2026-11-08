@@ -68,6 +68,50 @@ func test_update_refuses_bad_input() -> void:
 	check_eq(second.name, "reg_u2", "refused update changes nothing")
 
 
+## created_by (GR2-18): 0 for a player chip, else the Orchestrator machine_id that generated it with
+## create_chip. See ChipRessource.created_by for the ownership rules this enforces.
+func test_add_records_created_by() -> void:
+	var player_made: ChipRessource = _add("reg_player")
+	var generated: ChipRessource = _registry.add("reg_generated", "p", "", 7)
+	_ids.append(generated.id)
+	check_eq(player_made.created_by, 0, "the default (ChipPage never passes anything else) is a player chip")
+	check_eq(generated.created_by, 7, "the Orchestrator's machine_id is recorded on the chip itself")
+
+
+func test_update_always_clears_created_by() -> void:
+	var generated: ChipRessource = _registry.add("reg_claim", "p", "", 7)
+	_ids.append(generated.id)
+	check(_registry.update(generated.id, "reg_claim", "edited", "edited"), "the player saves an edit")
+	check_eq(generated.created_by, 0, "saving through ChipPage claims it: no longer the Orchestrator's to revise")
+
+
+func test_revise_only_touches_a_chip_this_creator_made() -> void:
+	var generated: ChipRessource = _registry.add("reg_revise", "p", "d", 7)
+	_ids.append(generated.id)
+	var player_made: ChipRessource = _add("reg_not_mine")
+	check(not _registry.revise(99999, "x", "x", 7), "unknown id refused")
+	check(not _registry.revise(player_made.id, "x", "x", 7), "a player chip is never revised")
+	check(not _registry.revise(generated.id, "x", "x", 8), "a different Orchestrator's id is refused")
+	check_eq([player_made.prompt, generated.prompt], ["p", "p"], "nothing changed by the refused calls")
+	check(_registry.revise(generated.id, "new desc", "new prompt", 7), "the actual creator succeeds")
+	check_eq([generated.name, generated.description, generated.prompt], ["reg_revise", "new desc", "new prompt"], "name kept, description/prompt updated")
+
+
+func test_release_created_by_only_clears_the_matching_creator() -> void:
+	var mine: ChipRessource = _registry.add("reg_release_a", "p", "", 7)
+	var other: ChipRessource = _registry.add("reg_release_b", "p", "", 8)
+	_ids.append_array([mine.id, other.id])
+	_registry.release_created_by(7)
+	check_eq(mine.created_by, 0, "released")
+	check_eq(other.created_by, 8, "a different creator's chip is untouched")
+
+
+func test_import_chip_carries_created_by() -> void:
+	var imported: ChipRessource = _registry.import_chip(555001, "reg_import", "d", "p", 9)
+	_ids.append(imported.id)
+	check_eq(imported.created_by, 9, "ownership round-trips through a save file import")
+
+
 ## Persistence. Each test saves to its own temp file and restores the runner's path and defaults.
 const TMP_PATH: String = "user://test_chip_persist.tres"
 var _saved_path: String = ""
@@ -146,6 +190,41 @@ func test_smelter_cooler_manages_heat_with_cooling_and_pauses_only_in_an_emergen
 	check(prompt.contains("temperature is 130 or higher") and not prompt.contains("status is \"overheating\""), "emergency stop is delayed beyond the OVERHEATING status")
 	check(prompt.contains("Never pause for routine temperature control"), "no routine pausing")
 	check(cool_off < cool_on and cool_on == Smelter.OVERHEAT_AT and emergency_stop_at < Smelter.EXPLODE_AT, "cooling starts at overheating and emergency stop precedes explosion")
+	_restore_path()
+
+
+## A Smelter heats at HEAT_PER_TICK while working continuously (0.6/tick), and the shipped Cooler only
+## starts cooling at 100deg, 50deg below EXPLODE_AT (150). The component's own default timeout (100 ticks,
+## 10s) alone lets temperature climb 60deg between two polls, more than that margin, so the registry ships
+## this chip with a tighter default_timeout instead (see ChipRessource.default_timeout).
+func test_smelter_cooler_ships_with_a_safe_default_timeout() -> void:
+	_use_tmp_path()
+	var cooler: ChipRessource = _smelter_cooler(_registry.get_all())
+	check(cooler.default_timeout > 0 and cooler.default_timeout < ChipComponent.DEFAULT_TIMEOUT, "tighter than the component default")
+	var margin: float = Smelter.EXPLODE_AT - Smelter.OVERHEAT_AT
+	check(cooler.default_timeout * Smelter.HEAT_PER_TICK < margin, "one full poll interval heats less than the cooling margin")
+	var smelter: Machine = load("res://scenes/machines/smelter.tscn").instantiate()
+	tree.root.add_child(smelter)
+	var component: ChipComponent = smelter.attach_chip(cooler.id)
+	check_eq(component.timeout, cooler.default_timeout, "a fresh attachment from the registry starts at the safe default, not the component's")
+	smelter.free()
+	_restore_path()
+
+
+func test_existing_unedited_cooler_receives_timeout_default() -> void:
+	_use_tmp_path()
+	var cooler: ChipRessource = _registry.get_from_id(2)
+	cooler.default_timeout = 0
+	_registry.update(cooler.id, cooler.name, cooler.description, cooler.prompt)
+	_registry.load_registry()
+	check_eq(_registry.get_from_id(2).default_timeout, 30, "existing unedited cooler receives the shipped timeout")
+	_registry.load_registry()
+	check_eq(_registry.get_from_id(2).default_timeout, 30, "timeout migration persists")
+	cooler = _registry.get_from_id(2)
+	cooler.default_timeout = 0
+	_registry.update(cooler.id, cooler.name, cooler.description, "custom prompt")
+	_registry.load_registry()
+	check_eq(_registry.get_from_id(2).default_timeout, 0, "edited starter keeps its own default")
 	_restore_path()
 
 
