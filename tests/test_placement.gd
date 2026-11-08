@@ -41,6 +41,24 @@ func test_occupied_and_out_of_bounds_are_refused() -> void:
 	check(_placement.place("bogus", Vector2i(9, 9)) == null, "unknown type refused")
 
 
+func test_placement_pops_in_with_an_animation() -> void:
+	var machine: Machine = _placement.place("smelter", Vector2i(8, 8))
+	# The BACK easing overshoots slightly even at the very start of the tween, so this checks "near zero",
+	# not an exact Vector2.ZERO.
+	check(machine.scale.x < 0.01, "starts close to zero scale")
+	check_eq(machine.modulate.a, 0.0, "and fully transparent")
+	await wait_seconds(Placement.PLACE_ANIM_SECONDS + 0.05)
+	check_eq(machine.scale, Vector2.ONE, "pops back to full size")
+	check_eq(machine.modulate.a, 1.0, "and fully opaque")
+
+
+## A loaded save restores every machine at once: they should not all pop in together.
+func test_restored_machines_do_not_animate() -> void:
+	var machine: Machine = _placement.restore_machine("smelter", Vector2i(8, 8), Vector2i.RIGHT, 5)
+	check_eq(machine.scale, Vector2.ONE, "a loaded machine appears at full size immediately")
+	check_eq(machine.modulate.a, 1.0, "and fully opaque")
+
+
 func test_miners_only_on_minesites() -> void:
 	check(_placement.place("miner", Vector2i(8, 8)) == null, "miner refused on plain ground")
 	check(_placement.place("miner", _grid.minesites[0]) is Miner, "miner accepted on a minesite")

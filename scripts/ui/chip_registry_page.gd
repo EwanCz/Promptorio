@@ -1,6 +1,7 @@
 class_name ChipRegistryPage
 extends VBoxContainer
-## Bar page listing every chip of the ChipRegistry, with a "new chip" button on top.
+## Bar page listing every chip of the ChipRegistry, with a "new chip" button on top. Clicking a chip opens
+## it (see chip_requested); dragging it onto a machine on the map (see FactoryView) attaches it there.
 
 ## chip is null when the player asks for a new (blank) chip.
 signal chip_requested(chip: ChipRessource)
@@ -25,9 +26,12 @@ func _refresh() -> void:
 		_list.remove_child(child)
 		child.queue_free()
 	for chip: ChipRessource in ChipRegistry.get_all():
-		var button: Button = Button.new()
+		var button: DraggableButton = DraggableButton.new()
 		button.text = chip.name
 		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		if chip.created_by != 0:
+			button.tooltip_text = "Created by Orchestrator #%d" % chip.created_by
+		button.drag_payload = {"chip_id": chip.id}
 		button.pressed.connect(chip_requested.emit.bind(chip))
 		_list.add_child(button)
 

@@ -17,6 +17,7 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/popups/tools_page.tscn" id="15_tools"]
 [ext_resource type="PackedScene" path="res://scenes/ui/popups/save_dialog.tscn" id="14_save"]
 [ext_resource type="PackedScene" path="res://scenes/ui/popups/pause_menu.tscn" id="15_pause"]
+[ext_resource type="Script" path="res://scripts/world/factory_view.gd" id="16_factory_view"]
 
 [node name="Main" type="Node" unique_id=1179046009]
 script = ExtResource("4_main")
@@ -30,11 +31,16 @@ grow_vertical = 2
 theme = ExtResource("6_theme")
 theme_override_constants/separation = 0
 
-[node name="FactoryView" type="SubViewportContainer" parent="Game" unique_id=1651386507]
+[node name="FactoryView" type="SubViewportContainer" parent="Game" unique_id=1651386507 node_paths=PackedStringArray("grid", "placement", "viewport")]
+unique_name_in_owner = true
+script = ExtResource("16_factory_view")
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_stretch_ratio = 4.0
 stretch = true
+grid = NodePath("SubViewport/World/GridMap2D")
+placement = NodePath("SubViewport/World/Placement")
+viewport = NodePath("SubViewport")
 
 [node name="SubViewport" type="SubViewport" parent="Game/FactoryView" unique_id=91119752]
 handle_input_locally = false

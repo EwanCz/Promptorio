@@ -139,7 +139,7 @@ func test_validate_rejects_a_malformed_order() -> void:
 	var placement: Placement = main.get_node("Game/FactoryView/SubViewport/World/Placement")
 	_game.reset()
 	var save: Dictionary = SaveGame.snapshot(placement)
-	for bad: Variant in ["not a dict", {"product": 3, "quantity": 1, "progress": 0, "reward": 0}, {"product": "ore", "quantity": -1, "progress": 0, "reward": 0}, {"product": "ore", "quantity": 1, "progress": 2, "reward": 0}, {"product": "ore", "quantity": 1, "progress": 0, "reward": -1}]:
+	for bad: Variant in ["not a dict", {"product": 3, "quantity": 1, "progress": 0, "reward": 0}, {"product": "ore", "quantity": -1, "progress": 0, "reward": 0}, {"product": "ore", "quantity": 1, "progress": 2, "reward": 0}, {"product": "ore", "quantity": 1, "progress": 0, "reward": -1}, {"product": "unknown", "quantity": 1, "progress": 0, "reward": 1}, {"product": "ore", "quantity": 0, "progress": 0, "reward": 0}, {"product": "ore", "quantity": 1, "progress": 1, "reward": 1}, {"product": "", "quantity": 1, "progress": 0, "reward": 0}]:
 		save["order"] = bad
 		check(SaveGame.validate(placement, save) != "", "rejected: %s" % str(bad))
 	main.free()

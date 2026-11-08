@@ -78,6 +78,10 @@ func is_blocked() -> bool:
 	return _blocked
 
 
+func is_producing() -> bool:
+	return is_working()
+
+
 func shows_production_feedback() -> bool:
 	return true
 

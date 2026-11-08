@@ -54,6 +54,7 @@ func tick_fraction() -> float:
 ## Back to the start of a new game: starting money, a stopped clock and a fresh order. Machines unregister
 ## themselves when their scene leaves the tree.
 func reset() -> void:
+	ChipRegistry.release_all_creators()
 	tick_count = 0
 	_tick_accumulator = 0.0
 	_last_tick_time_usec = Time.get_ticks_usec()

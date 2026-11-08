@@ -2,9 +2,14 @@ class_name Collector
 extends Machine
 ## Accepts every resource of the catalog and sells it for its price.
 
+## Ticks a just-sold pulse stays on for is_producing(), so a sale reads as a brief burst rather than a flicker.
+const PULSE_TICKS: int = 3
+
 var sold: int = 0
 var earned: int = 0
 var accepting: bool = true
+
+var _pulse_left: int = 0
 
 
 func receive(item: String) -> bool:
@@ -15,7 +20,17 @@ func receive(item: String) -> bool:
 	GameState.record_order_sale(item)
 	sold += 1
 	earned += price
+	_pulse_left = PULSE_TICKS
 	return true
+
+
+func is_producing() -> bool:
+	return _pulse_left > 0
+
+
+func _tick() -> void:
+	if _pulse_left > 0:
+		_pulse_left -= 1
 
 
 func is_removable() -> bool:
