@@ -207,3 +207,26 @@ func test_highlight_and_placement_agree() -> void:
 	for cell: Vector2i in [PLAIN, MINESITE, Vector2i(16, 10)]:
 		check_eq(_grid.can_place("miner", cell), placement.place("miner", cell) != null, "miner at %s" % cell)
 	autoload("GameState").money = _saved_money
+
+
+## set_hover_check lets a drag target something other than a free cell (a chip drag targets a machine).
+func test_hover_check_overrides_the_default_rule() -> void:
+	_grid.hovered_cell = PLAIN
+	check_eq(_grid.hover_color(), _grid.HOVER_OK, "the default rule: a free cell, nothing selected")
+	_grid.set_hover_check(func(_c: Vector2i) -> bool: return false)
+	check_eq(_grid.hover_color(), _grid.HOVER_BLOCKED, "the override replaces it")
+	_grid.clear_hover_check()
+	check_eq(_grid.hover_color(), _grid.HOVER_OK, "clearing restores the default rule")
+
+
+func test_set_hovered_cell_updates_the_same_state_as_real_mouse_motion() -> void:
+	_grid.set_hovered_cell(PLAIN)
+	check_eq(_grid.hovered_cell, PLAIN, "a drag drives the same hovered_cell mouse motion would")
+
+
+func test_flash_refused_shows_then_clears_itself() -> void:
+	tree.root.add_child(_main)
+	_grid.flash_refused(PLAIN)
+	check_eq(_grid._flash_cell, PLAIN, "the flash marks the refused cell")
+	await wait_seconds(GridMap2D.REFUSE_FLASH_SECONDS + 0.05)
+	check_eq(_grid._flash_cell, Vector2i(-1, -1), "and clears itself shortly after")

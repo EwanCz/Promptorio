@@ -41,6 +41,8 @@ var facing: Vector2i = Vector2i.RIGHT:
 var chips: Array[ChipComponent] = []
 ## The icon above the machine: a spinner while any chip waits for an answer, then the last result.
 var indicator: ChipIndicator
+## In-world feedback for production_state(): particles while producing, a badge while blocked.
+var production_effect: ProductionEffect
 ## The icon at the corner of the machine's cell showing its production state. Null for machines whose
 ## shows_production_feedback() is false (they have no timed job to report).
 var production_indicator: ProductionIndicator
@@ -61,6 +63,9 @@ func _ready() -> void:
 	indicator = ChipIndicator.new()
 	indicator.position = Vector2(GameState.CELL_SIZE / 2.0, -Icons.SIZE * Icons.SCALE / 2.0 - 2.0)
 	add_child(indicator)
+	production_effect = ProductionEffect.new()
+	production_effect.show_blocked_badge = not shows_production_feedback()
+	add_child(production_effect)
 	if shows_production_feedback():
 		production_indicator = ProductionIndicator.new()
 		var corner: float = GameState.CELL_SIZE - Icons.SIZE * Icons.SCALE / 2.0 - 2.0
@@ -141,6 +146,24 @@ func get_progress() -> float:
 
 ## True once a delivery of the output failed and the machine is waiting for the way to clear.
 func is_blocked() -> bool:
+	return false
+
+
+## "producing", "idle" or "blocked": drives the in-world production_effect. A machine that is DOWN always
+## reads idle (it is inert, not stuck). Subclasses report active work through is_producing(), not this.
+func production_state() -> String:
+	if status == Status.DOWN:
+		return "idle"
+	if is_blocked():
+		return "blocked"
+	if is_producing():
+		return "producing"
+	return "idle"
+
+
+## True while the machine is actively working toward an output this tick. The base machine never counts;
+## subclasses with a job (Miner, CraftMachine, Conveyor, Collector) override it.
+func is_producing() -> bool:
 	return false
 
 
@@ -385,6 +408,7 @@ func _on_tick(tick_number: int) -> void:
 		production_indicator.refresh(get_production_state(), get_production_rate())
 	if _label != null:
 		_label.text = _status_text()
+	production_effect.set_state(production_state())
 
 
 ## Spinner while any chip is pending (one chip finishing never hides another still running), otherwise the
