@@ -49,7 +49,7 @@ func test_every_machine_scene_has_art_one_cell_wide() -> void:
 
 
 
-func test_directional_machines_show_their_back_only_when_facing_up() -> void:
+func test_machines_with_back_art_show_it_only_when_facing_up() -> void:
 	for type: String in ["smelter", "assembler", "miner"]:
 		var machine: Machine = _spawn(type)
 		check(machine.back_texture != null and machine.back_texture != machine.front_texture, "%s has distinct back art" % type)
@@ -69,7 +69,7 @@ func _cell_rect(machine: Machine) -> Rect2:
 	return rect
 
 
-func test_directional_machines_turn_the_front_on_the_sides_and_keep_it_over_their_cell() -> void:
+func test_machines_with_back_art_turn_the_front_on_the_sides_and_keep_it_over_their_cell() -> void:
 	var cell: float = float(autoload("GameState").CELL_SIZE)
 	for type: String in ["smelter", "assembler", "miner"]:
 		var machine: Machine = _spawn(type)

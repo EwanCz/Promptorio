@@ -6,6 +6,7 @@ extends Control
 signal game_requested
 
 const GAME_SCENE: String = "res://scenes/main.tscn"
+var _return_to_chip_manager: bool = false
 ## icon name (from Icons.BADGES) per button, reusing the same glyphs the Bar uses.
 const BUTTON_ICONS: Dictionary = {
 	"PlayButton": "state_normal",
@@ -28,14 +29,17 @@ const BUTTON_ICONS: Dictionary = {
 
 func _ready() -> void:
 	_apply_button_icons()
+	for button: Button in [_play_button, _load_button, _chips_button, _options_button, _exit_button]:
+		SfxEvents.attach_click(button)
 	_save_dialog.use_as_menu()
 	_play_button.pressed.connect(start_game)
-	_load_button.pressed.connect(_save_dialog.open)
-	_chips_button.pressed.connect(_chip_manager.open)
-	_options_button.pressed.connect(_settings_dialog.open)
+	_load_button.pressed.connect(_on_load_pressed)
+	_chips_button.pressed.connect(_on_chips_pressed)
+	_options_button.pressed.connect(_on_options_pressed)
 	_exit_button.pressed.connect(get_tree().quit)
 	_save_dialog.save_picked.connect(start_game)
-	_chip_manager.chip_requested.connect(_chip_page.open)
+	_chip_manager.chip_requested.connect(_on_chip_requested)
+	_chip_page.closed.connect(_on_chip_page_closed)
 	game_requested.connect(_go_to_game)
 	_play_button.grab_focus()
 
@@ -51,6 +55,46 @@ func start_game(save: Dictionary = {}) -> void:
 func _go_to_game() -> void:
 	if get_tree().current_scene == self:
 		get_tree().change_scene_to_file(GAME_SCENE)
+
+
+## Every popup of the main menu. Closing the others before one opens keeps exactly one visible at a
+## time, same rule as Main (scripts/ui/main.gd).
+func _popups() -> Array[Control]:
+	return [_save_dialog, _chip_manager, _chip_page, _settings_dialog]
+
+
+func _close_popups() -> void:
+	_return_to_chip_manager = false
+	for popup: Control in _popups():
+		if popup.visible:
+			popup.call("close")
+
+
+func _on_load_pressed() -> void:
+	_close_popups()
+	_save_dialog.open()
+
+
+func _on_chips_pressed() -> void:
+	_close_popups()
+	_chip_manager.open()
+
+
+func _on_options_pressed() -> void:
+	_close_popups()
+	_settings_dialog.open()
+
+
+func _on_chip_requested(chip: ChipRessource) -> void:
+	_close_popups()
+	_return_to_chip_manager = true
+	_chip_page.open(chip)
+
+
+func _on_chip_page_closed() -> void:
+	if _return_to_chip_manager:
+		_return_to_chip_manager = false
+		_chip_manager.open()
 
 
 ## Gives each button the Icons glyph it shares with the Bar, scaled crisply like Icons.apply_button() does.

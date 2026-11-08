@@ -16,21 +16,23 @@ const MAIN_MENU_SCENE: String = "res://scenes/menu/main_menu.tscn"
 @onready var _save_dialog: SaveDialog = %SaveDialog
 @onready var _pause_menu: PauseMenu = %PauseMenu
 @onready var _placement: Placement = get_node("Game/FactoryView/SubViewport/World/Placement") as Placement
+@onready var _bar_buttons: HBoxContainer = %BarButtons
 
 
 func _ready() -> void:
 	_grid.cell_clicked.connect(_on_cell_clicked)
 	_build_page.setup(_placement)
-	_registry_page.chip_requested.connect(_chip_page.open)
-	_tooltip.log_requested.connect(_chip_log.show_machine)
-	_bar.resources_requested.connect(_resources_page.open)
-	_bar.tools_requested.connect(_tools_page.open)
+	_registry_page.chip_requested.connect(_on_chip_requested)
+	_tooltip.log_requested.connect(_on_log_requested)
+	_bar.resources_requested.connect(_on_resources_requested)
+	_bar.tools_requested.connect(_on_tools_requested)
 	_save_dialog.setup(_placement)
-	_bar.saves_requested.connect(_save_dialog.open)
-	_bar.settings_requested.connect(_settings_dialog.open)
-	_bar.menu_requested.connect(_pause_menu.open)
+	_bar.saves_requested.connect(_on_saves_requested)
+	_bar.settings_requested.connect(_on_settings_requested)
+	_bar.menu_requested.connect(_on_menu_requested)
 	_pause_menu.restart_requested.connect(_on_restart_requested)
 	_pause_menu.main_menu_requested.connect(_on_main_menu_requested)
+	_start_sfx_events()
 	_restore_pending_save()
 	EventBus.settings_changed.connect(_check_key)
 	_check_key()
@@ -42,7 +44,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		_bar.visible = not _bar.visible
 		get_viewport().set_input_as_handled()
 	elif event.is_action_pressed("cancel_placement") and _placement.selected == "":
-		_pause_menu.open()
+		_on_menu_requested()
 		get_viewport().set_input_as_handled()
 	elif event.is_action_pressed("rotate_placement"):
 		# One key turns both the selected machine and the next placement.
@@ -56,17 +58,66 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 
 
+## Every popup of the UI layer. Listed once so _close_popups() and _popup_open() agree on what counts.
+func _popups() -> Array[Control]:
+	return [_chip_page, _chip_log, _resources_page, _tools_page, _settings_dialog, _save_dialog, _pause_menu]
+
+
 ## True while any popup of the UI layer (Resources, Settings, Chip Log, Chip Page, Saves, the pause menu...)
 ## is shown: a key then belongs to that popup, never to the map behind it.
 func _popup_open() -> bool:
-	for popup: Node in $UI.get_children():
-		if popup is Control and (popup as Control).visible:
+	for popup: Control in _popups():
+		if popup.visible:
 			return true
 	return false
 
 
+## Closes every other open popup before a new one shows, so two never overlap. Without this, a popup
+## opened on top of one that pauses the game (PROCESS_MODE_ALWAYS) could leave the new one's own Close
+## button unresponsive, since the tree is paused and the new popup does not share that process mode.
+func _close_popups() -> void:
+	for popup: Control in _popups():
+		if popup.visible:
+			popup.call("close")
+
+
 func _on_cell_clicked(cell: Vector2i) -> void:
 	EventBus.machine_selected.emit(GameState.get_machine_at(cell))
+
+
+func _on_chip_requested(chip: ChipRessource) -> void:
+	_close_popups()
+	_chip_page.open(chip)
+
+
+func _on_log_requested(machine: Machine) -> void:
+	_close_popups()
+	_chip_log.show_machine(machine)
+
+
+func _on_resources_requested() -> void:
+	_close_popups()
+	_resources_page.open()
+
+
+func _on_tools_requested() -> void:
+	_close_popups()
+	_tools_page.open()
+
+
+func _on_saves_requested() -> void:
+	_close_popups()
+	_save_dialog.open()
+
+
+func _on_settings_requested() -> void:
+	_close_popups()
+	_settings_dialog.open()
+
+
+func _on_menu_requested() -> void:
+	_close_popups()
+	_pause_menu.open()
 
 
 ## A save picked in the main menu is restored here, once the world (and its Collector) exists. It was
@@ -88,6 +139,16 @@ func _on_main_menu_requested() -> void:
 	GameState.reset()
 	if get_tree().current_scene == self:
 		get_tree().change_scene_to_file(MAIN_MENU_SCENE)
+
+
+## The one listener that turns factory events into sound, plus a click on every Bar button.
+func _start_sfx_events() -> void:
+	var sfx_events: SfxEvents = SfxEvents.new()
+	add_child(sfx_events)
+	sfx_events.setup(_placement, _tooltip)
+	for child: Node in _bar_buttons.get_children():
+		if child is BaseButton:
+			SfxEvents.attach_click(child as BaseButton)
 
 
 ## Verifies the key for the Bar's status. Headless runs (tests) never touch the network.

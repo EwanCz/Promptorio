@@ -66,13 +66,8 @@ func test_ground_biomes_are_randomized_per_build() -> void:
 
 func test_minesite_restores_its_ground_tile_including_edge_art() -> void:
 	_grid._build_ground()
-	var edge_cell: Vector2i = Vector2i(-1, -1)
-	for cell: Vector2i in _grid._ground:
-		if _grid._ground[cell]["alt"] != 0 and not _grid.minesites.has(cell):
-			edge_cell = cell
-			break
-	if edge_cell == Vector2i(-1, -1):
-		return
+	var edge_cell: Vector2i = Vector2i.ZERO
+	_grid._ground[edge_cell] = {"atlas": GridMap2D.DIRT_GRASS_EDGE, "alt": TileSetAtlasSource.TRANSFORM_FLIP_V}
 	var before: Dictionary = _grid._ground[edge_cell].duplicate()
 	var with_edge_cell: Array[Vector2i] = _grid.minesites.duplicate()
 	with_edge_cell.append(edge_cell)
@@ -85,6 +80,13 @@ func test_minesite_restores_its_ground_tile_including_edge_art() -> void:
 	_grid.set_minesites(without_edge_cell)
 	check_eq(_grid.get_cell_atlas_coords(edge_cell), before["atlas"], "its edge art is restored")
 	check_eq(_grid.get_cell_alternative_tile(edge_cell), before["alt"], "with the same orientation")
+
+
+func test_minesite_art_does_not_replace_terrain_corner() -> void:
+	var atlas: TileSetAtlasSource = _grid.tile_set.get_source(GridMap2D.SOURCE_ID)
+	check(GridMap2D.MINESITE_TILE != Vector2i(2, 1), "minesite and dirt/grass corner use different atlas cells")
+	check(atlas.has_tile(GridMap2D.MINESITE_TILE), "minesite art exists in the atlas")
+	check(atlas.has_tile(Vector2i(2, 1)) and atlas.has_tile(Vector2i(3, 1)), "both terrain corners remain available")
 
 
 func test_minesites() -> void:

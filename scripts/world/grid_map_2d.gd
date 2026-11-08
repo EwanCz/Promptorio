@@ -13,7 +13,7 @@ const ROCK_TILE: Vector2i = Vector2i(1, 0)
 const GRASS_TILE: Vector2i = Vector2i(2, 0)
 const DIRT_GRASS_EDGE: Vector2i = Vector2i(0, 1)
 const ROCK_GRASS_EDGE: Vector2i = Vector2i(1, 1)
-const MINESITE_TILE: Vector2i = Vector2i(2, 1)
+const MINESITE_TILE: Vector2i = Vector2i(4, 0)
 const BIOME_TILES: Array[Vector2i] = [DIRT_TILE, ROCK_TILE, GRASS_TILE]
 ## One cluster grows from each seed cell (every other cell joins its nearest seed), so the ground reads
 ## as contiguous dirt/rock/grass patches instead of a single tile repeated everywhere.
