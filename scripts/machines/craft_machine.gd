@@ -110,7 +110,12 @@ func _tick() -> void:
 	elif _can_start():
 		for item: String in recipe.inputs:
 			stock[item] = int(stock[item]) - int(recipe.inputs[item])
-		progress = recipe.ticks
+		progress = _craft_ticks()
+
+
+## Duration of a craft starting now. Subclasses can slow it down.
+func _craft_ticks() -> int:
+	return recipe.ticks
 
 
 func _can_start() -> bool:

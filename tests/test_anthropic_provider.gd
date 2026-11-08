@@ -27,7 +27,7 @@ func test_build_request() -> void:
 	check_eq(req["url"], AnthropicProvider.URL, "url")
 	check("x-api-key: k" in req["headers"], "api key header")
 	check_eq(req["body"]["system"], "sys", "system prompt")
-	check_eq(req["body"]["tool_choice"]["type"], "any", "tool use forced")
+	check_eq(req["body"]["tool_choice"]["type"], "auto", "tool use is optional")
 	check(req["body"]["max_tokens"] <= 300, "max_tokens capped")
 
 

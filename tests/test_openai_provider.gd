@@ -31,7 +31,7 @@ func test_build_request() -> void:
 	check("authorization: Bearer ck" in req["headers"], "bearer header")
 	check_eq(req["body"]["model"], "gpt-6-luna", "openai model used")
 	check_eq(req["body"]["instructions"], "sys", "system prompt")
-	check_eq(req["body"]["tool_choice"], "required", "tool use forced")
+	check_eq(req["body"]["tool_choice"], "auto", "tool use is optional")
 	check(req["body"]["max_output_tokens"] <= 300, "token cap")
 	var tool: Dictionary = req["body"]["tools"][0]
 	check_eq([tool["type"], tool["name"]], ["function", "set_speed"], "tool converted")
