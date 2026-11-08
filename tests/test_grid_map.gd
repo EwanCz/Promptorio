@@ -27,8 +27,108 @@ func test_every_cell_has_a_tile() -> void:
 
 func test_minesites() -> void:
 	_grid._build_ground()
-	check(_grid.is_minesite(Vector2i(4, 4)), "listed cell is a minesite")
+	check_eq(_grid.minesites.size(), GridMap2D.MINESITE_GROUPS * GridMap2D.GROUP_SIZE, "every minesite is listed")
+	for cell: Vector2i in _grid.minesites:
+		check(_grid.is_minesite(cell), "listed cell %s is a minesite" % cell)
 	check(not _grid.is_minesite(Vector2i(16, 10)), "map center is not a minesite")
+	check(not _grid.is_minesite(Vector2i(10, 8)), "an ordinary cell is not")
+
+
+func _seeded(seed_value: int) -> Array[Vector2i]:
+	var rng: RandomNumberGenerator = RandomNumberGenerator.new()
+	rng.seed = seed_value
+	return _grid.generate_minesites(rng)
+
+
+func _touching(a: Vector2i, b: Vector2i) -> bool:
+	return maxi(absi(a.x - b.x), absi(a.y - b.y)) < 2
+
+
+## What is wrong with a layout (empty when it follows every rule).
+func _problems(cells: Array[Vector2i]) -> Array[String]:
+	var problems: Array[String] = []
+	var size: Vector2i = autoload("GameState").GRID_SIZE
+	var center: Vector2i = size / 2
+	if cells.size() != GridMap2D.MINESITE_GROUPS * GridMap2D.GROUP_SIZE:
+		return ["%d cells" % cells.size()]
+	for index: int in cells.size():
+		var cell: Vector2i = cells[index]
+		if not Rect2i(Vector2i.ZERO, size).has_point(cell):
+			problems.append("%s is off the map" % cell)
+		if maxi(absi(cell.x - center.x), absi(cell.y - center.y)) < GridMap2D.COLLECTOR_CLEARANCE:
+			problems.append("%s is too close to the collector" % cell)
+		if cells.find(cell) != index:
+			problems.append("%s is listed twice" % cell)
+	for group: int in GridMap2D.MINESITE_GROUPS:
+		var mine: Array[Vector2i] = cells.slice(group * 3, group * 3 + 3)
+		var joined: int = 0
+		for cell: Vector2i in mine:
+			for other: Vector2i in mine:
+				if cell.distance_squared_to(other) == 1:
+					joined += 1
+		if joined < 4:
+			problems.append("group %d is not one piece" % group)
+		for other_group: int in range(group + 1, GridMap2D.MINESITE_GROUPS):
+			for cell: Vector2i in mine:
+				for other: Vector2i in cells.slice(other_group * 3, other_group * 3 + 3):
+					if _touching(cell, other):
+						problems.append("groups %d and %d touch" % [group, other_group])
+	for cell: Vector2i in cells.slice(0, 3):
+		if maxi(absi(cell.x - center.x), absi(cell.y - center.y)) > GridMap2D.COLLECTOR_REACH:
+			problems.append("%s is too far from the collector" % cell)
+	return problems
+
+
+func test_generated_minesites_follow_the_rules() -> void:
+	for seed_value: int in 200:
+		check_eq(_problems(_seeded(seed_value)), [], "seed %d: 4 groups of 3, apart, none within %d of the collector, one within %d" % [seed_value, GridMap2D.COLLECTOR_CLEARANCE, GridMap2D.COLLECTOR_REACH])
+
+
+func test_the_layout_check_catches_a_bad_layout() -> void:
+	var good: Array[Vector2i] = _seeded(1)
+	var touching: Array[Vector2i] = good.duplicate()
+	touching[3] = touching[0] + Vector2i(1, 1)
+	check(not _problems(touching).is_empty(), "a group touching another is reported")
+	var far: Array[Vector2i] = good.duplicate()
+	far[0] = Vector2i(0, 0)
+	check(not _problems(far).is_empty(), "a first group out of reach is reported")
+	check(not _problems(good.slice(0, 9)).is_empty(), "a missing group is reported")
+	var center: Vector2i = autoload("GameState").GRID_SIZE / 2
+	var on_collector: Array[Vector2i] = good.duplicate()
+	on_collector[1] = center
+	check(not _problems(on_collector).is_empty(), "a site on the collector is reported")
+	var beside: Array[Vector2i] = good.duplicate()
+	beside[2] = center + Vector2i(GridMap2D.COLLECTOR_CLEARANCE - 1, -2)
+	check(not _problems(beside).is_empty(), "a site closer than the clearance is reported")
+	var at_limit: Array[Vector2i] = good.duplicate()
+	at_limit[0] = center + Vector2i(GridMap2D.COLLECTOR_CLEARANCE, 0)
+	at_limit[1] = at_limit[0] + Vector2i.RIGHT
+	at_limit[2] = at_limit[0] + Vector2i.UP
+	check_eq(_problems(at_limit).filter(func(text: String) -> bool: return text.contains("close") or text.contains("far")), [], "exactly at the clearance is allowed")
+
+
+func test_minesites_are_random() -> void:
+	var layouts: Dictionary = {}
+	for seed_value: int in 20:
+		layouts[_seeded(seed_value)] = true
+	check(layouts.size() > 15, "different seeds give different layouts")
+	check_eq(_seeded(7), _seeded(7), "the same seed gives the same layout")
+
+
+func test_a_new_map_draws_a_new_layout_unless_one_is_forced() -> void:
+	var forced: Array[Vector2i] = GridMap2D.layout_override.duplicate()
+	GridMap2D.layout_override = []
+	var layouts: Dictionary = {}
+	for i: int in 6:
+		_grid._build_ground()
+		layouts[_grid.minesites.duplicate()] = true
+		for cell: Vector2i in _grid.minesites:
+			check(_grid.is_minesite(cell), "drawn site %s is painted" % cell)
+	GridMap2D.layout_override = forced
+	check(layouts.size() > 1, "building the map again draws other sites")
+	_grid._build_ground()
+	check_eq(_grid.minesites, forced, "a forced layout is used as is")
+	check(_grid.is_minesite(forced[0]), "and painted")
 
 
 func test_hovered_cell_conversion() -> void:

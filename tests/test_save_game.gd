@@ -45,6 +45,11 @@ func _clear_dir(path: String) -> void:
 	DirAccess.remove_absolute(path)
 
 
+## A minesite of the running map.
+func _site() -> Vector2i:
+	return (_main.get_node("Game/FactoryView/SubViewport/World/GridMap2D") as GridMap2D).minesites[0]
+
+
 func _chip(chip_name: String, prompt: String = "prompt") -> ChipRessource:
 	var chip: ChipRessource = _registry.add(chip_name, prompt, "desc of " + chip_name)
 	_chip_ids.append(chip.id)
@@ -53,7 +58,7 @@ func _chip(chip_name: String, prompt: String = "prompt") -> ChipRessource:
 
 ## One machine of each kind, with contents, a chip with a threshold, and non-default money and tick.
 func _build_world() -> void:
-	var miner: Miner = _placement.place("miner", GridMap2D.MINESITES[0])
+	var miner: Miner = _placement.place("miner", _site())
 	miner.mine_ticks = 33
 	miner._progress = 7
 	miner._held = "ore"
@@ -61,6 +66,7 @@ func _build_world() -> void:
 	var smelter: Smelter = _placement.place("smelter", Vector2i(8, 8))
 	smelter.stock = {"ore": 4}
 	smelter.progress = 5
+	smelter._making = "ingot"
 	smelter._output = "ingot"
 	smelter.temperature = 71.5
 	smelter.cooling = true
@@ -142,7 +148,7 @@ func test_round_trip_through_a_file() -> void:
 	var conveyor: Conveyor = _game.get_machine_at(Vector2i(12, 8))
 	check_eq(conveyor.facing, Vector2i.DOWN, "direction restored")
 	check_eq(conveyor.held, "ingot", "held item restored")
-	var miner: Miner = _game.get_machine_at(GridMap2D.MINESITES[0])
+	var miner: Miner = _game.get_machine_at(_site())
 	check_eq([miner.mine_ticks, miner._progress, miner._held, miner.enabled], [33, 7, "ore", false], "miner restored")
 
 
@@ -207,6 +213,12 @@ func test_bad_files_are_refused_and_leave_the_game_untouched() -> void:
 		"two machines on a cell": func(d: Dictionary) -> Variant: d["machines"][2]["cell"] = d["machines"][1]["cell"]; return d,
 		"two machines with an id": func(d: Dictionary) -> Variant: d["machines"][2]["id"] = d["machines"][1]["id"]; return d,
 		"miner off a minesite": func(d: Dictionary) -> Variant: _machine_dict(d, "miner")["cell"] = [1, 1]; return d,
+		"minesites not a list": func(d: Dictionary) -> Variant: d["minesites"] = "everywhere"; return d,
+		"minesite outside the grid": func(d: Dictionary) -> Variant: d["minesites"].append([99, 99]); return d,
+		"minesite not a pair": func(d: Dictionary) -> Variant: d["minesites"].append([1]); return d,
+		"minesite twice": func(d: Dictionary) -> Variant: d["minesites"].append(d["minesites"][0]); return d,
+		"too many minesites": func(d: Dictionary) -> Variant: d["minesites"] = range(SaveGame.MAX_MINESITES + 1).map(func(i: int) -> Array: return [i % 32, i / 32]); return d,
+		"miner off the saved minesites": func(d: Dictionary) -> Variant: d["minesites"] = [[1, 1]]; return d,
 		"diagonal direction": func(d: Dictionary) -> Variant: d["machines"][1]["facing"] = [1, 1]; return d,
 		"unknown chip": func(d: Dictionary) -> Variant: _machine_dict(d, "smelter")["chips"][0]["id"] = 9999; return d,
 		"chip without a name": func(d: Dictionary) -> Variant: d["chips"][0]["name"] = ""; return d,
@@ -227,20 +239,24 @@ func test_values_in_a_file_are_clamped() -> void:
 	miner_data["mine_ticks"] = 9999
 	miner_data["progress"] = -50
 	miner_data["held"] = "gold"
+	miner_data["item"] = "ingot"
 	var smelter_entry: Dictionary = _machine_dict(save, "smelter")
 	smelter_entry["data"]["stock"] = {"ore": 999, "gold": 3}
 	smelter_entry["data"]["temperature"] = 99999
-	smelter_entry["data"]["output"] = "diamond"
+	smelter_entry["data"]["product"] = "gun"
+	smelter_entry["data"]["output"] = "plutonium"
 	smelter_entry["status"] = 42
 	smelter_entry["chips"][0]["timeout"] = -3
 	_machine_dict(save, "conveyor")["data"]["held"] = "plutonium"
 	check_eq(SaveGame.restore(_placement, save), "", "structure is valid")
-	var miner: Miner = _game.get_machine_at(GridMap2D.MINESITES[0])
+	var miner: Miner = _game.get_machine_at(_site())
 	check_eq([miner.mine_ticks, miner._progress, miner._held], [Miner.MAX_MINE_TICKS, 0, ""], "miner values clamped, unknown item dropped")
 	var smelter: Smelter = _game.get_machine_at(Vector2i(8, 8))
 	check_eq(smelter.stock, {"ore": CraftMachine.MAX_STOCK}, "stock capped, unknown item dropped")
+	check_eq(miner.item, "ore", "a resource the miner cannot mine is dropped for the default one")
+	check_eq(smelter.product_id, "ingot", "a product the smelter cannot build is dropped for the default one")
 	check(smelter.temperature < Smelter.EXPLODE_AT, "temperature stays below the explosion")
-	check_eq(smelter._output, "", "an item the recipe cannot make is dropped")
+	check_eq(smelter._output, "", "an unknown output item is dropped")
 	check(smelter.status == Machine.Status.DOWN or smelter.status == Machine.Status.OVERHEATING, "status stays a valid value")
 	check_eq(smelter.chips[0].timeout, 1, "timeout is at least one tick")
 	check_eq((_game.get_machine_at(Vector2i(12, 8)) as Conveyor).held, "", "unknown held item dropped")
@@ -360,3 +376,68 @@ func test_read_reports_broken_files() -> void:
 	file.store_string("[1, 2]")
 	file.close()
 	check(SaveGame.read(TEST_DIR + "/list.json")["error"] != "", "JSON that is not an object")
+
+
+func test_the_chosen_resources_survive_a_save() -> void:
+	_build_world()
+	var miner: Miner = _game.get_machine_at(_site())
+	check(miner.set_mined_item("diamond"), "the miner switches to diamond")
+	var smelter: Smelter = _game.get_machine_at(Vector2i(8, 8))
+	check(smelter.set_product("power"), "the smelter switches to power")
+	smelter.stock = {"redstone": 3}
+	var text: String = _text(SaveGame.snapshot(_placement))
+	smelter.set_product("ingot")
+	miner.set_mined_item("coal")
+	check_eq(SaveGame.restore(_placement, JSON.parse_string(text)), "", "the save loads")
+	var restored_miner: Miner = _game.get_machine_at(_site())
+	var restored_smelter: Smelter = _game.get_machine_at(Vector2i(8, 8))
+	check_eq(restored_miner.item, "diamond", "the mined resource is restored")
+	check_eq(restored_smelter.product_id, "power", "the product is restored")
+	check_eq(restored_smelter.stock, {"redstone": 3}, "a stored resource the smelter does not use is restored")
+
+
+func _grid() -> GridMap2D:
+	return _main.get_node("Game/FactoryView/SubViewport/World/GridMap2D") as GridMap2D
+
+
+func test_the_save_holds_the_minesites() -> void:
+	var sites: Array = SaveGame.snapshot(_placement)["minesites"]
+	check_eq(sites.size(), _grid().minesites.size(), "every minesite is saved")
+	for site: Vector2i in _grid().minesites:
+		check(sites.has([site.x, site.y]), "minesite %s is saved" % site)
+
+
+func test_loading_puts_the_saved_minesites_back_on_the_map() -> void:
+	_build_world()
+	var text: String = _text(SaveGame.snapshot(_placement))
+	var saved_sites: Array[Vector2i] = _grid().minesites.duplicate()
+	var other: Array[Vector2i] = [Vector2i(20, 3), Vector2i(21, 3), Vector2i(22, 3)]
+	_grid().set_minesites(other)
+	check(_grid().is_minesite(Vector2i(20, 3)) and not _grid().is_minesite(saved_sites[0]), "the map has other minesites now")
+	check_eq(SaveGame.restore(_placement, JSON.parse_string(text)), "", "the save loads")
+	check_eq(_grid().minesites, saved_sites, "the saved minesites are back")
+	for site: Vector2i in saved_sites:
+		check(_grid().is_minesite(site), "%s is a minesite again" % site)
+	for site: Vector2i in other:
+		check(not _grid().is_minesite(site), "%s is ground again" % site)
+	check(_game.get_machine_at(saved_sites[0]) is Miner, "the miner sits on its minesite")
+
+
+func test_a_miner_can_be_restored_on_a_minesite_the_current_map_lacks() -> void:
+	var save: Dictionary = SaveGame.snapshot(_placement)
+	var spot: Vector2i = Vector2i(20, 3)
+	check(not _grid().is_minesite(spot), "the spot is plain ground on this map")
+	save["minesites"] = [[spot.x, spot.y]]
+	save["machines"].append({"type": "miner", "id": 50, "cell": [spot.x, spot.y], "facing": [1, 0], "enabled": true, "status": 0, "chips": [], "data": {}})
+	check_eq(SaveGame.restore(_placement, save), "", "the save loads")
+	check(_game.get_machine_at(spot) is Miner, "the miner is back")
+	check_eq(_grid().minesites, [spot] as Array[Vector2i], "the map has the saved minesite only")
+
+
+func test_an_older_save_without_minesites_keeps_the_current_map() -> void:
+	_build_world()
+	var save: Dictionary = JSON.parse_string(_text(SaveGame.snapshot(_placement)))
+	save.erase("minesites")
+	var sites: Array[Vector2i] = _grid().minesites.duplicate()
+	check_eq(SaveGame.restore(_placement, save), "", "it still loads")
+	check_eq(_grid().minesites, sites, "the map is unchanged")

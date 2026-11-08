@@ -13,6 +13,7 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/popups/settings_dialog.tscn" id="11_settings"]
 [ext_resource type="Script" uid="uid://wrtngwcfpfw4" path="res://scripts/world/placement.gd" id="12_placement"]
 [ext_resource type="PackedScene" path="res://scenes/ui/pages/build_page.tscn" id="13_build"]
+[ext_resource type="PackedScene" path="res://scenes/ui/popups/resources_page.tscn" id="14_resources"]
 [ext_resource type="PackedScene" path="res://scenes/ui/popups/save_dialog.tscn" id="14_save"]
 [ext_resource type="PackedScene" path="res://scenes/ui/popups/pause_menu.tscn" id="15_pause"]
 
@@ -111,6 +112,11 @@ unique_name_in_owner = true
 layout_mode = 2
 text = "Menu"
 
+[node name="ResourcesButton" type="Button" parent="Game/Bar/VBoxContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Resources"
+
 [node name="SavesButton" type="Button" parent="Game/Bar/VBoxContainer" unique_id=1767811997]
 unique_name_in_owner = true
 layout_mode = 2
@@ -133,6 +139,9 @@ unique_name_in_owner = true
 unique_name_in_owner = true
 
 [node name="SaveDialog" parent="UI" unique_id=1204870381 instance=ExtResource("14_save")]
+unique_name_in_owner = true
+
+[node name="ResourcesPage" parent="UI" instance=ExtResource("14_resources")]
 unique_name_in_owner = true
 
 [node name="PauseMenu" parent="UI" instance=ExtResource("15_pause")]

@@ -3,6 +3,7 @@ extends "res://tests/test_case.gd"
 
 var _main: Node
 var _placement: Placement
+var _grid: GridMap2D
 var _page: BuildPage
 var _tooltip: MachineTooltip
 var _game: Node
@@ -19,6 +20,7 @@ func before_each() -> void:
 	_main = load("res://scenes/main.tscn").instantiate()
 	tree.root.add_child(_main)
 	_placement = _main.get_node("Game/FactoryView/SubViewport/World/Placement")
+	_grid = _main.get_node("%GridMap2D")
 	_page = _main.get_node("%BuildPage")
 	_tooltip = _main.get_node("%MachineTooltip")
 
@@ -121,7 +123,7 @@ func test_destroy_discards_contents_and_frees_the_cell() -> void:
 
 
 func test_destroy_clears_every_machine_kind() -> void:
-	var miner: Miner = _placement.place("miner", GridMap2D.MINESITES[0])
+	var miner: Miner = _placement.place("miner", _grid.minesites[0])
 	miner._held = "ore"
 	miner.destroy()
 	check_eq(miner._held, "", "miner drops its held ore")
@@ -203,7 +205,7 @@ func test_tooltip_hides_actions_for_the_collector() -> void:
 
 
 func test_action_text_per_machine() -> void:
-	var miner: Miner = _placement.place("miner", GridMap2D.MINESITES[0])
+	var miner: Miner = _placement.place("miner", _grid.minesites[0])
 	check(miner.get_action_text().contains("every %d ticks" % miner.mine_ticks), "miner rate")
 	var smelter: Smelter = _placement.place("smelter", Vector2i(8, 8))
 	var text: String = smelter.get_action_text()
