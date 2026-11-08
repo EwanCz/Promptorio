@@ -8,7 +8,8 @@ var _verdict: String = ""
 var _detail: String = ""
 
 @onready var _key_status: PanelContainer = %KeyStatus
-@onready var _key_label: Label = %KeyStatusLabel
+@onready var _key_icon: TextureRect = %KeyIcon
+@onready var _key_badge: TextureRect = %KeyBadge
 @onready var _tabs: HFlowContainer = %PageTabs
 @onready var _pages: Control = %Pages
 @onready var _settings_button: Button = %SettingsButton
@@ -48,25 +49,26 @@ func _on_key_checked(state: String, detail: String) -> void:
 	_refresh_key_status()
 
 
-## Hidden for providers without a key; otherwise says whether the key is missing, being checked,
-## accepted, rejected, or could not be verified.
+## Hidden for providers without a key. Otherwise a key icon with a badge: "!" missing, spinner being checked,
+## check accepted, cross rejected, "?" could not be verified. Hover for the explanation.
 func _refresh_key_status() -> void:
 	_key_status.visible = Settings.ENV_VARS.has(Settings.provider)
 	if not _key_status.visible:
 		return
+	var badge: String = "checking"
 	var text: String = "Checking the API key..."
-	var tint: Color = Color(0.7, 0.7, 0.7)
 	if Settings.needs_api_key():
+		badge = "warn"
 		text = "No active API key: AI chips cannot reach the LLM. Add one in Settings."
-		tint = Color(1, 0.55, 0.1)
 	elif _verdict == "valid":
+		badge = "applied"
 		text = "API key verified."
-		tint = Color(0.35, 0.8, 0.35)
 	elif _verdict == "invalid":
+		badge = "failed"
 		text = "API key rejected (%s). Fix it in Settings." % _detail
-		tint = Color(0.9, 0.25, 0.25)
 	elif _verdict == "error":
+		badge = "unknown"
 		text = "Could not verify the API key (%s)." % _detail
-		tint = Color(1, 0.55, 0.1)
-	_key_label.text = text
-	_key_status.self_modulate = tint
+	Icons.apply(_key_icon, "key", text)
+	Icons.apply(_key_badge, badge, text)
+	_key_status.tooltip_text = text

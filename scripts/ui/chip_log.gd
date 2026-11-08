@@ -1,18 +1,20 @@
 class_name ChipLog
 extends PanelContainer
 ## Keeps the last chip log lines of every machine (EventBus.chip_log_added) and shows one machine's log.
-## Lines are shown in plain language (see _format); the technical entries stay in the session log.
+## Shown as a timeline of icons (checking, action, no action, failure), oldest first; hovering an icon
+## explains it in plain language (see _describe). The technical entries stay in the session log.
 
 const MAX_LINES: int = 200
 
 var _machine: Machine = null
 var _asking: RegEx = RegEx.create_from_string("^asking chip (.*) \\([^()]*\\)$")
 var _tool_call: RegEx = RegEx.create_from_string("^(\\w+)\\((\\{.*\\})\\)$")
-## Machine instance id -> Array of lines.
+## Machine instance id -> Array of {kind: icon name, text: hover explanation}.
 var _lines: Dictionary = {}
 
 @onready var _title: Label = %Title
-@onready var _text: RichTextLabel = %Text
+@onready var _scroll: ScrollContainer = %Scroll
+@onready var _timeline: HFlowContainer = %Timeline
 @onready var _close_button: Button = %CloseButton
 
 
@@ -22,10 +24,19 @@ func _ready() -> void:
 	_close_button.pressed.connect(close)
 
 
+## The explanation of every entry of the machine, oldest first (what the icons say on hover).
 func get_lines(machine: Node) -> Array[String]:
 	var result: Array[String] = []
-	for line: String in _lines.get(machine.get_instance_id(), []):
-		result.append(line)
+	for entry: Dictionary in _lines.get(machine.get_instance_id(), []):
+		result.append(entry["text"])
+	return result
+
+
+## The icon names of the machine's entries, oldest first.
+func get_kinds(machine: Node) -> Array[String]:
+	var result: Array[String] = []
+	for entry: Dictionary in _lines.get(machine.get_instance_id(), []):
+		result.append(entry["kind"])
 	return result
 
 
@@ -42,13 +53,18 @@ func close() -> void:
 
 
 func _refresh() -> void:
-	_text.text = "\n".join(get_lines(_machine))
+	for icon: Node in _timeline.get_children():
+		_timeline.remove_child(icon)
+		icon.queue_free()
+	for entry: Dictionary in _lines.get(_machine.get_instance_id(), []):
+		_timeline.add_child(Icons.rect(entry["kind"], entry["text"]))
+	_scroll_to_end.call_deferred()
 
 
 func _on_log_added(machine: Node, message: String) -> void:
 	var id: int = machine.get_instance_id()
 	var lines: Array = _lines.get(id, [])
-	lines.append(_format(message))
+	lines.append(_describe(message))
 	if lines.size() > MAX_LINES:
 		lines.pop_front()
 	_lines[id] = lines
@@ -56,22 +72,29 @@ func _on_log_added(machine: Node, message: String) -> void:
 		_refresh()
 
 
-## Short readable text for the known technical messages; anything else is shown as is. Tool results say what
-## was asked ("set"), never that something changed, because the command may have been a no-op.
-func _format(message: String) -> String:
+func _scroll_to_end() -> void:
+	_scroll.scroll_vertical = int(_scroll.get_v_scroll_bar().max_value)
+
+
+## {kind, text} for a technical message: the icon and its hover text. Tool results say what was asked
+## ("set"), never that something changed, because the command may have been a no-op. Anything unknown is
+## an "info" icon with the message as is.
+func _describe(message: String) -> Dictionary:
 	var asking: RegExMatch = _asking.search(message)
 	if asking != null:
-		return "Checking: %s" % asking.get_string(1)
+		return {"kind": "checking", "text": "Checking: %s" % asking.get_string(1)}
 	if message == "no tool calls":
-		return "No action"
+		return {"kind": "none", "text": "No action"}
 	if message.begins_with("chip request failed"):
-		return "Request failed"
+		return {"kind": "failed", "text": "Request failed"}
 	if message.begins_with("ignored "):
-		return "Action rejected"
+		return {"kind": "failed", "text": "Action rejected"}
 	var call: RegExMatch = _tool_call.search(message)
 	if call != null:
-		return _tool_label(call.get_string(1), JSON.parse_string(call.get_string(2)))
-	return message
+		var json: JSON = JSON.new()
+		var args: Variant = json.data if json.parse(call.get_string(2)) == OK else null
+		return {"kind": "applied", "text": _tool_label(call.get_string(1), args)}
+	return {"kind": "info", "text": message}
 
 
 func _tool_label(tool_name: String, args: Variant) -> String:

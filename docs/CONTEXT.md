@@ -40,7 +40,7 @@ Main (Node)
 │  │        └─ Camera2D          (zoom in/out, pan x/y; camera.gd)
 │  └─ Bar (PanelContainer, size_flags_stretch_ratio 1)
 │     └─ VBoxContainer
-│        ├─ KeyStatus (API key state, hidden for mock)
+│        ├─ KeyStatus (API key state as key icon + badge, hidden for mock)
 │        ├─ TopHalf (VBoxContainer, top half of the Bar)
 │        │  ├─ PageTabs (HFlowContainer of page markers at the top)
 │        │  └─ PageScroll (ScrollContainer)
@@ -51,7 +51,7 @@ Main (Node)
 │        └─ SettingsButton (far bottom)
 └─ UI (CanvasLayer, popups over everything)
    ├─ ChipPage        (popup, centered; name, description, message; edit/save/remove)
-   ├─ ChipLog         (log page opened from the machine panel)
+   ├─ ChipLog         (icon timeline opened from the machine panel)
    └─ SettingsDialog
 ```
 UI rules:
@@ -108,6 +108,9 @@ By default a failed HTTP call reaches the ChipLog as `HTTP <status> (<error type
 
 ### Session log (local)
 `SessionLog` appends every machine log line to `user://logs/session_<date>_<time>.log` (`time | #id type | message`), flushing each line. Only the message text is written (no request bodies or headers) and configured API keys are replaced by `[redacted]`. It is started by `Main`, skipped in headless runs, and does not change the ChipLog's 200-line cap.
+
+### Visual feedback (UI rule)
+Runtime status is an icon, not text: chip activity above each machine (`ChipIndicator`, owned by `Machine`: spinner while any chip is pending, then check / dash / cross for the last result), machine state in the tooltip, API key state in the Bar, placement refusal on the Build page, and the Chip Log (an icon timeline). Text stays for names, values (money, temperature), prompts, settings and control labels. Icons come from `Icons` (`scripts/ui/icons.gd`, 12x12 pixel art drawn from text grids, nearest filter); a UI icon that is not self-evident gets a hover description (`Icons.rect` / `Icons.apply`). Technical detail stays in the session log. Details: `docs/UI.md`, "Visual feedback rule". There are no decision bubbles.
 
 ## GDScript conventions
 - Godot 4.x only. Fully typed GDScript: type every variable, parameter and return (`var speed: float = 1.0`, `func foo(x: int) -> void`).

@@ -30,11 +30,16 @@ layout_mode = 2
 unique_name_in_owner = true
 layout_mode = 2
 
-[node name="Text" type="RichTextLabel" parent="Margin/VBox"]
+[node name="Scroll" type="ScrollContainer" parent="Margin/VBox"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 3
-scroll_following = true
+horizontal_scroll_mode = 0
+
+[node name="Timeline" type="HFlowContainer" parent="Margin/VBox/Scroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
 
 [node name="CloseButton" type="Button" parent="Margin/VBox"]
 unique_name_in_owner = true

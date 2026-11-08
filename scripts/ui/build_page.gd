@@ -1,14 +1,14 @@
 class_name BuildPage
 extends VBoxContainer
 ## Build page: money, one button per buildable machine (cost shown, disabled when unaffordable),
-## the selected type and the last placement refusal. Selecting only enters placement mode.
+## the selected type and an icon for the last placement refusal (hover for the reason). Selecting only enters placement mode.
 
 var _placement: Placement = null
 var _buttons: Dictionary = {}
 
 @onready var _money_label: Label = %MoneyLabel
 @onready var _list: VBoxContainer = %List
-@onready var _feedback_label: Label = %FeedbackLabel
+@onready var _feedback_icon: TextureRect = %FeedbackIcon
 
 
 func _ready() -> void:
@@ -46,7 +46,7 @@ func _refresh() -> void:
 func _on_button_pressed(type: String) -> void:
 	if _placement == null:
 		return
-	_feedback_label.text = ""
+	_feedback_icon.visible = false
 	_placement.select("" if _placement.selected == type else type)
 
 
@@ -59,4 +59,5 @@ func _on_money_changed(_amount: int) -> void:
 
 
 func _on_placement_rejected(reason: String) -> void:
-	_feedback_label.text = reason
+	Icons.apply(_feedback_icon, "no_money" if reason.begins_with("Not enough money") else "blocked", reason)
+	_feedback_icon.visible = true

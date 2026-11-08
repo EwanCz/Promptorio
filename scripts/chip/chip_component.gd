@@ -8,6 +8,8 @@ extends Node
 ## Not named `call`: Object.call() is native and cannot be overridden.
 
 signal decision_applied(reason: String, applied: int)
+## "checking" when a request goes out, then "applied", "none" (no tool calls) or "failed".
+signal activity_changed(outcome: String)
 
 const DEFAULT_TIMEOUT: int = 100
 
@@ -65,6 +67,7 @@ func call_llm(reason: String) -> bool:
 	_last_msec = Time.get_ticks_msec()
 	_elapsed = 0
 	machine.log_chip("asking chip %s (%s)" % [chip.name, reason])
+	activity_changed.emit("checking")
 	LLMManager.request_decision(get_instance_id(), chip.prompt, machine.get_state(), machine.get_tool_schemas())
 	return true
 
@@ -113,6 +116,7 @@ func _on_decision_received(requester_id: int, tool_calls: Array[Dictionary]) -> 
 		if typeof(args) == TYPE_DICTIONARY and machine.apply_tool_call(str(tool_call.get("name", "")), args):
 			applied += 1
 	decision_applied.emit(_reason, applied)
+	activity_changed.emit("applied" if applied > 0 else ("none" if tool_calls.is_empty() else "failed"))
 
 
 func _on_decision_failed(requester_id: int, reason: String) -> void:
@@ -122,3 +126,4 @@ func _on_decision_failed(requester_id: int, reason: String) -> void:
 	var machine: Machine = get_parent() as Machine
 	if machine != null:
 		machine.log_chip("chip request failed: %s" % reason)
+	activity_changed.emit("failed")

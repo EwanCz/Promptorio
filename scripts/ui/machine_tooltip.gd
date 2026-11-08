@@ -10,6 +10,11 @@ const PROMPT_PREVIEW: int = 40
 const MAX_TIMEOUT: int = 100000
 const MAX_LIMIT: int = 100000
 const NO_WATCH: String = "(never)"
+const STATE_HINTS: Dictionary = {
+	"normal": "Running normally",
+	"down": "Down: this machine is out of service",
+	"overheating": "Overheating: it explodes if it keeps heating up",
+}
 
 var _machine: Machine = null
 
@@ -17,7 +22,7 @@ var _machine: Machine = null
 @onready var _scroll: ScrollContainer = %Scroll
 @onready var _id_label: Label = %IdLabel
 @onready var _type_label: Label = %TypeLabel
-@onready var _status_label: Label = %StatusLabel
+@onready var _status_icon: TextureRect = %StatusIcon
 @onready var _action_label: Label = %ActionLabel
 @onready var _rotate_button: Button = %RotateButton
 @onready var _destroy_button: Button = %DestroyButton
@@ -76,7 +81,8 @@ func _show_details(shown: bool) -> void:
 
 
 func _refresh_status() -> void:
-	_status_label.text = "State: %s" % Machine.Status.keys()[_machine.status].to_lower()
+	var state: String = Machine.Status.keys()[_machine.status].to_lower()
+	Icons.apply(_status_icon, "state_" + state, STATE_HINTS[state])
 	_action_label.text = _machine.get_action_text()
 	_action_label.visible = _action_label.text != ""
 

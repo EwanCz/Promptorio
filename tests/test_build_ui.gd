@@ -102,7 +102,15 @@ func test_click_charges_through_the_grid() -> void:
 func test_page_shows_rejection_feedback() -> void:
 	_game.money = 0
 	_placement.try_place("conveyor", Vector2i(8, 8))
-	check((_page.get_node("%FeedbackLabel") as Label).text != "", "refusal is shown")
+	var icon: TextureRect = _page.get_node("%FeedbackIcon") as TextureRect
+	check(icon.visible, "the refusal is shown as an icon")
+	check(icon.tooltip_text.contains("Not enough money"), "hover gives the reason")
+	check_eq(icon.texture.get_image().get_data(), Icons.icon("no_money").get_image().get_data(), "a coin icon for insufficient funds")
+	_game.money = 100
+	_placement.try_place("conveyor", Vector2i(16, 10))
+	check_eq(icon.texture.get_image().get_data(), Icons.icon("blocked").get_image().get_data(), "another refusal gets the blocked icon")
+	check(icon.tooltip_text.contains("Cannot place"), "with its own reason")
+	check(_page.find_children("*", "Label", true, false).filter(func(n: Node) -> bool: return n.name == "FeedbackLabel").is_empty(), "no feedback text label")
 
 
 func test_destroy_discards_contents_and_frees_the_cell() -> void:

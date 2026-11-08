@@ -97,7 +97,9 @@ func test_tooltip_toggle_and_chips() -> void:
 	bus.machine_selected.emit(machine)
 	check(tooltip.is_open(), "selecting a machine opens the tooltip")
 	check_eq((tooltip.get_node("%TypeLabel") as Label).text, "Type: machine", "type shown")
-	check_eq((tooltip.get_node("%StatusLabel") as Label).text, "State: normal", "state shown")
+	var state: TextureRect = tooltip.get_node("%StatusIcon") as TextureRect
+	check_eq(state.texture.get_image().get_data(), Icons.icon("state_normal").get_image().get_data(), "state shown as an icon")
+	check(state.tooltip_text.contains("normally"), "hover explains it")
 	(tooltip.get_node("%AddButton") as Button).pressed.emit()
 	check_eq(machine.chips.size(), 1, "add chip attaches the picked chip")
 	check_eq(tooltip.get_node("%ChipsList").get_child_count(), 1, "attached chip listed")
@@ -158,6 +160,33 @@ func test_chip_log_shows_short_plain_language_entries() -> void:
 	check_eq(_shown(log, machine, "exploded at 150°"), "exploded at 150°", "other messages are untouched")
 
 
+func test_chip_log_is_an_icon_timeline_with_hover_text() -> void:
+	var log: ChipLog = _spawn("res://scenes/ui/popups/chip_log.tscn")
+	var machine: Machine = _spawn("res://scenes/machines/machine.tscn")
+	var other: Machine = _spawn("res://scenes/machines/machine.tscn")
+	log.show_machine(machine)
+	machine.log_chip("asking chip Smelter Cooler (event:error)")
+	machine.log_chip("set_cooling({\"on\":true})")
+	machine.log_chip("no tool calls")
+	machine.log_chip("ignored set_cooling: bad value for 'on'")
+	machine.log_chip("chip request failed: HTTP 500")
+	machine.log_chip("exploded at 150°")
+	other.log_chip("set_enabled({\"on\":false})")
+	var timeline: Container = log.get_node("%Timeline") as Container
+	check_eq(timeline.get_child_count(), 6, "one icon per entry of the selected machine, in order")
+	check_eq(log.get_kinds(machine), ["checking", "applied", "none", "failed", "failed", "info"] as Array[String], "the kinds, oldest first")
+	var tips: Array[String] = []
+	for icon: Node in timeline.get_children():
+		tips.append((icon as TextureRect).tooltip_text)
+		check((icon as TextureRect).texture != null and (icon as Control).mouse_filter == Control.MOUSE_FILTER_STOP, "each icon has art and can show its hover")
+	check_eq(tips, ["Checking: Smelter Cooler", "Cooling set on", "No action", "Action rejected", "Request failed", "exploded at 150°"] as Array[String], "hover text explains each icon")
+	check_eq(log.find_children("*", "Label", true, false).size() - 1, 0, "no text entries beyond the title")
+	var first: Image = (timeline.get_child(0) as TextureRect).texture.get_image()
+	check_eq(first.get_data(), Icons.icon("checking").get_image().get_data(), "a check shows the checking icon")
+	machine.log_chip("set_cooling({\"on\":false})")
+	check_eq(timeline.get_child_count(), 7, "new entries appear while it is open")
+
+
 func test_chip_log_never_shows_raw_tool_names_or_json() -> void:
 	var log: ChipLog = _spawn("res://scenes/ui/popups/chip_log.tscn")
 	var machine: Machine = _spawn("res://scenes/machines/machine.tscn")
@@ -166,8 +195,7 @@ func test_chip_log_never_shows_raw_tool_names_or_json() -> void:
 		var shown: String = _shown(log, machine, message)
 		check(not shown.contains("set_") and not shown.contains("{") and not shown.contains("\""), "readable: %s" % shown)
 	check_eq(_shown(log, machine, "set_unheard_of({\"x\":1})"), "Action requested", "an unknown call is not claimed as applied")
-	var text: String = (log.get_node("%Text") as RichTextLabel).text
-	check(not text.contains("event:") and not text.contains("threshold:"), "no raw trigger reasons")
+	check(not " ".join(log.get_lines(machine)).contains("event:"), "no raw trigger reasons")
 
 
 func test_settings_dialog_saves_per_provider() -> void:

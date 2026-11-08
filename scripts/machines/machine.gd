@@ -29,6 +29,8 @@ var facing: Vector2i = Vector2i.RIGHT:
 
 ## Chips running on this machine, in attach order. Each is a ChipComponent child.
 var chips: Array[ChipComponent] = []
+## The icon above the machine: a spinner while any chip waits for an answer, then the last result.
+var indicator: ChipIndicator
 
 @onready var _label: Label = get_node_or_null("StatusLabel") as Label
 @onready var _sprite: Sprite2D = get_node_or_null("Sprite2D") as Sprite2D
@@ -36,6 +38,9 @@ var chips: Array[ChipComponent] = []
 
 func _ready() -> void:
 	EventBus.tick_fired.connect(_on_tick)
+	indicator = ChipIndicator.new()
+	indicator.position = Vector2(GameState.CELL_SIZE / 2.0, -Icons.SIZE * Icons.SCALE / 2.0 - 2.0)
+	add_child(indicator)
 	_update_sprite()
 
 
@@ -54,6 +59,7 @@ func attach_chip(chip_id: int, timeout_ticks: int = ChipComponent.DEFAULT_TIMEOU
 	component.chip = chip
 	component.set_timeout(timeout_ticks)
 	component.decision_applied.connect(_on_chip_decision_applied.bind(chip_id))
+	component.activity_changed.connect(_on_chip_activity)
 	add_child(component)
 	chips.append(component)
 	return component
@@ -65,6 +71,7 @@ func detach_chip(chip_id: int) -> void:
 		return
 	chips.erase(component)
 	component.queue_free()
+	_on_chip_activity("")
 
 
 ## Null if the chip is not attached.
@@ -207,6 +214,19 @@ func _on_tick(_tick_number: int) -> void:
 		_tick()
 	if _label != null:
 		_label.text = _status_text()
+
+
+## Spinner while any chip is pending (one chip finishing never hides another still running), otherwise the
+## result of the one that just finished.
+func _on_chip_activity(outcome: String) -> void:
+	for component: ChipComponent in chips:
+		if component.pending:
+			indicator.show_pending()
+			return
+	if outcome == "":
+		indicator.clear()
+	else:
+		indicator.show_result(outcome)
 
 
 func _on_chip_decision_applied(reason: String, applied: int, chip_id: int) -> void:
