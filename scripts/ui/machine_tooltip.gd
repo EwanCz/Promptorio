@@ -7,6 +7,8 @@ extends PanelContainer
 signal log_requested(machine: Machine)
 
 const NAME_MIN_WIDTH: int = 80
+## Resource art is 32 px: shown as it is.
+const ITEM_ICON_PX: int = 32
 const MAX_TIMEOUT: int = 100000
 const STATE_HINTS: Dictionary = {
 	"normal": "Running normally",
@@ -21,7 +23,9 @@ var _machine: Machine = null
 @onready var _scroll: ScrollContainer = %Scroll
 @onready var _id_label: Label = %IdLabel
 @onready var _status_icon: TextureRect = %StatusIcon
-@onready var _action_label: Label = %ActionLabel
+@onready var _op_row: HFlowContainer = %OpRow
+@onready var _progress: ProgressBar = %Progress
+@onready var _stock_row: HFlowContainer = %StockRow
 @onready var _rotate_button: Button = %RotateButton
 @onready var _destroy_button: Button = %DestroyButton
 @onready var _heat_row: HBoxContainer = %HeatRow
@@ -43,6 +47,7 @@ func _ready() -> void:
 	EventBus.machine_unregistered.connect(_on_machine_unregistered)
 	Icons.apply_button(_rotate_button, "rotate", "Rotate")
 	Icons.apply_button(_destroy_button, "destroy", "Destroy this machine")
+	_destroy_button.text = "X"
 	Icons.apply_button(_add_button, "add", "Add the chosen chip")
 	Icons.apply_button(_log_button, "log", "Chip log")
 	_picker.tooltip_text = "Chip to add"
@@ -81,6 +86,15 @@ func rotate_machine() -> bool:
 	return true
 
 
+## Removes the machine shown in the tooltip, the same as the Destroy button (keys X / Delete). False if none
+## is open or it cannot be removed (the Collector).
+func destroy_machine() -> bool:
+	if _machine == null or not is_instance_valid(_machine) or not _machine.is_removable():
+		return false
+	_on_destroy_pressed()
+	return true
+
+
 func _show_details(shown: bool) -> void:
 	_scroll.visible = shown
 	_hint_label.visible = not shown
@@ -96,8 +110,7 @@ func _refresh_status() -> void:
 	if status == "overheating" and paused:
 		hint += " (and paused)"
 	Icons.apply(_status_icon, "state_" + shown, hint)
-	_action_label.text = _machine.get_action_text()
-	_action_label.visible = _action_label.text != ""
+	_refresh_operation()
 	var state: Dictionary = _machine.get_state()
 	_heat_row.visible = state.has("temperature")
 	if _heat_row.visible:
@@ -111,6 +124,101 @@ func _refresh_status() -> void:
 		_temp_label.text = "%d°" % int(heat)
 		var cooling: bool = state.get("cooling", false)
 		Icons.apply(_cool_icon, "cooling_on" if cooling else "cooling_off", "Cooling on" if cooling else "Cooling off")
+
+
+## What the machine is doing, as icons and numbers: the recipe or mined resource, a progress bar for the
+## current job, the stock, and a blocked icon. Rows are rebuilt only when their content changes, so a hover
+## in progress is not lost; the bar moves every tick.
+func _refresh_operation() -> void:
+	var catalog: ItemCatalog = ItemCatalog.shared()
+	var op: Array[Dictionary] = []
+	var stock: Array[Dictionary] = []
+	if _machine is CraftMachine:
+		var craft: CraftMachine = _machine as CraftMachine
+		var product: ItemData = craft.get_product()
+		if product == null:
+			op.append(_icon_entry("warn", "", "No product"))
+		else:
+			for id: String in product.inputs:
+				op.append(_item_entry(id, "x%d" % int(product.inputs[id]) if int(product.inputs[id]) > 1 else "", "Needs %s"))
+			op.append(_icon_entry("dir_right", "", "Makes"))
+			op.append(_item_entry(product.id, "", "Makes %s"))
+		for id: String in craft.stock:
+			if int(craft.stock[id]) > 0:
+				stock.append(_item_entry(id, str(int(craft.stock[id])), "In stock: %s"))
+	elif _machine is Miner:
+		var miner: Miner = _machine as Miner
+		op.append(_item_entry(miner.item, "", "Mines %s"))
+		op.append(_icon_entry("timer", str(miner.mine_ticks), "Ticks per unit"))
+	elif _machine is Conveyor:
+		var belt: Conveyor = _machine as Conveyor
+		op.append(_icon_entry(Icons.direction(belt.facing), "", "Facing %s" % _direction_name(belt.facing)))
+		if belt.held != "":
+			op.append(_item_entry(belt.held, "", "Carrying %s"))
+	elif _machine is Collector:
+		var collector: Collector = _machine as Collector
+		op.append(_icon_entry("money", str(collector.earned), "Money earned"))
+		op.append(_icon_entry("applied", str(collector.sold), "Items sold"))
+		if not collector.accepting:
+			op.append(_icon_entry("blocked", "", "Not accepting items"))
+	if _machine.is_blocked():
+		op.append(_icon_entry("blocked", "", "Output blocked: nothing takes it"))
+	_fill_row(_op_row, op, catalog)
+	_fill_row(_stock_row, stock, catalog)
+	var progress: float = _machine.get_progress()
+	_progress.visible = progress >= 0.0
+	_progress.value = maxf(progress, 0.0)
+	_progress.tooltip_text = "Progress"
+
+
+func _direction_name(facing: Vector2i) -> String:
+	var index: int = [Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT, Vector2i.UP].find(facing)
+	return ChipLog.DIRECTIONS[maxi(index, 0)]
+
+
+## An entry of a row: a resource icon (hint is a format with the resource's name) or a badge icon.
+func _item_entry(id: String, text: String, hint: String) -> Dictionary:
+	var item: ItemData = ItemCatalog.shared().get_item(id)
+	var name: String = id if item == null else item.display_name
+	return {"item": id, "text": text, "hint": hint % name}
+
+
+func _icon_entry(icon_name: String, text: String, hint: String) -> Dictionary:
+	return {"icon": icon_name, "text": text, "hint": hint}
+
+
+func _fill_row(row: HFlowContainer, entries: Array[Dictionary], catalog: ItemCatalog) -> void:
+	row.visible = not entries.is_empty()
+	var signature: String = JSON.stringify(entries)
+	if row.get_meta("signature", "") == signature:
+		return
+	row.set_meta("signature", signature)
+	for child: Node in row.get_children():
+		row.remove_child(child)
+		child.queue_free()
+	for entry: Dictionary in entries:
+		var cell: HBoxContainer = HBoxContainer.new()
+		cell.add_theme_constant_override("separation", 2)
+		var picture: TextureRect
+		if entry.has("item"):
+			var item: ItemData = catalog.get_item(entry["item"])
+			picture = TextureRect.new()
+			picture.texture = null if item == null else item.icon
+			picture.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+			picture.custom_minimum_size = Vector2(ITEM_ICON_PX, ITEM_ICON_PX)
+			picture.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			picture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			picture.tooltip_text = entry["hint"]
+		else:
+			picture = Icons.rect(entry["icon"], entry["hint"])
+		cell.add_child(picture)
+		if entry["text"] != "":
+			var number: Label = Label.new()
+			number.text = entry["text"]
+			number.tooltip_text = entry["hint"]
+			number.mouse_filter = Control.MOUSE_FILTER_STOP
+			cell.add_child(number)
+		row.add_child(cell)
 
 
 func _refresh_chips() -> void:

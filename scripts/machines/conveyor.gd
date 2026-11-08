@@ -78,10 +78,6 @@ func note_sender(sender_cell: Vector2i, sender_tick: int) -> void:
 	_place_item_icon()
 
 
-func get_action_text() -> String:
-	return "Facing %s, %s" % [ARROWS.get(facing, "?"), "holds %s" % held if held != "" else "empty"]
-
-
 func clear_contents() -> void:
 	held = ""
 	_wait = 0

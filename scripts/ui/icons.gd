@@ -27,6 +27,10 @@ const BADGES: Dictionary = {
 	"state_down": ["off", "cross"],
 	"state_overheating": ["warn", "flame"],
 	"state_paused": ["off", "pause"],
+	"dir_right": ["info", "arrow_right"],
+	"dir_down": ["info", "arrow_down"],
+	"dir_left": ["info", "arrow_left"],
+	"dir_up": ["info", "arrow_up"],
 	"rotate": ["info", "rotate"],
 	"destroy": ["bad", "trash"],
 	"settings": ["none", "gear"],
@@ -42,6 +46,10 @@ const BADGES: Dictionary = {
 const GLYPHS: Dictionary = {
 	"check": ["........", "......#.", ".....##.", "#...##..", "##.##...", ".###....", "..#.....", "........"],
 	"cross": ["........", ".#....#.", "..#..#..", "...##...", "...##...", "..#..#..", ".#....#.", "........"],
+	"arrow_right": ["........", "...#....", "...##...", "########", "########", "...##...", "...#....", "........"],
+	"arrow_down": ["...##...", "...##...", "...##...", ".######.", "..####..", "...##...", "...##...", "...##..."],
+	"arrow_left": ["........", "....#...", "...##...", "########", "########", "...##...", "....#...", "........"],
+	"arrow_up": ["...##...", "...##...", "...##...", "..####..", ".######.", "...##...", "...##...", "...##..."],
 	"pause": ["........", ".##..##.", ".##..##.", ".##..##.", ".##..##.", ".##..##.", ".##..##.", "........"],
 	"dash": ["........", "........", "........", ".######.", ".######.", "........", "........", "........"],
 	"dot": ["...##...", "...##...", "........", "...##...", "...##...", "...##...", "...##...", "...##..."],
@@ -100,6 +108,17 @@ static func rect(icon_name: String, description: String = "") -> TextureRect:
 	var rect_node: TextureRect = TextureRect.new()
 	apply(rect_node, icon_name, description)
 	return rect_node
+
+
+## The arrow icon for a facing (right, down, left or up).
+static func direction(facing: Vector2i) -> String:
+	if facing == Vector2i.DOWN:
+		return "dir_down"
+	if facing == Vector2i.LEFT:
+		return "dir_left"
+	if facing == Vector2i.UP:
+		return "dir_up"
+	return "dir_right"
 
 
 ## A thermometer for `fraction` (0..1) of its scale: the glass with a fill from the bulb up, green when

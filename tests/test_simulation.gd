@@ -407,11 +407,9 @@ func test_machine_unregisters_when_freed() -> void:
 	check(_game.get_machine_at(Vector2i(3, 3)) == null, "cell freed with the machine")
 
 
-## True once a delivery attempt failed: the Miner's "blocked" state, a craft machine's "output blocked" text.
+## True once a delivery attempt failed (Machine.is_blocked, also the Miner's "blocked" state).
 func _is_blocked(machine: Machine) -> bool:
-	if machine is Miner:
-		return machine.get_state()["blocked"]
-	return machine.get_action_text().contains("output blocked")
+	return machine.is_blocked()
 
 
 ## How often the machine turns blocked (false -> true) over `count` ticks.
@@ -433,7 +431,6 @@ func test_deliverable_miner_output_is_never_blocked() -> void:
 	var collector: Machine = _put("collector", Vector2i(1, 0))
 	check_eq(_blocked_rises(miner, 100), 0, "a deliverable ore does not turn blocked")
 	check(not miner.get_state()["blocked"], "state is not blocked")
-	check(not miner.get_action_text().contains("blocked"), "action text is not blocked")
 	check(collector.sold >= 10, "ore flowed")
 
 
@@ -443,12 +440,12 @@ func test_miner_failed_delivery_turns_blocked_once_then_again_after_clearing() -
 	check_eq(_blocked_rises(miner, 5), 0, "a freshly mined ore is not blocked before a delivery attempt")
 	check_eq(_blocked_rises(miner, 1), 1, "the failed delivery blocks it")
 	check(miner.get_state()["blocked"], "state is blocked")
-	check(miner.get_action_text().contains("output blocked"), "action text is blocked")
+	check(miner.is_blocked(), "reported as blocked")
 	check_eq(_blocked_rises(miner, 50), 0, "it does not repeat while still blocked")
 	miner.clear_contents()
 	check(not _is_blocked(miner), "clearing unblocks it")
 	check(not miner.get_state()["blocked"], "and the blocked state")
-	check(not miner.get_action_text().contains("blocked"), "and the action text")
+	check(not miner.is_blocked(), "and no longer reported blocked")
 	check_eq(_blocked_rises(miner, 10), 1, "the blockage coming back blocks it again")
 
 
@@ -458,7 +455,6 @@ func test_deliverable_craft_output_is_never_blocked() -> void:
 	for i: int in 3:
 		smelter.receive("ore")
 	check_eq(_blocked_rises(smelter, 100), 0, "a deliverable ingot does not turn blocked")
-	check(not smelter.get_action_text().contains("blocked"), "action text is not blocked")
 	check_eq(collector.sold, 3, "the ingots were delivered")
 
 
@@ -468,11 +464,11 @@ func test_craft_failed_delivery_turns_blocked_once_then_again_after_clearing() -
 	var ticks_to_craft: int = (smelter as Smelter).get_product().ticks / Smelter.UNCOOLED_SPEEDUP + 1
 	check_eq(_blocked_rises(smelter, ticks_to_craft), 0, "a finished ingot is not blocked before a delivery attempt")
 	check_eq(_blocked_rises(smelter, 1), 1, "the failed delivery blocks it")
-	check(smelter.get_action_text().contains("output blocked"), "action text is blocked")
+	check(smelter.is_blocked(), "reported as blocked")
 	check_eq(_blocked_rises(smelter, 50), 0, "it does not repeat while still blocked")
 	smelter.clear_contents()
 	check(not _is_blocked(smelter), "clearing removes the event")
-	check(not smelter.get_action_text().contains("blocked"), "and the action text")
+	check(not smelter.is_blocked(), "and no longer reported blocked")
 	smelter.receive("ore")
 	check_eq(_blocked_rises(smelter, ticks_to_craft + 1), 1, "the blockage coming back blocks it again")
 

@@ -57,10 +57,22 @@ layout_mode = 2
 unique_name_in_owner = true
 layout_mode = 2
 
-[node name="ActionLabel" type="Label" parent="Margin/Scroll/VBox"]
+[node name="OpRow" type="HFlowContainer" parent="Margin/Scroll/VBox"]
 unique_name_in_owner = true
 layout_mode = 2
-autowrap_mode = 3
+
+[node name="Progress" type="ProgressBar" parent="Margin/Scroll/VBox"]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(0, 8)
+layout_mode = 2
+max_value = 1.0
+step = 0.001
+show_percentage = false
+
+[node name="StockRow" type="HFlowContainer" parent="Margin/Scroll/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
 
 [node name="HeatRow" type="HBoxContainer" parent="Margin/Scroll/VBox"]
 unique_name_in_owner = true

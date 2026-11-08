@@ -47,6 +47,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		_tooltip.rotate_machine()
 		_placement.rotate_facing()
 		get_viewport().set_input_as_handled()
+	elif event.is_action_pressed("destroy_machine"):
+		if _tooltip.destroy_machine():
+			get_viewport().set_input_as_handled()
 	elif _placement.handle_input(event):
 		get_viewport().set_input_as_handled()
 

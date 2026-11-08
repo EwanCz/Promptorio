@@ -329,7 +329,6 @@ func test_state_tells_the_chip_what_is_built_and_needed() -> void:
 	var state: Dictionary = assembler.get_state()
 	check_eq(state["product"], "gun", "product")
 	check_eq(state["needs"], {"steel": 1, "circuit": 1, "power": 1}, "needs")
-	check(assembler.get_action_text().contains("gun"), "the action text names the product")
 
 
 func test_an_unknown_product_builds_nothing() -> void:
@@ -338,7 +337,7 @@ func test_an_unknown_product_builds_nothing() -> void:
 	smelter.receive("ore")
 	_ticks(100)
 	check_eq(smelter.progress, 0, "no craft starts")
-	check(smelter.get_action_text().begins_with("No product"), "action text")
+	check(smelter.get_product() == null, "there is no product to show")
 	check_eq(smelter.get_state()["needs"], {}, "needs nothing")
 
 
