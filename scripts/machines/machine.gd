@@ -6,6 +6,7 @@ extends Node2D
 signal tool_applied(tool_name: String, args: Dictionary)
 signal chip_decision_applied(chip_id: int, reason: String, applied: int)
 signal chips_changed
+signal predefined_behaviors_changed
 
 enum Status { NORMAL, DOWN, OVERHEATING }
 ## PRODUCING: enabled and a job is in progress. STALLED: its output cannot be delivered (wins over
@@ -39,6 +40,10 @@ var facing: Vector2i = Vector2i.RIGHT:
 
 ## Chips running on this machine, in attach order. Each is a ChipComponent child.
 var chips: Array[ChipComponent] = []
+## Predefined, canned behaviors running on this machine (see PredefinedBehaviors): no prompt, no LLM
+## call, just fixed tool calls on their own schedule. Kept separate from `chips` so the UI, and the
+## player, never confuse a canned behavior with a real chip prompt.
+var predefined_behaviors: Array[PredefinedBehaviorComponent] = []
 ## The icon above the machine: a spinner while any chip waits for an answer, then the last result.
 var indicator: ChipIndicator
 ## In-world feedback for production_state(): particles while producing, a badge while blocked.
@@ -117,6 +122,39 @@ func detach_chip(chip_id: int) -> void:
 func get_chip(chip_id: int) -> ChipComponent:
 	for component: ChipComponent in chips:
 		if component.chip.id == chip_id:
+			return component
+	return null
+
+
+## Adds a PredefinedBehaviorComponent child running one of PredefinedBehaviors.for_machine_type(machine_type).
+## Null for a behavior id this machine type does not offer, or one already attached.
+func attach_predefined_behavior(behavior_id: int) -> PredefinedBehaviorComponent:
+	var behavior: Dictionary = PredefinedBehaviors.get_behavior(machine_type, behavior_id)
+	if behavior.is_empty() or get_predefined_behavior(behavior_id) != null:
+		return null
+	var component: PredefinedBehaviorComponent = PredefinedBehaviorComponent.new()
+	component.setup(behavior)
+	component.activity_changed.connect(_on_predefined_activity)
+	add_child(component)
+	predefined_behaviors.append(component)
+	predefined_behaviors_changed.emit()
+	return component
+
+
+func detach_predefined_behavior(behavior_id: int) -> void:
+	var component: PredefinedBehaviorComponent = get_predefined_behavior(behavior_id)
+	if component == null:
+		return
+	predefined_behaviors.erase(component)
+	remove_child(component)
+	component.queue_free()
+	predefined_behaviors_changed.emit()
+
+
+## Null if that predefined behavior is not attached.
+func get_predefined_behavior(behavior_id: int) -> PredefinedBehaviorComponent:
+	for component: PredefinedBehaviorComponent in predefined_behaviors:
+		if component.behavior_id == behavior_id:
 			return component
 	return null
 
@@ -206,6 +244,8 @@ func discard() -> void:
 	clear_contents()
 	for component: ChipComponent in chips.duplicate():
 		detach_chip(component.chip.id)
+	for component: PredefinedBehaviorComponent in predefined_behaviors.duplicate():
+		detach_predefined_behavior(component.behavior_id)
 	if GameState.get_machine_at(cell) == self:
 		GameState.unregister_machine(cell)
 	if get_parent() != null:
@@ -227,6 +267,9 @@ func to_dict() -> Dictionary:
 			"timeout": component.timeout,
 			"assigned_by": component.assigned_by,
 		})
+	var behavior_list: Array = []
+	for component: PredefinedBehaviorComponent in predefined_behaviors:
+		behavior_list.append({"id": component.behavior_id})
 	return {
 		"type": machine_type,
 		"id": machine_id,
@@ -235,6 +278,7 @@ func to_dict() -> Dictionary:
 		"enabled": enabled,
 		"status": status,
 		"chips": chip_list,
+		"predefined_behaviors": behavior_list,
 		"data": _save_data(),
 	}
 
@@ -248,15 +292,20 @@ func load_dict(data: Dictionary) -> void:
 	if typeof(saved_data) == TYPE_DICTIONARY:
 		_load_data(saved_data)
 	var chip_list: Variant = data.get("chips")
-	if typeof(chip_list) != TYPE_ARRAY:
+	if typeof(chip_list) == TYPE_ARRAY:
+		for entry: Variant in chip_list:
+			if typeof(entry) != TYPE_DICTIONARY:
+				continue
+			attach_chip(
+				_read_int(entry, "id", 0, 0, 2147483647),
+				_read_int(entry, "timeout", ChipComponent.DEFAULT_TIMEOUT, 1, 100000),
+				_read_int(entry, "assigned_by", 0, 0, 2147483647))
+	var behavior_list: Variant = data.get("predefined_behaviors")
+	if typeof(behavior_list) != TYPE_ARRAY:
 		return
-	for entry: Variant in chip_list:
-		if typeof(entry) != TYPE_DICTIONARY:
-			continue
-		attach_chip(
-			_read_int(entry, "id", 0, 0, 2147483647),
-			_read_int(entry, "timeout", ChipComponent.DEFAULT_TIMEOUT, 1, 100000),
-			_read_int(entry, "assigned_by", 0, 0, 2147483647))
+	for entry: Variant in behavior_list:
+		if typeof(entry) == TYPE_DICTIONARY:
+			attach_predefined_behavior(_read_int(entry, "id", 0, 0, 2147483647))
 
 
 ## Takes one item from an upstream machine. True if accepted. Machines that take nothing keep the default.
@@ -429,6 +478,15 @@ func _on_chip_activity(outcome: String) -> void:
 
 func _on_chip_decision_applied(reason: String, applied: int, chip_id: int) -> void:
 	chip_decision_applied.emit(chip_id, reason, applied)
+
+
+## A predefined behavior applies at once (no pending phase), so it only flashes a result icon, and never
+## while a chip's own spinner is showing (a chip still waiting on an answer is not interrupted).
+func _on_predefined_activity(outcome: String) -> void:
+	for component: ChipComponent in chips:
+		if component.pending:
+			return
+	indicator.show_result(outcome)
 
 
 ## Tools all machines share.
