@@ -18,13 +18,14 @@
 # Exit 1 if a key-shaped string is found. Exit 0 (with a warning) if only
 # dev-file bloat is found. Exit 0 clean otherwise.
 set -u
-cd "$(dirname "$0")/.."
 
 ARTIFACT="${1:-}"
 if [ -z "$ARTIFACT" ] || [ ! -f "$ARTIFACT" ]; then
 	echo "usage: tests/check_export.sh <path-to-exported-binary-or-pck>" >&2
 	exit 2
 fi
+ARTIFACT="$(cd "$(dirname "$ARTIFACT")" && pwd)/$(basename "$ARTIFACT")"
+cd "$(dirname "$0")/.."
 
 STATUS=0
 
@@ -33,23 +34,37 @@ echo "== key-shaped strings =="
 # used in tests/test_llm_http.gd on purpose (that test asserts redaction, and
 # this check is a separate net for a *real* key accidentally landing in an
 # export, not a reason to special-case that file).
-if grep -a -o -E "sk-ant-api[0-9]{2}-[A-Za-z0-9_-]{20,}|sk-proj-[A-Za-z0-9_-]{20,}|sk-[A-Za-z0-9]{32,}" "$ARTIFACT" | grep -v -q "AAAAAAAAAAAAAAAAAAAAAAAA"; then
+if grep -a -o -E "sk-ant-api[0-9]{2}-[A-Za-z0-9_-]{20,}|sk-proj-[A-Za-z0-9_-]{20,}|sk-[A-Za-z0-9]{32,}" "$ARTIFACT" | grep -v -x -q "sk-ant-api03-AAAAAAAAAAAAAAAAAAAAAAAA"; then
 	echo "FOUND a key-shaped string in $ARTIFACT (not reproduced here; inspect locally with the grep above)" >&2
 	STATUS=1
 else
 	echo "  none found"
 fi
 
+if strings "$ARTIFACT" | grep -q -x 'res://.env'; then
+	echo "FOUND a res://.env reference in $ARTIFACT; inspect the export for an included .env" >&2
+	STATUS=1
+fi
+
 if [ -f .env ]; then
 	echo "== local .env leakage =="
-	while IFS= read -r line; do
+	while IFS= read -r line || [ -n "$line" ]; do
+		line="${line#"${line%%[![:space:]]*}"}"
+		case "$line" in ''|'#'*) continue ;; esac
+		line="${line#export }"
+		case "$line" in *=*) ;; *) continue ;; esac
 		value="${line#*=}"
+		value="${value#"${value%%[![:space:]]*}"}"
+		value="${value%"${value##*[![:space:]]}"}"
+		if [[ "$value" == \"*\" || "$value" == \'*\' ]]; then
+			value="${value:1:${#value}-2}"
+		fi
 		[ "${#value}" -lt 8 ] && continue
 		if grep -a -q -F -- "$value" "$ARTIFACT"; then
 			echo "FOUND the value of a local .env entry inside $ARTIFACT" >&2
 			STATUS=1
 		fi
-	done < <(grep -v -E "^\s*(#|$)" .env)
+	done < .env
 	echo "  checked $(grep -c -v -E '^\s*(#|$)' .env) entries from .env"
 else
 	echo "== local .env leakage == (skipped: no .env at project root)"
