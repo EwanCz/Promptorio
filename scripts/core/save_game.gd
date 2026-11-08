@@ -7,7 +7,8 @@ extends RefCounted
 ## Format (version 1): {version, tick_count, money, next_machine_id, minesites: [[x, y]] (the cells where a miner can
 ## go; a file without it keeps the current map's), chips: [{id, name, description, prompt, created_by}],
 ## machines: [{type, id, cell: [x, y], facing: [x, y], enabled, status, chips: [{id, timeout}],
-## data: {...state of the machine type, see Machine._save_data()}}],
+## predefined_behaviors: [{id}] (optional; an id the current PredefinedBehaviors table no longer offers is
+## skipped on load), data: {...state of the machine type, see Machine._save_data()}}],
 ## order: {product, quantity, progress, reward} (the current order; a file without it leaves the order alone)}
 
 const VERSION: int = 1
@@ -274,6 +275,8 @@ static func _validate_machines(machines: Variant, chip_ids: Dictionary, sites: V
 			return "The save has a machine with an invalid direction."
 		if machine.has("chips") and not _chips_valid(machine["chips"], chip_ids):
 			return "The save has a machine with an unknown chip."
+		if machine.has("predefined_behaviors") and not _predefined_behaviors_valid(machine["predefined_behaviors"]):
+			return "The save has a machine with an invalid predefined behavior."
 		cells[cell] = true
 		ids[int(machine["id"])] = true
 		has_collector = has_collector or machine["type"] == "collector"
@@ -331,6 +334,18 @@ static func _chips_valid(chips: Variant, chip_ids: Dictionary) -> bool:
 		return false
 	for entry: Variant in chips:
 		if typeof(entry) != TYPE_DICTIONARY or not _is_whole(entry.get("id")) or not chip_ids.has(int(entry["id"])):
+			return false
+	return true
+
+
+## Structure only: unlike chip ids, a behavior id is not cross-checked against any table here, because
+## Machine.load_dict already skips an id the current PredefinedBehaviors table no longer offers, so an
+## older save stays loadable even after a behavior is renumbered or removed.
+static func _predefined_behaviors_valid(behaviors: Variant) -> bool:
+	if typeof(behaviors) != TYPE_ARRAY:
+		return false
+	for entry: Variant in behaviors:
+		if typeof(entry) != TYPE_DICTIONARY or not _is_whole(entry.get("id")) or int(entry["id"]) < 0:
 			return false
 	return true
 

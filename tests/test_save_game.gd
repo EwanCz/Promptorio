@@ -63,6 +63,7 @@ func _build_world() -> void:
 	miner._progress = 7
 	miner._held = "ore"
 	miner.enabled = false
+	miner.attach_predefined_behavior(1)
 	var smelter: Smelter = _placement.place("smelter", Vector2i(8, 8))
 	smelter.stock = {"ore": 4}
 	smelter.progress = 5
@@ -223,6 +224,19 @@ func test_legacy_chip_threshold_is_ignored() -> void:
 	check(not resaved_chip.has("threshold_key") and not resaved_chip.has("threshold"), "new saves omit old trigger fields")
 
 
+func test_predefined_behavior_round_trips_and_an_unknown_id_is_skipped_for_compatibility() -> void:
+	_build_world()
+	var save: Dictionary = SaveGame.snapshot(_placement)
+	check_eq(SaveGame.restore(_placement, save), "", "valid predefined behavior restores")
+	var miner: Miner = _game.get_machine_at(_site())
+	check(miner.get_predefined_behavior(1) != null, "the saved behavior id is reattached")
+	_machine_dict(save, "miner")["predefined_behaviors"][0]["id"] = 9999
+	check_eq(SaveGame.validate(_placement, save), "", "an id the current table no longer offers still passes validation")
+	check_eq(SaveGame.restore(_placement, save), "", "and the save still restores")
+	var restored: Miner = _game.get_machine_at(_site())
+	check_eq(restored.predefined_behaviors.size(), 0, "the unknown behavior id is silently skipped, like an older save")
+
+
 func test_smelter_save_keeps_emergency_stop_and_cooled_craft_progress() -> void:
 	var smelter: Smelter = _placement.place("smelter", Vector2i(8, 8))
 	smelter._making = "ingot"
@@ -326,6 +340,11 @@ func test_bad_files_are_refused_and_leave_the_game_untouched() -> void:
 		"diagonal direction": func(d: Dictionary) -> Variant: d["machines"][1]["facing"] = [1, 1]; return d,
 		"unknown chip": func(d: Dictionary) -> Variant: _machine_dict(d, "smelter")["chips"][0]["id"] = 9999; return d,
 		"chip without a name": func(d: Dictionary) -> Variant: d["chips"][0]["name"] = ""; return d,
+		"predefined behaviors not a list": func(d: Dictionary) -> Variant: _machine_dict(d, "miner")["predefined_behaviors"] = "prospector"; return d,
+		"predefined behavior entry not a dict": func(d: Dictionary) -> Variant: _machine_dict(d, "miner")["predefined_behaviors"] = ["prospector"]; return d,
+		"predefined behavior without an id": func(d: Dictionary) -> Variant: _machine_dict(d, "miner")["predefined_behaviors"] = [{}]; return d,
+		"predefined behavior id not a number": func(d: Dictionary) -> Variant: _machine_dict(d, "miner")["predefined_behaviors"][0]["id"] = "one"; return d,
+		"predefined behavior id negative": func(d: Dictionary) -> Variant: _machine_dict(d, "miner")["predefined_behaviors"][0]["id"] = -1; return d,
 		"huge chip prompt": func(d: Dictionary) -> Variant: d["chips"][0]["prompt"] = "x".repeat(SaveGame.MAX_CHIP_TEXT + 1); return d,
 		"no Collector": func(d: Dictionary) -> Variant: d["machines"] = d["machines"].filter(func(m: Dictionary) -> bool: return m["type"] != "collector"); return d,
 	}
