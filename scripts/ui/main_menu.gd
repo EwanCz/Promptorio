@@ -6,12 +6,20 @@ extends Control
 signal game_requested
 
 const GAME_SCENE: String = "res://scenes/main.tscn"
+## icon name (from Icons.BADGES) per button, reusing the same glyphs the Bar uses.
+const BUTTON_ICONS: Dictionary = {
+	"PlayButton": "state_normal",
+	"LoadButton": "save",
+	"ChipsButton": "ask",
+	"OptionsButton": "settings",
+	"ExitButton": "failed",
+}
 
-@onready var _play_button: PixelButton = %PlayButton
-@onready var _load_button: PixelButton = %LoadButton
-@onready var _chips_button: PixelButton = %ChipsButton
-@onready var _options_button: PixelButton = %OptionsButton
-@onready var _exit_button: PixelButton = %ExitButton
+@onready var _play_button: Button = %PlayButton
+@onready var _load_button: Button = %LoadButton
+@onready var _chips_button: Button = %ChipsButton
+@onready var _options_button: Button = %OptionsButton
+@onready var _exit_button: Button = %ExitButton
 @onready var _save_dialog: SaveDialog = %SaveDialog
 @onready var _chip_manager: ChipManager = %ChipManager
 @onready var _chip_page: ChipPage = %ChipPage
@@ -19,6 +27,7 @@ const GAME_SCENE: String = "res://scenes/main.tscn"
 
 
 func _ready() -> void:
+	_apply_button_icons()
 	_save_dialog.use_as_menu()
 	_play_button.pressed.connect(start_game)
 	_load_button.pressed.connect(_save_dialog.open)
@@ -42,3 +51,12 @@ func start_game(save: Dictionary = {}) -> void:
 func _go_to_game() -> void:
 	if get_tree().current_scene == self:
 		get_tree().change_scene_to_file(GAME_SCENE)
+
+
+## Gives each button the Icons glyph it shares with the Bar, scaled crisply like Icons.apply_button() does.
+func _apply_button_icons() -> void:
+	for button_name: String in BUTTON_ICONS:
+		var button: Button = get_node("%" + button_name)
+		var image: Image = Icons.icon(BUTTON_ICONS[button_name]).get_image()
+		image.resize(Icons.SIZE * Icons.SCALE, Icons.SIZE * Icons.SCALE, Image.INTERPOLATE_NEAREST)
+		button.icon = ImageTexture.create_from_image(image)
