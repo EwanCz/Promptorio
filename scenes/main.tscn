@@ -18,6 +18,7 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/popups/save_dialog.tscn" id="14_save"]
 [ext_resource type="PackedScene" path="res://scenes/ui/popups/pause_menu.tscn" id="15_pause"]
 [ext_resource type="Script" path="res://scripts/world/factory_view.gd" id="16_factory_view"]
+[ext_resource type="Script" path="res://scripts/world/hover_overlay.gd" id="17_hover_overlay"]
 
 [node name="Main" type="Node" unique_id=1179046009]
 script = ExtResource("4_main")
@@ -56,6 +57,10 @@ tile_set = ExtResource("1_tileset")
 script = ExtResource("2_grid")
 
 [node name="Machines" type="Node2D" parent="Game/FactoryView/SubViewport/World" unique_id=700926543]
+
+[node name="HoverOverlay" type="Node2D" parent="Game/FactoryView/SubViewport/World" node_paths=PackedStringArray("grid")]
+script = ExtResource("17_hover_overlay")
+grid = NodePath("../GridMap2D")
 
 [node name="Placement" type="Node" parent="Game/FactoryView/SubViewport/World" unique_id=724255296 node_paths=PackedStringArray("grid", "machines")]
 script = ExtResource("12_placement")
