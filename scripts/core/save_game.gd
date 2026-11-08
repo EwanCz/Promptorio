@@ -4,7 +4,8 @@ extends RefCounted
 ## as one JSON document. A file is never trusted: restore() validates all of it before touching the game,
 ## so a bad file leaves the current game as it was. Slots live in `save_dir`; any other path works too.
 ##
-## Format (version 1): {version, tick_count, money, next_machine_id, chips: [{id, name, description, prompt}],
+## Format (version 1): {version, tick_count, money, next_machine_id, minesites: [[x, y]] (the cells where a miner can
+## go; a file without it keeps the current map's), chips: [{id, name, description, prompt}],
 ## machines: [{type, id, cell: [x, y], facing: [x, y], enabled, status, chips: [{id, timeout, threshold_key,
 ## threshold}], data: {...state of the machine type, see Machine._save_data()}}]}
 
@@ -17,6 +18,7 @@ const EXTENSION: String = "json"
 const MAX_FILE_BYTES: int = 4 * 1024 * 1024
 const MAX_SLOT_NAME_LENGTH: int = 40
 const MAX_MONEY: int = 1000000000
+const MAX_MINESITES: int = 100
 const MAX_CHIPS: int = 200
 const MAX_CHIP_TEXT: int = 20000
 const DIRECTIONS: Array[Vector2i] = [Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT, Vector2i.UP]
@@ -53,6 +55,7 @@ static func snapshot(placement: Placement) -> Dictionary:
 		"tick_count": GameState.tick_count,
 		"money": GameState.money,
 		"next_machine_id": placement.next_id,
+		"minesites": placement.grid.minesites.map(func(site: Vector2i) -> Array: return [site.x, site.y]),
 		"chips": chips,
 		"machines": machines,
 	}
@@ -68,6 +71,8 @@ static func restore(placement: Placement, data: Variant) -> String:
 		var machine: Machine = node as Machine
 		if machine != null:
 			machine.discard()
+	if save.has("minesites"):
+		placement.grid.set_minesites(_to_cells(save["minesites"]))
 	for entry: Dictionary in save["chips"]:
 		ChipRegistry.import_chip(int(entry["id"]), entry["name"], entry.get("description", ""), entry.get("prompt", ""))
 	var highest_id: int = 0
@@ -102,7 +107,12 @@ static func validate(placement: Placement, data: Variant) -> String:
 	var chip_error: String = _validate_chips(save.get("chips"))
 	if chip_error != "":
 		return chip_error
-	return _validate_machines(placement, save.get("machines"), _chip_ids(save["chips"]))
+	var sites: Array[Vector2i] = placement.grid.minesites
+	if save.has("minesites"):
+		if not _minesites_valid(save["minesites"]):
+			return "The save has an invalid list of minesites."
+		sites = _to_cells(save["minesites"])
+	return _validate_machines(save.get("machines"), _chip_ids(save["chips"]), sites)
 
 
 ## Writes the document through a temporary file, so a failed write never destroys an older save.
@@ -193,7 +203,21 @@ static func _chip_ids(chips: Array) -> Dictionary:
 	return ids
 
 
-static func _validate_machines(placement: Placement, machines: Variant, chip_ids: Dictionary) -> String:
+static func _minesites_valid(sites: Variant) -> bool:
+	if typeof(sites) != TYPE_ARRAY or (sites as Array).size() > MAX_MINESITES:
+		return false
+	var seen: Dictionary = {}
+	for entry: Variant in sites:
+		if not _is_pair(entry):
+			return false
+		var cell: Vector2i = _to_cell(entry)
+		if not GameState.is_in_grid(cell) or seen.has(cell):
+			return false
+		seen[cell] = true
+	return true
+
+
+static func _validate_machines(machines: Variant, chip_ids: Dictionary, sites: Array[Vector2i]) -> String:
 	if typeof(machines) != TYPE_ARRAY or (machines as Array).size() > GameState.GRID_SIZE.x * GameState.GRID_SIZE.y:
 		return "The save has an invalid machine list."
 	var cells: Dictionary = {}
@@ -212,7 +236,7 @@ static func _validate_machines(placement: Placement, machines: Variant, chip_ids
 		var cell: Vector2i = _to_cell(machine["cell"])
 		if not GameState.is_in_grid(cell) or cells.has(cell):
 			return "The save has a machine outside the grid or on a taken cell."
-		if machine["type"] == "miner" and not placement.grid.is_minesite(cell):
+		if machine["type"] == "miner" and not sites.has(cell):
 			return "The save has a miner outside a minesite."
 		if not DIRECTIONS.has(_to_cell(machine["facing"])):
 			return "The save has a machine with an invalid direction."
@@ -244,6 +268,13 @@ static func _is_whole(value: Variant) -> bool:
 
 static func _is_pair(value: Variant) -> bool:
 	return typeof(value) == TYPE_ARRAY and (value as Array).size() == 2 and _is_whole(value[0]) and _is_whole(value[1])
+
+
+static func _to_cells(pairs: Array) -> Array[Vector2i]:
+	var cells: Array[Vector2i] = []
+	for pair: Array in pairs:
+		cells.append(_to_cell(pair))
+	return cells
 
 
 static func _to_cell(pair: Array) -> Vector2i:

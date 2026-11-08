@@ -29,6 +29,8 @@ static var layout_override: Array[Vector2i] = []
 
 ## Every minesite of the current map. The first GROUP_SIZE cells are the group near the collector.
 var minesites: Array[Vector2i] = []
+## The ground tile under every cell, so a cell that stops being a minesite gets its own back.
+var _ground: Dictionary = {}
 var hovered_cell: Vector2i = Vector2i(-1, -1)
 ## The machine type being placed ("" for none): the highlight follows its rules.
 var placement_type: String = ""
@@ -132,10 +134,19 @@ func _build_ground() -> void:
 	for x: int in GameState.GRID_SIZE.x:
 		for y: int in GameState.GRID_SIZE.y:
 			var pool: Array[Vector2i] = MOSSY_TILES if rng.randf() < MOSSY_CHANCE else GROUND_TILES
-			set_cell(Vector2i(x, y), SOURCE_ID, pool[rng.randi() % pool.size()])
+			var tile: Vector2i = pool[rng.randi() % pool.size()]
+			_ground[Vector2i(x, y)] = tile
+			set_cell(Vector2i(x, y), SOURCE_ID, tile)
 	var site_rng: RandomNumberGenerator = RandomNumberGenerator.new()
 	site_rng.randomize()
-	minesites = layout_override.duplicate() if not layout_override.is_empty() else generate_minesites(site_rng)
+	set_minesites(layout_override.duplicate() if not layout_override.is_empty() else generate_minesites(site_rng))
+
+
+## Makes these cells the map's minesites (a loaded save puts its own back). The previous ones turn back into ground.
+func set_minesites(cells: Array[Vector2i]) -> void:
+	for cell: Vector2i in minesites:
+		set_cell(cell, SOURCE_ID, _ground[cell])
+	minesites = cells.duplicate()
 	for cell: Vector2i in minesites:
 		set_cell(cell, SOURCE_ID, MINESITE_TILE)
 

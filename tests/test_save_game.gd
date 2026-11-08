@@ -213,6 +213,12 @@ func test_bad_files_are_refused_and_leave_the_game_untouched() -> void:
 		"two machines on a cell": func(d: Dictionary) -> Variant: d["machines"][2]["cell"] = d["machines"][1]["cell"]; return d,
 		"two machines with an id": func(d: Dictionary) -> Variant: d["machines"][2]["id"] = d["machines"][1]["id"]; return d,
 		"miner off a minesite": func(d: Dictionary) -> Variant: _machine_dict(d, "miner")["cell"] = [1, 1]; return d,
+		"minesites not a list": func(d: Dictionary) -> Variant: d["minesites"] = "everywhere"; return d,
+		"minesite outside the grid": func(d: Dictionary) -> Variant: d["minesites"].append([99, 99]); return d,
+		"minesite not a pair": func(d: Dictionary) -> Variant: d["minesites"].append([1]); return d,
+		"minesite twice": func(d: Dictionary) -> Variant: d["minesites"].append(d["minesites"][0]); return d,
+		"too many minesites": func(d: Dictionary) -> Variant: d["minesites"] = range(SaveGame.MAX_MINESITES + 1).map(func(i: int) -> Array: return [i % 32, i / 32]); return d,
+		"miner off the saved minesites": func(d: Dictionary) -> Variant: d["minesites"] = [[1, 1]]; return d,
 		"diagonal direction": func(d: Dictionary) -> Variant: d["machines"][1]["facing"] = [1, 1]; return d,
 		"unknown chip": func(d: Dictionary) -> Variant: _machine_dict(d, "smelter")["chips"][0]["id"] = 9999; return d,
 		"chip without a name": func(d: Dictionary) -> Variant: d["chips"][0]["name"] = ""; return d,
@@ -355,3 +361,50 @@ func test_the_chosen_resources_survive_a_save() -> void:
 	check_eq(restored_miner.item, "diamond", "the mined resource is restored")
 	check_eq(restored_smelter.product_id, "power", "the product is restored")
 	check_eq(restored_smelter.stock, {"redstone": 3}, "a stored resource the smelter does not use is restored")
+
+
+func _grid() -> GridMap2D:
+	return _main.get_node("Game/FactoryView/SubViewport/World/GridMap2D") as GridMap2D
+
+
+func test_the_save_holds_the_minesites() -> void:
+	var sites: Array = SaveGame.snapshot(_placement)["minesites"]
+	check_eq(sites.size(), _grid().minesites.size(), "every minesite is saved")
+	for site: Vector2i in _grid().minesites:
+		check(sites.has([site.x, site.y]), "minesite %s is saved" % site)
+
+
+func test_loading_puts_the_saved_minesites_back_on_the_map() -> void:
+	_build_world()
+	var text: String = _text(SaveGame.snapshot(_placement))
+	var saved_sites: Array[Vector2i] = _grid().minesites.duplicate()
+	var other: Array[Vector2i] = [Vector2i(20, 3), Vector2i(21, 3), Vector2i(22, 3)]
+	_grid().set_minesites(other)
+	check(_grid().is_minesite(Vector2i(20, 3)) and not _grid().is_minesite(saved_sites[0]), "the map has other minesites now")
+	check_eq(SaveGame.restore(_placement, JSON.parse_string(text)), "", "the save loads")
+	check_eq(_grid().minesites, saved_sites, "the saved minesites are back")
+	for site: Vector2i in saved_sites:
+		check(_grid().is_minesite(site), "%s is a minesite again" % site)
+	for site: Vector2i in other:
+		check(not _grid().is_minesite(site), "%s is ground again" % site)
+	check(_game.get_machine_at(saved_sites[0]) is Miner, "the miner sits on its minesite")
+
+
+func test_a_miner_can_be_restored_on_a_minesite_the_current_map_lacks() -> void:
+	var save: Dictionary = SaveGame.snapshot(_placement)
+	var spot: Vector2i = Vector2i(20, 3)
+	check(not _grid().is_minesite(spot), "the spot is plain ground on this map")
+	save["minesites"] = [[spot.x, spot.y]]
+	save["machines"].append({"type": "miner", "id": 50, "cell": [spot.x, spot.y], "facing": [1, 0], "enabled": true, "status": 0, "chips": [], "data": {}})
+	check_eq(SaveGame.restore(_placement, save), "", "the save loads")
+	check(_game.get_machine_at(spot) is Miner, "the miner is back")
+	check_eq(_grid().minesites, [spot] as Array[Vector2i], "the map has the saved minesite only")
+
+
+func test_an_older_save_without_minesites_keeps_the_current_map() -> void:
+	_build_world()
+	var save: Dictionary = JSON.parse_string(_text(SaveGame.snapshot(_placement)))
+	save.erase("minesites")
+	var sites: Array[Vector2i] = _grid().minesites.duplicate()
+	check_eq(SaveGame.restore(_placement, save), "", "it still loads")
+	check_eq(_grid().minesites, sites, "the map is unchanged")
