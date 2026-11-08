@@ -45,10 +45,9 @@ func _status() -> String:
 
 func test_dialog_and_button_are_in_the_scene() -> void:
 	check(_dialog != null and not _dialog.visible, "the dialog exists and starts hidden")
-	var column: Node = _main.get_node("Game/Bar/VBoxContainer")
 	var button: Button = _main.get_node("%SavesButton")
-	check(button.get_parent() == column, "the button sits in the Bar")
-	check(button.get_index() < _main.get_node("%SettingsButton").get_index(), "above Settings, which stays last")
+	check(button.get_parent() == _main.get_node("%BarButtons"), "the button sits in the Bar's button row")
+	check(button.get_index() < _main.get_node("%SettingsButton").get_index(), "before Settings, which stays last")
 
 
 func test_bar_button_opens_the_dialog_and_pauses() -> void:

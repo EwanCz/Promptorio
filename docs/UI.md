@@ -34,7 +34,7 @@ Runtime status is shown with icons, not persistent text. Keep text where it carr
 Besides the red tint, the Smelter art trembles as it approaches the 150° explosion: nothing below 100° (the overheating line), almost imperceptible until about 120°, a clear one near the end (at most 4 px on a 64 px cell, at 150°). It eases off as the Smelter cools and stops when it explodes. It moves the art only, never the machine or its cell. See `docs/PLAN.md`, "Smelter temperature".
 
 ## Machine tooltip
-The Bar is split in two halves of equal height, with the Resources and Settings buttons below them (Settings at the very bottom):
+The Bar is split in two halves of equal height, with one row of icon buttons below them (Menu, Resources, Save / Load, Settings):
 - Top half: the page tabs (Build / Chip Registry) and the current page inside a scroll container, so a long list scrolls instead of growing the Bar.
 - Bottom half: the machine details panel (`MachineTooltip`), a panel of the Bar (not a popup over the map). It shows "Select a machine" until a machine is clicked. Clicking the same machine or an empty cell goes back to that hint. The details scroll when they do not fit. Layout, top to bottom, with no section titles or explanatory text:
   - Header: the state icon (see "Visual feedback rule"), the title "<Type> #<id>", then icon buttons: log, rotate and destroy (rotate and destroy are hidden for machines that cannot use them, e.g. the Collector).
@@ -42,7 +42,7 @@ The Bar is split in two halves of equal height, with the Resources and Settings 
   - One block per attached chip: its name (hover shows the prompt), a clock icon with the timer in ticks, an "ask now" bolt button and a "remove" button. There are no state or event triggers: a chip is asked only by its timer or by "ask now".
   - Last, the chip picker with a plus button that attaches the picked chip.
   - Every icon button has a hover description: "Chip log", "Rotate", "Destroy this machine", "Ask the chip now", "Remove this chip", "Add the chosen chip", and the clock explains the timer. The panel stays narrow enough for the Bar: rows wrap, and long chip names are trimmed with an ellipsis (hover shows the prompt).
-  - The Settings button at the bottom of the Bar is a gear icon (hover: "Settings").
+  - The four buttons at the bottom of the Bar (Menu, Resources, Save / Load, Settings) all have the same format: a pixel icon only (house, gem, arrow into a tray, gear), no text, with the name as hover text ("Menu", "Resources", "Save / Load", "Settings"). They sit side by side in one row (`BarButtons`), right-aligned, in that order, so Settings stays at the right end.
 
 The tooltip hides with the rest of the Bar (`E`).
 

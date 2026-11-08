@@ -113,25 +113,26 @@ layout_mode = 2
 unique_name_in_owner = true
 layout_mode = 2
 
-[node name="MenuButton" type="Button" parent="Game/Bar/VBoxContainer"]
+[node name="BarButtons" type="HBoxContainer" parent="Game/Bar/VBoxContainer"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "Menu"
+alignment = 2
 
-[node name="ResourcesButton" type="Button" parent="Game/Bar/VBoxContainer"]
+[node name="MenuButton" type="Button" parent="Game/Bar/VBoxContainer/BarButtons"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "Resources"
 
-[node name="SavesButton" type="Button" parent="Game/Bar/VBoxContainer" unique_id=1767811997]
+[node name="ResourcesButton" type="Button" parent="Game/Bar/VBoxContainer/BarButtons"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "Save / Load"
 
-[node name="SettingsButton" type="Button" parent="Game/Bar/VBoxContainer" unique_id=947646898]
+[node name="SavesButton" type="Button" parent="Game/Bar/VBoxContainer/BarButtons" unique_id=1767811997]
 unique_name_in_owner = true
 layout_mode = 2
-size_flags_horizontal = 8
+
+[node name="SettingsButton" type="Button" parent="Game/Bar/VBoxContainer/BarButtons" unique_id=947646898]
+unique_name_in_owner = true
+layout_mode = 2
 
 [node name="UI" type="CanvasLayer" parent="." unique_id=1858705596]
 

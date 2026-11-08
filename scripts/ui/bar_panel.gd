@@ -32,10 +32,13 @@ func _ready() -> void:
 		button.button_group = group
 		button.pressed.connect(_show_page.bind(_tabs.get_child_count()))
 		_tabs.add_child(button)
+	Icons.apply_button(_resources_button, "resources", "Resources")
 	_resources_button.pressed.connect(resources_requested.emit)
+	Icons.apply_button(_saves_button, "save", "Save / Load")
 	_saves_button.pressed.connect(saves_requested.emit)
 	Icons.apply_button(_settings_button, "settings", "Settings")
 	_settings_button.pressed.connect(settings_requested.emit)
+	Icons.apply_button(_menu_button, "menu", "Menu")
 	_menu_button.pressed.connect(menu_requested.emit)
 	EventBus.settings_changed.connect(_on_settings_changed)
 	EventBus.key_checked.connect(_on_key_checked)
