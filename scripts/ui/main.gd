@@ -21,6 +21,7 @@ func _ready() -> void:
 	_save_dialog.setup(_placement)
 	_bar.saves_requested.connect(_save_dialog.open)
 	_bar.settings_requested.connect(_settings_dialog.open)
+	_restore_pending_save()
 	EventBus.settings_changed.connect(_check_key)
 	_check_key()
 	_start_session_log()
@@ -41,6 +42,14 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _on_cell_clicked(cell: Vector2i) -> void:
 	EventBus.machine_selected.emit(GameState.get_machine_at(cell))
+
+
+## A save picked in the main menu is restored here, once the world (and its Collector) exists. It was
+## validated there; restore() checks it again and leaves a fresh game if it still fails.
+func _restore_pending_save() -> void:
+	var pending: Dictionary = SaveGame.take_pending()
+	if not pending.is_empty():
+		SaveGame.restore(_placement, pending)
 
 
 ## Verifies the key for the Bar's status. Headless runs (tests) never touch the network.

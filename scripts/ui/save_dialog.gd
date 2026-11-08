@@ -1,12 +1,19 @@
 class_name SaveDialog
 extends PanelContainer
 ## Popup to save and load the game. Slots live in `SaveGame.save_dir`; Export and Import move a save to or
-## from any file on the disk. Pauses the game while open. Messages never show a path or the file content.
+## from any file on the disk. Pauses the game while open (not in menu mode, see use_as_menu()). Messages never show a path or the file content.
+
+## Menu mode only: the player picked a valid save; the game has not started yet.
+signal save_picked(data: Dictionary)
 
 var _placement: Placement = null
+## True in the main menu: no game to save or restore, loading hands the save over with save_picked.
+var _menu_mode: bool = false
 var _file_dialog: FileDialog = null
 var _exporting: bool = false
 
+@onready var _name_label: Label = %NameLabel
+@onready var _name_row: HBoxContainer = %NameRow
 @onready var _name_edit: LineEdit = %NameEdit
 @onready var _save_button: Button = %SaveButton
 @onready var _slot_list: VBoxContainer = %SlotList
@@ -36,16 +43,26 @@ func setup(placement: Placement) -> void:
 	_placement = placement
 
 
+## The main menu's version: only loading (slots and Import), no pause. Picking a save emits save_picked.
+func use_as_menu() -> void:
+	_menu_mode = true
+	_name_label.visible = false
+	_name_row.visible = false
+	_export_button.visible = false
+
+
 func open() -> void:
 	_status_label.text = ""
 	_refresh()
 	visible = true
-	get_tree().paused = true
+	if not _menu_mode:
+		get_tree().paused = true
 
 
 func close() -> void:
 	visible = false
-	get_tree().paused = false
+	if not _menu_mode:
+		get_tree().paused = false
 
 
 ## Writes the game to a slot. True on success.
@@ -96,18 +113,20 @@ func _write(path: String) -> bool:
 
 
 func _load(path: String, success_message: String) -> bool:
-	if _placement == null or path == "":
+	if (_placement == null and not _menu_mode) or path == "":
 		_say("There is no such save.")
 		return false
 	var result: Dictionary = SaveGame.read(path)
 	var error: String = str(result["error"])
 	if error == "":
-		error = SaveGame.restore(_placement, result["data"])
+		error = SaveGame.validate(null, result["data"]) if _menu_mode else SaveGame.restore(_placement, result["data"])
 	if error != "":
 		_say(error)
 		return false
 	_say(success_message)
 	close()
+	if _menu_mode:
+		save_picked.emit(result["data"])
 	return true
 
 

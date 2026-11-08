@@ -23,6 +23,8 @@ const DIRECTIONS: Array[Vector2i] = [Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEF
 
 ## Where slots are written. Tests point it elsewhere.
 static var save_dir: String = default_save_dir()
+## A save the main menu picked, waiting for the game scene to restore it. Empty when there is none.
+static var pending: Dictionary = {}
 
 
 ## `saves/` next to project.godot in an editor run, `user://saves` in an exported build.
@@ -30,6 +32,13 @@ static func default_save_dir() -> String:
 	if OS.has_feature("editor"):
 		return ProjectSettings.globalize_path(PROJECT_SLOT_DIR)
 	return USER_SLOT_DIR
+
+
+## The pending save, which is then cleared.
+static func take_pending() -> Dictionary:
+	var data: Dictionary = pending
+	pending = {}
+	return data
 
 
 ## The current game as a JSON-ready Dictionary.
@@ -86,7 +95,7 @@ static func restore(placement: Placement, data: Variant) -> String:
 
 
 ## "" if the document can be restored, else a one-line reason. Checks the structure only: the values
-## inside a machine's data are clamped when it loads.
+## inside a machine's data are clamped when it loads. The placement may be null (see _is_minesite()).
 static func validate(placement: Placement, data: Variant) -> String:
 	if typeof(data) != TYPE_DICTIONARY:
 		return "This file is not a Promptorio save."
@@ -193,6 +202,13 @@ static func _chip_ids(chips: Array) -> Dictionary:
 	return ids
 
 
+## Without a placement (the main menu has no game yet) the map's fixed minesite list answers.
+static func _is_minesite(placement: Placement, cell: Vector2i) -> bool:
+	if placement == null:
+		return GridMap2D.MINESITES.has(cell)
+	return placement.grid.is_minesite(cell)
+
+
 static func _validate_machines(placement: Placement, machines: Variant, chip_ids: Dictionary) -> String:
 	if typeof(machines) != TYPE_ARRAY or (machines as Array).size() > GameState.GRID_SIZE.x * GameState.GRID_SIZE.y:
 		return "The save has an invalid machine list."
@@ -212,7 +228,7 @@ static func _validate_machines(placement: Placement, machines: Variant, chip_ids
 		var cell: Vector2i = _to_cell(machine["cell"])
 		if not GameState.is_in_grid(cell) or cells.has(cell):
 			return "The save has a machine outside the grid or on a taken cell."
-		if machine["type"] == "miner" and not placement.grid.is_minesite(cell):
+		if machine["type"] == "miner" and not _is_minesite(placement, cell):
 			return "The save has a miner outside a minesite."
 		if not DIRECTIONS.has(_to_cell(machine["facing"])):
 			return "The save has a machine with an invalid direction."

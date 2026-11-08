@@ -78,3 +78,20 @@ func test_clock_catches_up_after_stall() -> void:
 	_game_state._advance_clock(0.55)
 	check_eq(_game_state.tick_count - start, 5, "a long interval emits every elapsed tick")
 	_game_state._tick_accumulator = previous_accumulator
+
+
+func test_reset_starts_a_new_game() -> void:
+	var saved_money: int = _game_state.money
+	var saved_ticks: int = _game_state.tick_count
+	var seen: Array[int] = []
+	var on_money: Callable = func(amount: int) -> void: seen.append(amount)
+	_bus.money_changed.connect(on_money)
+	_game_state.money = 5
+	_game_state.tick_count = 99
+	_game_state.reset()
+	_bus.money_changed.disconnect(on_money)
+	check_eq(_game_state.money, _game_state.START_MONEY, "money is back to the start value")
+	check_eq(_game_state.tick_count, 0, "the clock restarts")
+	check_eq(seen, [_game_state.START_MONEY], "money_changed announces it")
+	_game_state.money = saved_money
+	_game_state.tick_count = saved_ticks
