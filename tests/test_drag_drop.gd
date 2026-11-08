@@ -155,6 +155,31 @@ func test_hover_highlight_follows_the_dragged_kind() -> void:
 	check_eq(_grid.hover_color(), GridMap2D.HOVER_BLOCKED, "a miner off a minesite is still refused, by the normal placement rule")
 
 
+## Regression test: SubViewportContainer forwards every mouse motion it receives into the embedded
+## SubViewport (so the camera and click-to-place keep working), and that forwarding call resets the main
+## viewport's own "input handled" bookkeeping as a side effect. Left unchecked, that reset stops the engine
+## from ever resolving a drop target while a real (mouse-driven) drag is over the map, so a drop silently
+## does nothing - _can_drop_data/_drop_data called directly (every other test above) never exercises this,
+## since Godot's own drag machinery is what's affected, not our methods. force_drag() is the public API to
+## start a real engine-tracked drag without a mouse (Control has no other entry point for it); ending it with
+## a real button event is what exercises Viewport's own cleanup (_perform_drop), so nothing is leaked.
+func test_dragging_pauses_the_embedded_viewports_input() -> void:
+	await _wait_for_camera()
+	var button: DraggableButton = _buttons(_page)[0]
+	var viewport: SubViewport = _main.get_node("Game/FactoryView/SubViewport")
+	check(not viewport.is_input_disabled(), "nothing dragging yet: the embedded viewport still takes input")
+	button.force_drag(button.drag_payload, Control.new())
+	await wait_until(func() -> bool: return viewport.is_input_disabled(), 1.0)
+	check(viewport.is_input_disabled(), "dragging: forwarding into the embedded viewport is paused")
+	var release: InputEventMouseButton = InputEventMouseButton.new()
+	release.button_index = MOUSE_BUTTON_LEFT
+	release.pressed = false
+	tree.root.push_input(release)
+	await wait_until(func() -> bool: return not viewport.is_input_disabled(), 1.0)
+	check(not viewport.is_input_disabled(), "drag ended: forwarding resumes")
+	check(not tree.root.gui_is_dragging(), "the forced drag is over")
+
+
 ## _cell_at() goes through the camera's own canvas_transform, so a drop still lands on the right cell
 ## whatever the current zoom (zoomed in here; the default fit-to-grid zoom is covered by every other test).
 func test_dropping_still_works_after_zooming_in() -> void:

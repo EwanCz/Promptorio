@@ -15,8 +15,16 @@ extends SubViewportContainer
 var _overriding_hover: bool = false
 
 
+## SubViewportContainer forwards every mouse motion it receives into the embedded SubViewport (so the camera
+## and click-to-place keep working). That forwarding calls Viewport.push_input() on the embedded viewport,
+## which resets the *root* viewport's "input handled" bookkeeping as a side effect — and while a drag is in
+## progress, that reset stops the root viewport from ever resolving a drop target under the mouse, so a drop
+## silently does nothing. Disabling input on the embedded viewport for the duration of any drag (ours or the
+## Chip Registry's) avoids the forwarding call entirely; nothing needs regular clicks while a drag is live.
 func _process(_delta: float) -> void:
-	if _overriding_hover and not get_viewport().gui_is_dragging():
+	var dragging: bool = get_viewport().gui_is_dragging()
+	viewport.set_disable_input(dragging)
+	if _overriding_hover and not dragging:
 		_overriding_hover = false
 		grid.clear_hover_check()
 		grid.set_placement_type(placement.selected)

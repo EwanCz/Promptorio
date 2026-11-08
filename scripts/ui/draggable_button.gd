@@ -17,6 +17,7 @@ func _get_drag_data(_at_position: Vector2) -> Variant:
 
 func _make_preview() -> Control:
 	var wrapper: Control = Control.new()
+	wrapper.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var content: Control
 	if icon != null:
 		var rect: TextureRect = TextureRect.new()
@@ -28,6 +29,7 @@ func _make_preview() -> Control:
 		label.text = text
 		content = label
 	content.modulate.a = 0.85
+	content.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	wrapper.add_child(content)
 	content.position = -content.custom_minimum_size / 2.0 if content is TextureRect else Vector2.ZERO
 	return wrapper
