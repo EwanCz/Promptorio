@@ -125,4 +125,19 @@ func _tool_label(tool_name: String, args: Variant) -> String:
 			return "Stock limit set to %d" % int(values.get("limit", 0))
 		"set_direction":
 			return "Direction set to %s" % DIRECTIONS[clampi(int(values.get("direction", 0)), 0, DIRECTIONS.size() - 1)]
+		"assign_chip":
+			return "Assigned chip '%s' to machine #%d" % [_chip_name(int(values.get("chip_id", 0))), int(values.get("machine_id", 0))]
+		"remove_chip":
+			return "Removed its chip from machine #%d" % int(values.get("machine_id", 0))
+		"set_range":
+			return "Range set to %d cells" % int(values.get("cells", 0))
+		"create_chip":
+			return "Created chip '%s'" % str(values.get("name", ""))
+		"revise_chip":
+			return "Revised chip '%s'" % _chip_name(int(values.get("chip_id", 0)))
 	return "Action requested"
+
+
+func _chip_name(chip_id: int) -> String:
+	var chip: ChipRessource = ChipRegistry.get_from_id(chip_id)
+	return chip.name if chip != null else "?"

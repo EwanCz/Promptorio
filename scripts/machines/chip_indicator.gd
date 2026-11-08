@@ -49,6 +49,18 @@ func show_result(outcome: String) -> void:
 	_timer.start(result_seconds)
 
 
+## `action` is "created", "assigned", "revised" or "removed": an Orchestrator just changed this machine's
+## chip, called by Orchestrator directly (not by this machine's own ChipComponent). Distinct lavender
+## badges (Icons "managed_*") set it apart from a chip's own decision result, even though both borrow
+## this same slot above the machine.
+func show_management(action: String) -> void:
+	state = "managed_" + action
+	texture = Icons.icon(state)
+	visible = true
+	set_process(false)
+	_timer.start(result_seconds)
+
+
 func clear() -> void:
 	state = ""
 	visible = false

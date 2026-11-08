@@ -5,7 +5,7 @@ extends RefCounted
 ## so a bad file leaves the current game as it was. Slots live in `save_dir`; any other path works too.
 ##
 ## Format (version 1): {version, tick_count, money, next_machine_id, minesites: [[x, y]] (the cells where a miner can
-## go; a file without it keeps the current map's), chips: [{id, name, description, prompt}],
+## go; a file without it keeps the current map's), chips: [{id, name, description, prompt, created_by}],
 ## machines: [{type, id, cell: [x, y], facing: [x, y], enabled, status, chips: [{id, timeout}],
 ## data: {...state of the machine type, see Machine._save_data()}}]}
 
@@ -58,7 +58,7 @@ static func snapshot(placement: Placement) -> Dictionary:
 	for chip_id: int in chip_ids:
 		var chip: ChipRessource = ChipRegistry.get_from_id(chip_id)
 		if chip != null:
-			chips.append({"id": chip.id, "name": chip.name, "description": chip.description, "prompt": chip.prompt})
+			chips.append({"id": chip.id, "name": chip.name, "description": chip.description, "prompt": chip.prompt, "created_by": chip.created_by})
 	return {
 		"version": VERSION,
 		"tick_count": GameState.tick_count,
@@ -83,7 +83,7 @@ static func restore(placement: Placement, data: Variant) -> String:
 	if save.has("minesites"):
 		placement.grid.set_minesites(_to_cells(save["minesites"]))
 	for entry: Dictionary in save["chips"]:
-		ChipRegistry.import_chip(int(entry["id"]), entry["name"], entry.get("description", ""), entry.get("prompt", ""))
+		ChipRegistry.import_chip(int(entry["id"]), entry["name"], entry.get("description", ""), entry.get("prompt", ""), int(entry.get("created_by", 0)))
 	var highest_id: int = 0
 	for entry: Dictionary in save["machines"]:
 		var cell: Vector2i = _to_cell(entry["cell"])
@@ -122,7 +122,10 @@ static func validate(placement: Placement, data: Variant) -> String:
 		if not _minesites_valid(save["minesites"]):
 			return "The save has an invalid list of minesites."
 		sites = _to_cells(save["minesites"])
-	return _validate_machines(save.get("machines"), _chip_ids(save["chips"]), sites)
+	var machine_error: String = _validate_machines(save.get("machines"), _chip_ids(save["chips"]), sites)
+	if machine_error != "":
+		return machine_error
+	return _validate_chip_creators(save["chips"], save["machines"])
 
 
 ## Writes the document through a temporary file, so a failed write never destroys an older save.
@@ -258,15 +261,33 @@ static func _validate_machines(machines: Variant, chip_ids: Dictionary, sites: V
 		has_collector = has_collector or machine["type"] == "collector"
 	if not has_collector:
 		return "The save has no Collector."
-	var orchestrators: Dictionary = {}
-	for machine: Dictionary in machines:
-		if machine["type"] == "orchestrator":
-			orchestrators[int(machine["id"])] = true
+	var orchestrators: Dictionary = _orchestrator_ids(machines)
 	for machine: Dictionary in machines:
 		for chip: Dictionary in machine.get("chips", []):
 			var owner: Variant = chip.get("assigned_by", 0)
 			if not _is_whole(owner) or int(owner) < 0 or (int(owner) != 0 and not orchestrators.has(int(owner))):
 				return "The save has a chip with an invalid Orchestrator owner."
+	return ""
+
+
+## Every Orchestrator machine_id in the save, for cross-checking a chip's assigned_by/created_by.
+static func _orchestrator_ids(machines: Array) -> Dictionary:
+	var orchestrators: Dictionary = {}
+	for machine: Dictionary in machines:
+		if machine["type"] == "orchestrator":
+			orchestrators[int(machine["id"])] = true
+	return orchestrators
+
+
+## Checked once the machine list itself is known valid: a registry chip's created_by must be 0 (player) or
+## the id of an Orchestrator actually present in the save, same cross-check as a component's assigned_by
+## in _validate_machines (there it is per machine-chip, here it is the chip resource's own ownership).
+static func _validate_chip_creators(chips: Array, machines: Array) -> String:
+	var orchestrators: Dictionary = _orchestrator_ids(machines)
+	for chip: Dictionary in chips:
+		var creator: Variant = chip.get("created_by", 0)
+		if not _is_whole(creator) or int(creator) < 0 or (int(creator) != 0 and not orchestrators.has(int(creator))):
+			return "The save has a chip with an invalid Orchestrator creator."
 	return ""
 
 

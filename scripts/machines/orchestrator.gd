@@ -22,6 +22,16 @@ extends Machine
 ##
 ## Example for playtesting: COST (150), DEFAULT_RANGE (4 cells) and the range bounds all need playtesting,
 ## not fixed.
+##
+## GR2-18 (create/revise): create_chip puts a brand new chip in the registry, created_by set to this
+## Orchestrator (ChipRessource.created_by), ready to assign_chip like any other. revise_chip edits the
+## prompt/description of a chip it created, gated by evidence (outcome_counts() of every machine in range
+## currently running it) and a per-chip cooldown (_last_revision_tick), so it cannot thrash a prompt back
+## and forth on a handful of decisions. Both tools only ever touch a chip with created_by == machine_id: a
+## player-authored chip, or one made by a different Orchestrator, is never revised (ChipRegistry.revise()
+## refuses it too, so this is belt and suspenders). A player who edits a generated chip by hand
+## (ChipRegistry.update(), the ChipPage "Save" path) claims it: created_by resets to 0 and this Orchestrator
+## never revises it again. EVIDENCE/COOLDOWN constants need playtesting, same as COST/DEFAULT_RANGE.
 
 ## Chebyshev distance (the largest of the two axis deltas), so the visible area is a square around it.
 const RANGE_MIN: int = 1
@@ -29,9 +39,17 @@ const RANGE_MAX: int = 8
 const DEFAULT_RANGE: int = 4
 ## Marks the art as "not an ordinary production machine"; no new art asset for this prototype.
 const TINT: Color = Color(0.68, 0.58, 0.95)
+## Decisions (outcome_counts() total) a created chip needs, summed over every machine in range currently
+## running it, before revise_chip accepts a change: enough to see a pattern, not just one bad answer.
+const MIN_REVISION_EVIDENCE: int = 5
+## Ticks (10 Hz) a just-revised chip is left alone before this Orchestrator may revise it again.
+const REVISION_COOLDOWN_TICKS: int = 300
 
 ## How many cells away, in every direction, this Orchestrator can see and manage machines.
 var range_cells: int = DEFAULT_RANGE
+## chip_id -> the tick revise_chip last succeeded on it. Not saved: a reload may let a revision happen
+## sooner than the cooldown would otherwise allow, a minor restart quirk rather than a real exploit.
+var _last_revision_tick: Dictionary = {}
 
 
 func _ready() -> void:
@@ -57,7 +75,10 @@ func get_state() -> Dictionary:
 		nearby.append(_summary(other))
 	var available_chips: Array = []
 	for chip: ChipRessource in ChipRegistry.get_all():
-		available_chips.append({"id": chip.id, "name": chip.name, "description": chip.description})
+		available_chips.append({
+			"id": chip.id, "name": chip.name, "description": chip.description,
+			"mine": chip.created_by == machine_id,
+		})
 	return super.get_state().merged({
 		"range": range_cells,
 		"nearby_machines": nearby,
@@ -85,6 +106,22 @@ func _own_tool_schemas() -> Array:
 		"input_schema": {"type": "object", "properties": {
 			"cells": {"type": "integer", "minimum": RANGE_MIN, "maximum": RANGE_MAX},
 		}},
+	}, {
+		"name": "create_chip",
+		"description": "Create a new chip in the registry (not yet assigned anywhere), owned by this Orchestrator. Refused if the name is empty or already used by another chip. Use assign_chip next to put it to work.",
+		"input_schema": {"type": "object", "properties": {
+			"name": {"type": "string"},
+			"description": {"type": "string"},
+			"prompt": {"type": "string"},
+		}},
+	}, {
+		"name": "revise_chip",
+		"description": "Rewrite the description and prompt of a chip this Orchestrator created (available_chips entries with mine=true), keeping its name and every assignment. Refused for a chip this Orchestrator did not create, one revised too recently, or one with too few observed decisions yet (see each nearby machine's chip outcomes) to judge it by.",
+		"input_schema": {"type": "object", "properties": {
+			"chip_id": {"type": "integer", "minimum": 1, "maximum": 2147483647},
+			"description": {"type": "string"},
+			"prompt": {"type": "string"},
+		}},
 	}]
 
 
@@ -96,6 +133,10 @@ func _apply(tool_name: String, args: Dictionary) -> bool:
 		return assign_chip(int(args["machine_id"]), int(args["chip_id"]))
 	if tool_name == "remove_chip":
 		return remove_chip(int(args["machine_id"]))
+	if tool_name == "create_chip":
+		return create_chip(str(args["name"]), str(args["description"]), str(args["prompt"]))
+	if tool_name == "revise_chip":
+		return revise_chip(int(args["chip_id"]), str(args["description"]), str(args["prompt"]))
 	return super._apply(tool_name, args)
 
 
@@ -126,6 +167,7 @@ func assign_chip(target_id: int, chip_id: int) -> bool:
 	if target.attach_chip(chip_id, ChipComponent.DEFAULT_TIMEOUT, machine_id) == null:
 		refusal = "machine #%d already runs that chip" % target_id
 		return false
+	target.indicator.show_management("assigned")
 	return true
 
 
@@ -141,7 +183,72 @@ func remove_chip(target_id: int) -> bool:
 		refusal = "this Orchestrator manages no chip on machine #%d" % target_id
 		return false
 	target.detach_chip(existing.chip.id)
+	target.indicator.show_management("removed")
 	return true
+
+
+## Creates `name` in the registry, owned by this Orchestrator (ChipRessource.created_by), ready to
+## assign_chip anywhere in range. False (nothing changes) if the name is empty or already used.
+func create_chip(chip_name: String, description: String, prompt: String) -> bool:
+	if ChipRegistry.add(chip_name, prompt, description, machine_id) == null:
+		refusal = "a chip named '%s' already exists or the name is empty" % chip_name
+		return false
+	indicator.show_management("created")
+	return true
+
+
+## Rewrites the description and prompt of a chip this Orchestrator created, keeping its name and every
+## assignment. False (nothing changes; `refusal` says why) for a chip it did not create, one revised too
+## recently (REVISION_COOLDOWN_TICKS), or one with fewer than MIN_REVISION_EVIDENCE recent decisions
+## observed yet across every machine in range currently running it.
+func revise_chip(chip_id: int, description: String, prompt: String) -> bool:
+	var chip: ChipRessource = ChipRegistry.get_from_id(chip_id)
+	if chip == null:
+		refusal = "chip #%d is not in the registry" % chip_id
+		return false
+	if chip.created_by != machine_id:
+		refusal = "chip #%d was not created by this Orchestrator" % chip_id
+		return false
+	var last: int = int(_last_revision_tick.get(chip_id, -REVISION_COOLDOWN_TICKS))
+	if _tick_number - last < REVISION_COOLDOWN_TICKS:
+		refusal = "chip #%d was revised too recently" % chip_id
+		return false
+	var evidence: int = _evidence_for(chip_id)
+	if evidence < MIN_REVISION_EVIDENCE:
+		refusal = "not enough evidence yet for chip #%d (%d/%d decisions observed)" % [chip_id, evidence, MIN_REVISION_EVIDENCE]
+		return false
+	if not ChipRegistry.revise(chip_id, description, prompt, machine_id):
+		refusal = "chip #%d could not be revised" % chip_id
+		return false
+	_last_revision_tick[chip_id] = _tick_number
+	_flash_revision(chip_id)
+	return true
+
+
+## Total decisions (outcome_counts()) observed so far, summed over every machine in range currently
+## running `chip_id`: the evidence revise_chip weighs against MIN_REVISION_EVIDENCE.
+func _evidence_for(chip_id: int) -> int:
+	var total: int = 0
+	for node: Node in GameState.get_machines():
+		var other: Machine = node as Machine
+		if other == null or not _is_manageable(other):
+			continue
+		var component: ChipComponent = other.get_chip(chip_id)
+		if component != null:
+			var counts: Dictionary = component.outcome_counts()
+			total += int(counts.get("applied", 0)) + int(counts.get("none", 0)) + int(counts.get("failed", 0))
+	return total
+
+
+## Shows the "revised" badge on every machine in range currently running `chip_id`, so the change is
+## visible wherever it actually takes effect.
+func _flash_revision(chip_id: int) -> void:
+	for node: Node in GameState.get_machines():
+		var other: Machine = node as Machine
+		if other == null or not _is_manageable(other):
+			continue
+		if other.get_chip(chip_id) != null:
+			other.indicator.show_management("revised")
 
 
 ## How many machines this Orchestrator currently owns an assignment on, in or out of range.
@@ -155,7 +262,8 @@ func managed_count() -> int:
 
 
 ## Releases every assignment this Orchestrator owns (the chips stay attached and running, now unowned)
-## before the machine itself goes away, so nothing is left permanently locked to a deleted Orchestrator.
+## and every chip it created (ChipRegistry.release_created_by()) before the machine itself goes away, so
+## nothing is left permanently locked to a deleted Orchestrator.
 func discard() -> void:
 	for node: Node in GameState.get_machines():
 		var other: Machine = node as Machine
@@ -163,6 +271,7 @@ func discard() -> void:
 			var owned: ChipComponent = _owned_component(other)
 			if owned != null:
 				owned.assigned_by = 0
+	ChipRegistry.release_created_by(machine_id)
 	super.discard()
 
 
@@ -182,6 +291,7 @@ func _summary(other: Machine) -> Dictionary:
 			"chip_id": component.chip.id,
 			"name": component.chip.name,
 			"owner": "player" if component.assigned_by == 0 else ("this" if component.assigned_by == machine_id else "other"),
+			"outcomes": component.outcome_counts(),
 		})
 	return {
 		"machine_id": other.machine_id,

@@ -135,3 +135,26 @@ func test_removing_the_last_pending_chip_clears_the_spinner() -> void:
 	check_eq(_machine.indicator.state, "checking", "pending")
 	_machine.detach_chip(_chips[0].id)
 	check_eq(_machine.indicator.state, "", "nothing left to wait for")
+
+
+## GR2-18: an Orchestrator's assign/revise/remove/create, shown through the same slot (Orchestrator calls
+## show_management() directly, never through a chip's own activity_changed).
+func test_management_actions_show_a_distinct_icon_then_hide() -> void:
+	_machine.indicator.result_seconds = 0.05
+	for action: String in ["created", "assigned", "revised", "removed"]:
+		_machine.indicator.show_management(action)
+		check_eq(_machine.indicator.state, "managed_" + action, "%s state" % action)
+		check(_machine.indicator.visible, "%s visible" % action)
+		check_eq(_machine.indicator.texture.get_image().get_data(), Icons.icon("managed_" + action).get_image().get_data(), "%s icon" % action)
+	await wait_until(func() -> bool: return _machine.indicator.state == "", 2.0)
+	check(not _machine.indicator.visible, "hidden again after a moment")
+
+
+func test_management_icons_are_distinct_from_chip_decision_results_and_each_other() -> void:
+	var seen: Dictionary = {}
+	for outcome: String in ["applied", "none", "failed"]:
+		seen[Icons.icon(outcome).get_image().get_data()] = outcome
+	for action: String in ["created", "assigned", "revised", "removed"]:
+		var data: PackedByteArray = Icons.icon("managed_" + action).get_image().get_data()
+		check(not seen.has(data), "managed_%s does not look like %s" % [action, seen.get(data, "-")])
+		seen[data] = "managed_" + action
