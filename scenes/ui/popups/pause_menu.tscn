@@ -2,7 +2,6 @@
 
 [ext_resource type="Script" path="res://scripts/ui/pause_menu.gd" id="1_script"]
 [ext_resource type="Theme" path="res://data/ui/theme.tres" id="2_theme"]
-[ext_resource type="Script" path="res://scripts/ui/pixel_button.gd" id="3_pixel"]
 
 [node name="PauseMenu" type="PanelContainer"]
 process_mode = 3
@@ -15,50 +14,56 @@ anchor_bottom = 0.5
 grow_horizontal = 2
 grow_vertical = 2
 theme = ExtResource("2_theme")
+theme_type_variation = &"MainMenuPanel"
 script = ExtResource("1_script")
 
 [node name="Margin" type="MarginContainer" parent="."]
 layout_mode = 2
-theme_override_constants/margin_left = 16
-theme_override_constants/margin_top = 16
-theme_override_constants/margin_right = 16
-theme_override_constants/margin_bottom = 16
+theme_override_constants/margin_left = 40
+theme_override_constants/margin_top = 32
+theme_override_constants/margin_right = 40
+theme_override_constants/margin_bottom = 32
 
-[node name="VBox" type="VBoxContainer" parent="Margin"]
+[node name="Column" type="VBoxContainer" parent="Margin"]
 layout_mode = 2
-theme_override_constants/separation = 12
+theme_override_constants/separation = 16
 
-[node name="Title" type="Label" parent="Margin/VBox"]
+[node name="Title" type="Label" parent="Margin/Column"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 32
-text = "Paused"
+theme_override_colors/font_color = Color(0.878, 0.722, 0.18, 1)
+theme_override_font_sizes/font_size = 48
+text = "PAUSED"
 horizontal_alignment = 1
 
-[node name="ResumeButton" type="Button" parent="Margin/VBox"]
+[node name="Spacer" type="Control" parent="Margin/Column"]
+custom_minimum_size = Vector2(0, 8)
+layout_mode = 2
+
+[node name="ResumeButton" type="Button" parent="Margin/Column"]
 unique_name_in_owner = true
+custom_minimum_size = Vector2(260, 56)
 layout_mode = 2
 size_flags_horizontal = 4
-script = ExtResource("3_pixel")
-texture_base = "res://assets/pixel_ui_pack/pause_resume"
-fallback_text = "RESUME"
+theme_type_variation = &"MainMenuButton"
+text = "RESUME"
 
-[node name="RestartButton" type="Button" parent="Margin/VBox"]
+[node name="RestartButton" type="Button" parent="Margin/Column"]
 unique_name_in_owner = true
+custom_minimum_size = Vector2(260, 56)
 layout_mode = 2
 size_flags_horizontal = 4
-script = ExtResource("3_pixel")
-texture_base = "res://assets/pixel_ui_pack/pause_restart"
-fallback_text = "RESTART"
+theme_type_variation = &"MainMenuButton"
+text = "RESTART"
 
-[node name="MainMenuButton" type="Button" parent="Margin/VBox"]
+[node name="MainMenuButton" type="Button" parent="Margin/Column"]
 unique_name_in_owner = true
+custom_minimum_size = Vector2(260, 56)
 layout_mode = 2
 size_flags_horizontal = 4
-script = ExtResource("3_pixel")
-texture_base = "res://assets/pixel_ui_pack/pause_main_menu"
-fallback_text = "MAIN MENU"
+theme_type_variation = &"MainMenuButton"
+text = "MAIN MENU"
 
-[node name="Hint" type="Label" parent="Margin/VBox"]
+[node name="Hint" type="Label" parent="Margin/Column"]
 layout_mode = 2
 text = "Unsaved progress is lost."
 horizontal_alignment = 1

@@ -84,3 +84,12 @@ func test_restart_and_main_menu_start_over() -> void:
 	(_menu.get_node("%MainMenuButton") as Button).pressed.emit()
 	check_eq(_game.money, _game.START_MONEY, "Main Menu resets the game too")
 	check(not tree.paused, "and the game is not left paused")
+
+
+func test_the_menu_looks_like_the_main_menu() -> void:
+	check_eq(_menu.theme_type_variation, &"MainMenuPanel", "same panel as the main menu")
+	for button_name: String in ["ResumeButton", "RestartButton", "MainMenuButton"]:
+		var button: Button = _menu.get_node("%" + button_name)
+		check_eq(button.theme_type_variation, &"MainMenuButton", button_name + " uses the main menu button style")
+		check(button.icon != null, button_name + " has an icon")
+		check(button.text != "", button_name + " has a label")
