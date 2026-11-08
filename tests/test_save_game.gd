@@ -107,6 +107,24 @@ func _count(type: String) -> int:
 	return count
 
 
+func test_orchestrator_owner_is_validated_and_round_trips() -> void:
+	var orchestrator: Orchestrator = _placement.place("orchestrator", Vector2i(8, 8)) as Orchestrator
+	var smelter: Machine = _placement.place("smelter", Vector2i(9, 8))
+	var chip: ChipRessource = _chip("owner_save")
+	check(orchestrator.assign_chip(smelter.machine_id, chip.id), "assignment succeeds")
+	var save: Dictionary = SaveGame.snapshot(_placement)
+	var saved_chip: Dictionary = _machine_dict(save, "smelter")["chips"][0]
+	var owner: int = orchestrator.machine_id
+	for invalid: Variant in [999999, smelter.machine_id, -1, "invalid"]:
+		saved_chip["assigned_by"] = invalid
+		check(SaveGame.validate(_placement, save) != "", "invalid owner is rejected")
+	check(_game.get_machine_at(Vector2i(9, 8)) == smelter, "validation leaves the game intact")
+	saved_chip["assigned_by"] = owner
+	check_eq(SaveGame.restore(_placement, save), "", "valid owner restores")
+	var restored: Machine = _game.get_machine_at(Vector2i(9, 8)) as Machine
+	check_eq(restored.get_chip(chip.id).assigned_by, owner, "ownership survives restore")
+
+
 func test_snapshot_restore_round_trip() -> void:
 	_build_world()
 	var before: Dictionary = SaveGame.snapshot(_placement)

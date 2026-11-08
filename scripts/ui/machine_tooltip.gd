@@ -58,7 +58,10 @@ func _ready() -> void:
 
 
 func open(machine: Machine) -> void:
+	if _machine != null and is_instance_valid(_machine):
+		_machine.chips_changed.disconnect(_refresh_chips)
 	_machine = machine
+	_machine.chips_changed.connect(_refresh_chips)
 	_id_label.text = "%s #%d" % [machine.machine_type.capitalize(), machine.machine_id]
 	_rotate_button.visible = machine.can_rotate()
 	_destroy_button.visible = machine.is_removable()
@@ -68,6 +71,8 @@ func open(machine: Machine) -> void:
 
 
 func close() -> void:
+	if _machine != null and is_instance_valid(_machine):
+		_machine.chips_changed.disconnect(_refresh_chips)
 	_machine = null
 	_show_details(false)
 
@@ -169,6 +174,10 @@ func _refresh_operation() -> void:
 		op.append(_icon_entry("applied", str(collector.sold), "Items sold"))
 		if not collector.accepting:
 			op.append(_icon_entry("blocked", "", "Not accepting items"))
+	elif _machine is Orchestrator:
+		var orchestrator: Orchestrator = _machine as Orchestrator
+		op.append(_icon_entry("info", str(orchestrator.range_cells), "Visible range (cells)"))
+		op.append(_icon_entry("applied", str(orchestrator.managed_count()), "Machines it currently manages"))
 	if _machine.is_blocked():
 		op.append(_icon_entry("blocked", "", "Output blocked: nothing takes it"))
 	elif _machine.shows_production_feedback() and _machine.get_production_state() == Machine.ProductionState.PRODUCING:
@@ -261,6 +270,8 @@ func _make_row(component: ChipComponent) -> Control:
 	chip_name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	chip_name.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	row.add_child(chip_name)
+	if component.assigned_by != 0:
+		row.add_child(Icons.rect("settings", "Assigned by Orchestrator #%d" % component.assigned_by))
 	var timeout: SpinBox = SpinBox.new()
 	timeout.name = "Timeout"
 	timeout.min_value = 1

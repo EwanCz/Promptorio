@@ -5,6 +5,7 @@ extends Node2D
 
 signal tool_applied(tool_name: String, args: Dictionary)
 signal chip_decision_applied(chip_id: int, reason: String, applied: int)
+signal chips_changed
 
 enum Status { NORMAL, DOWN, OVERHEATING }
 ## PRODUCING: enabled and a job is in progress. STALLED: its output cannot be delivered (wins over
@@ -76,17 +77,21 @@ func _exit_tree() -> void:
 
 
 ## Adds a ChipComponent child running the registry chip. Null for an unknown id or a chip already attached.
-func attach_chip(chip_id: int, timeout_ticks: int = ChipComponent.DEFAULT_TIMEOUT) -> ChipComponent:
+## `assigned_by` is 0 for a player-made attachment (the default: the tooltip's "add chip" never passes
+## anything else), else the machine_id of the Orchestrator that made it (see ChipComponent.assigned_by).
+func attach_chip(chip_id: int, timeout_ticks: int = ChipComponent.DEFAULT_TIMEOUT, assigned_by: int = 0) -> ChipComponent:
 	var chip: ChipRessource = ChipRegistry.get_from_id(chip_id)
 	if chip == null or get_chip(chip_id) != null:
 		return null
 	var component: ChipComponent = ChipComponent.new()
 	component.chip = chip
 	component.set_timeout(timeout_ticks)
+	component.assigned_by = assigned_by
 	component.decision_applied.connect(_on_chip_decision_applied.bind(chip_id))
 	component.activity_changed.connect(_on_chip_activity)
 	add_child(component)
 	chips.append(component)
+	chips_changed.emit()
 	return component
 
 
@@ -97,6 +102,7 @@ func detach_chip(chip_id: int) -> void:
 	chips.erase(component)
 	component.queue_free()
 	_on_chip_activity("")
+	chips_changed.emit()
 
 
 ## Null if the chip is not attached.
@@ -193,6 +199,7 @@ func to_dict() -> Dictionary:
 		chip_list.append({
 			"id": component.chip.id,
 			"timeout": component.timeout,
+			"assigned_by": component.assigned_by,
 		})
 	return {
 		"type": machine_type,
@@ -222,7 +229,8 @@ func load_dict(data: Dictionary) -> void:
 			continue
 		attach_chip(
 			_read_int(entry, "id", 0, 0, 2147483647),
-			_read_int(entry, "timeout", ChipComponent.DEFAULT_TIMEOUT, 1, 100000))
+			_read_int(entry, "timeout", ChipComponent.DEFAULT_TIMEOUT, 1, 100000),
+			_read_int(entry, "assigned_by", 0, 0, 2147483647))
 
 
 ## Takes one item from an upstream machine. True if accepted. Machines that take nothing keep the default.

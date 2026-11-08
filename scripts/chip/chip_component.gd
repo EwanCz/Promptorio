@@ -17,6 +17,10 @@ var chip: ChipRessource
 ## Ticks between two timer-triggered calls.
 var timeout: int = DEFAULT_TIMEOUT
 var pending: bool = false
+## 0 when a player attached this chip by hand. Otherwise the machine_id of the Orchestrator that
+## assigned it: Orchestrator.assign_chip()/remove_chip() only ever touch a component it owns, so a
+## player-made assignment (always 0) is never silently overridden. See scripts/machines/orchestrator.gd.
+var assigned_by: int = 0
 
 var _elapsed: int = 0
 var _last_msec: int = -1000000

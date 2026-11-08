@@ -12,6 +12,7 @@ const SCENES: Dictionary = {
 	"assembler": preload("res://scenes/machines/assembler.tscn"),
 	"collector": preload("res://scenes/machines/collector.tscn"),
 	"conveyor": preload("res://scenes/machines/conveyor.tscn"),
+	"orchestrator": preload("res://scenes/machines/orchestrator.tscn"),
 }
 ## Input Map action -> machine type. Bindings live in project.godot (physical keys 1-3 and 5).
 const SELECT_ACTIONS: Dictionary = {
@@ -22,7 +23,8 @@ const SELECT_ACTIONS: Dictionary = {
 }
 
 ## Machine catalog: money cost of every buildable type, in Build page order. The Collector is provided at the map center: not buildable, not removable.
-const COSTS: Dictionary = {"miner": 20, "smelter": 30, "assembler": 40, "conveyor": 2}
+## Orchestrator is the expensive late-game exception: needs playtesting, not fixed.
+const COSTS: Dictionary = {"miner": 20, "smelter": 30, "assembler": 40, "conveyor": 2, "orchestrator": 150}
 
 ## Share of the price given back when the player destroys a machine: one over this (half).
 const REFUND_DIVISOR: int = 2

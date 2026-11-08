@@ -89,7 +89,7 @@ func _restore_path() -> void:
 func test_defaults_are_loaded_when_there_is_no_user_file() -> void:
 	_use_tmp_path()
 	var chips: Array[ChipRessource] = _registry.get_all()
-	check_eq(chips.size(), 3, "three starter chips")
+	check_eq(chips.size(), 4, "four starter chips")
 	for chip: ChipRessource in chips:
 		check(chip.id > 0 and chip.name != "" and chip.description != "" and chip.prompt != "", "starter chip %s is complete" % chip.name)
 	check(not FileAccess.file_exists(TMP_PATH), "loading defaults writes nothing")
@@ -100,7 +100,7 @@ func test_defaults_are_loaded_when_there_is_no_user_file() -> void:
 func test_starter_prompts_only_use_real_tools() -> void:
 	_use_tmp_path()
 	var known: Array[String] = []
-	for scene: String in ["miner", "smelter", "assembler"]:
+	for scene: String in ["miner", "smelter", "assembler", "orchestrator"]:
 		var machine: Machine = load("res://scenes/machines/%s.tscn" % scene).instantiate()
 		for schema: Dictionary in machine.get_tool_schemas():
 			known.append(schema["name"])
@@ -111,6 +111,16 @@ func test_starter_prompts_only_use_real_tools() -> void:
 			if chip.prompt.contains(tool_name):
 				tools.append(tool_name)
 		check(not tools.is_empty(), "%s names a tool" % chip.name)
+	_restore_path()
+
+
+func test_factory_manager_starter_assigns_miner_pacer() -> void:
+	_use_tmp_path()
+	var manager: ChipRessource = _registry.get_from_id(4)
+	check(manager != null and manager.name == "Factory Manager", "manager is in the default registry")
+	if manager != null:
+		check(manager.prompt.contains("assign_chip") and manager.prompt.contains("Miner Pacer"), "prompt assigns the existing Miner chip")
+		check(manager.prompt.contains("Do not remove or replace"), "prompt preserves other assignments")
 	_restore_path()
 
 
@@ -154,7 +164,7 @@ func test_edits_survive_a_reload_with_stable_ids() -> void:
 	check_eq(_registry.get_from_id(starter_id).name, "renamed", "edit kept")
 	check_eq(_registry.get_from_id(starter_id).prompt, "new prompt", "edited prompt kept")
 	check(_registry.get_from_id(removed_id) == null, "removal kept")
-	check_eq(_registry.get_all().size(), 3, "3 defaults - 1 removed + 1 added")
+	check_eq(_registry.get_all().size(), 4, "4 defaults - 1 removed + 1 added")
 	var next: ChipRessource = _registry.add("persist_next", "p")
 	check(next.id > added_id and next.id != removed_id, "ids are never reused")
 	_restore_path()
@@ -178,7 +188,7 @@ func test_wrong_type_user_file_falls_back_to_defaults_and_reports() -> void:
 	file.store_string("[gd_resource type=\"Resource\" format=3]\n\n[resource]\n")
 	file.close()
 	_registry.load_registry()
-	check_eq(_registry.get_all().size(), 3, "defaults loaded")
+	check_eq(_registry.get_all().size(), 4, "defaults loaded")
 	check(_registry.save_error != "", "the problem is reported")
 	_restore_path()
 
