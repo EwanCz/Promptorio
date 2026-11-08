@@ -25,6 +25,92 @@ func test_every_cell_has_a_tile() -> void:
 	check_eq(_grid.get_cell_source_id(size), -1, "no tile outside the grid")
 
 
+func test_generated_biomes_cover_the_grid_with_every_type() -> void:
+	var rng: RandomNumberGenerator = RandomNumberGenerator.new()
+	rng.seed = 11
+	var biomes: Dictionary = _grid.generate_biomes(rng)
+	var size: Vector2i = autoload("GameState").GRID_SIZE
+	check_eq(biomes.size(), size.x * size.y, "every cell got a biome")
+	var seen: Dictionary = {}
+	for biome: int in biomes.values():
+		seen[biome] = true
+	check_eq(seen.size(), 3, "dirt, rock and grass all appear somewhere on the map")
+
+
+func test_biomes_cluster_instead_of_scattering() -> void:
+	var rng: RandomNumberGenerator = RandomNumberGenerator.new()
+	rng.seed = 11
+	var biomes: Dictionary = _grid.generate_biomes(rng)
+	var size: Vector2i = autoload("GameState").GRID_SIZE
+	var isolated: int = 0
+	var checked: int = 0
+	for x: int in range(1, size.x - 1):
+		for y: int in range(1, size.y - 1):
+			var cell: Vector2i = Vector2i(x, y)
+			checked += 1
+			var has_matching_neighbor: bool = false
+			for direction: Vector2i in GridMap2D.NEIGHBORS:
+				if biomes[cell + direction] == biomes[cell]:
+					has_matching_neighbor = true
+					break
+			if not has_matching_neighbor:
+				isolated += 1
+	check(isolated < checked * 0.05, "almost no cell sits alone inside a different biome (%d/%d checked)" % [isolated, checked])
+
+
+func test_biomes_are_random_per_build() -> void:
+	var rng_a: RandomNumberGenerator = RandomNumberGenerator.new()
+	rng_a.seed = 3
+	var layout_a: Dictionary = _grid.generate_biomes(rng_a)
+	var rng_b: RandomNumberGenerator = RandomNumberGenerator.new()
+	rng_b.seed = 4
+	var layout_b: Dictionary = _grid.generate_biomes(rng_b)
+	check(layout_a != layout_b, "different seeds draw different biome layouts")
+	var rng_repeat: RandomNumberGenerator = RandomNumberGenerator.new()
+	rng_repeat.seed = 3
+	check_eq(_grid.generate_biomes(rng_repeat), layout_a, "the same seed draws the same layout")
+
+
+func test_ground_tile_orients_the_edge_toward_the_grass_neighbor() -> void:
+	var cell: Vector2i = Vector2i(5, 5)
+	var expected_alt: Dictionary = {
+		Vector2i.UP: 0,
+		Vector2i.DOWN: TileSetAtlasSource.TRANSFORM_FLIP_V,
+		Vector2i.LEFT: TileSetAtlasSource.TRANSFORM_TRANSPOSE,
+		Vector2i.RIGHT: TileSetAtlasSource.TRANSFORM_TRANSPOSE | TileSetAtlasSource.TRANSFORM_FLIP_H,
+	}
+	for direction: Vector2i in expected_alt:
+		var biomes: Dictionary = {}
+		for neighbor: Vector2i in GridMap2D.NEIGHBORS:
+			biomes[cell + neighbor] = GridMap2D.Biome.DIRT
+		biomes[cell] = GridMap2D.Biome.DIRT
+		biomes[cell + direction] = GridMap2D.Biome.GRASS
+		var tile: Dictionary = _grid._ground_tile(cell, biomes)
+		check_eq(tile, {"coords": Vector2i(0, 1), "alt": expected_alt[direction]}, "dirt/grass edge oriented toward grass at %s" % direction)
+
+
+func test_ground_tile_is_plain_without_a_grass_neighbor() -> void:
+	var cell: Vector2i = Vector2i(5, 5)
+	var biomes: Dictionary = {}
+	for neighbor: Vector2i in GridMap2D.NEIGHBORS:
+		biomes[cell + neighbor] = GridMap2D.Biome.DIRT
+	biomes[cell] = GridMap2D.Biome.DIRT
+	check_eq(_grid._ground_tile(cell, biomes), {"coords": Vector2i(0, 0), "alt": 0}, "plain dirt tile with no grass neighbor")
+
+
+func test_grass_cells_never_use_an_edge_tile() -> void:
+	var cell: Vector2i = Vector2i(5, 5)
+	var biomes: Dictionary = {}
+	for neighbor: Vector2i in GridMap2D.NEIGHBORS:
+		biomes[cell + neighbor] = GridMap2D.Biome.DIRT
+	biomes[cell] = GridMap2D.Biome.GRASS
+	check_eq(_grid._ground_tile(cell, biomes), {"coords": Vector2i(2, 0), "alt": 0}, "grass stays plain even surrounded by another biome")
+
+
+func test_minesite_tile_is_not_the_plain_rock_tile() -> void:
+	check(GridMap2D.MINESITE_TILE != GridMap2D.BIOME_TILE[GridMap2D.Biome.ROCK], "the ore-deposit marker differs from plain rock, so rock ground is never mistaken for a minesite")
+
+
 func test_minesites() -> void:
 	_grid._build_ground()
 	check_eq(_grid.minesites.size(), GridMap2D.MINESITE_GROUPS * GridMap2D.GROUP_SIZE, "every minesite is listed")

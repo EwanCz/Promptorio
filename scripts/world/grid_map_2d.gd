@@ -1,16 +1,30 @@
 class_name GridMap2D
 extends TileMapLayer
 ## Ground tiles, minesites, hover highlight and cell clicks. Placement rules stay in GameState.
-## The minesites are drawn at random every time the map is built (see generate_minesites).
+## The ground biomes and the minesites are both drawn at random every time the map is built
+## (see generate_biomes and generate_minesites).
 
 signal cell_hovered(cell: Vector2i)
 signal cell_clicked(cell: Vector2i)
 
+## A ground biome: the clustered terrain the map is built from before minesites are cut into it.
+enum Biome { DIRT, ROCK, GRASS }
+
 const SOURCE_ID: int = 0
-const GROUND_TILES: Array[Vector2i] = [Vector2i(0, 0), Vector2i(2, 0)]
-const MOSSY_TILES: Array[Vector2i] = [Vector2i(3, 0), Vector2i(0, 1), Vector2i(1, 1)]
-const MINESITE_TILE: Vector2i = Vector2i(1, 0)
-const MOSSY_CHANCE: float = 0.12
+const BIOME_TILE: Dictionary = {Biome.DIRT: Vector2i(0, 0), Biome.ROCK: Vector2i(1, 0), Biome.GRASS: Vector2i(2, 0)}
+## The straight biome/grass edge tile for a non-grass biome (grass tile has none: it never borders itself).
+const EDGE_TILE: Dictionary = {Biome.DIRT: Vector2i(0, 1), Biome.ROCK: Vector2i(1, 1)}
+## Edge tiles are drawn grass-above by default; this orients them toward whichever side the grass neighbor is on.
+const EDGE_ALT_FOR_DIRECTION: Dictionary = {
+	Vector2i.UP: 0,
+	Vector2i.DOWN: TileSetAtlasSource.TRANSFORM_FLIP_V,
+	Vector2i.LEFT: TileSetAtlasSource.TRANSFORM_TRANSPOSE,
+	Vector2i.RIGHT: TileSetAtlasSource.TRANSFORM_TRANSPOSE | TileSetAtlasSource.TRANSFORM_FLIP_H,
+}
+const MINESITE_TILE: Vector2i = Vector2i(2, 1)
+## Random count of Voronoi-style biome seed points per map: fewer means larger, simpler patches.
+const BIOME_SEEDS_MIN: int = 7
+const BIOME_SEEDS_MAX: int = 12
 const MINESITE_GROUPS: int = 4
 const GROUP_SIZE: int = 3
 ## The first group lies entirely within this many cells of the collector (in both directions).
@@ -20,7 +34,6 @@ const COLLECTOR_CLEARANCE: int = 5
 ## Tries to fit one group before giving up on it (a group fits at once on a map this empty).
 const GROUP_ATTEMPTS: int = 200
 const NEIGHBORS: Array[Vector2i] = [Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT, Vector2i.UP]
-const MAP_SEED: int = 1337
 const HOVER_OK: Color = Color(0.2, 1.0, 0.3, 0.35)
 const HOVER_BLOCKED: Color = Color(1.0, 0.2, 0.2, 0.35)
 const REFUSE_FLASH_COLOR: Color = Color(1.0, 0.2, 0.2, 0.6)
@@ -31,7 +44,8 @@ static var layout_override: Array[Vector2i] = []
 
 ## Every minesite of the current map. The first GROUP_SIZE cells are the group near the collector.
 var minesites: Array[Vector2i] = []
-## The ground tile under every cell, so a cell that stops being a minesite gets its own back.
+## The ground tile (atlas coords + alternative/transform id) under every cell, so a cell that
+## stops being a minesite gets its own back.
 var _ground: Dictionary = {}
 var hovered_cell: Vector2i = Vector2i(-1, -1)
 ## The machine type being placed ("" for none): the highlight follows its rules.
@@ -170,15 +184,59 @@ func _distance(a: Vector2i, b: Vector2i) -> int:
 	return maxi(absi(a.x - b.x), absi(a.y - b.y))
 
 
-func _build_ground() -> void:
-	var rng: RandomNumberGenerator = RandomNumberGenerator.new()
-	rng.seed = MAP_SEED
+## One Voronoi-style seed per clustered patch: biome_rng picks their count, position and type, then
+## every cell takes the biome of its nearest seed. A handful of seeds scattered over a GRID_SIZE map
+## naturally yields a few large, contiguous, differently-shaped patches per biome, not a checkerboard.
+func generate_biomes(biome_rng: RandomNumberGenerator) -> Dictionary:
+	var biome_types: Array[Biome] = [Biome.DIRT, Biome.ROCK, Biome.GRASS]
+	var seeds: Array[Dictionary] = []
+	for i: int in biome_rng.randi_range(BIOME_SEEDS_MIN, BIOME_SEEDS_MAX):
+		var pos: Vector2i = Vector2i(biome_rng.randi_range(0, GameState.GRID_SIZE.x - 1), biome_rng.randi_range(0, GameState.GRID_SIZE.y - 1))
+		seeds.append({"pos": pos, "biome": biome_types[biome_rng.randi() % biome_types.size()]})
+	for biome: Biome in biome_types:
+		if not seeds.any(func(s: Dictionary) -> bool: return s["biome"] == biome):
+			seeds[biome_rng.randi() % seeds.size()]["biome"] = biome
+	var biomes: Dictionary = {}
 	for x: int in GameState.GRID_SIZE.x:
 		for y: int in GameState.GRID_SIZE.y:
-			var pool: Array[Vector2i] = MOSSY_TILES if rng.randf() < MOSSY_CHANCE else GROUND_TILES
-			var tile: Vector2i = pool[rng.randi() % pool.size()]
-			_ground[Vector2i(x, y)] = tile
-			set_cell(Vector2i(x, y), SOURCE_ID, tile)
+			var cell: Vector2i = Vector2i(x, y)
+			var nearest: Dictionary = seeds[0]
+			var nearest_dist: int = _squared_distance(cell, seeds[0]["pos"])
+			for seed_point: Dictionary in seeds:
+				var dist: int = _squared_distance(cell, seed_point["pos"])
+				if dist < nearest_dist:
+					nearest = seed_point
+					nearest_dist = dist
+			biomes[cell] = nearest["biome"]
+	return biomes
+
+
+func _squared_distance(a: Vector2i, b: Vector2i) -> int:
+	var delta: Vector2i = a - b
+	return delta.x * delta.x + delta.y * delta.y
+
+
+## The atlas coords + transform for one ground cell: its plain biome tile, unless a grass neighbor
+## calls for the biome/grass edge tile oriented toward that neighbor.
+func _ground_tile(cell: Vector2i, biomes: Dictionary) -> Dictionary:
+	var biome: Biome = biomes[cell]
+	if EDGE_TILE.has(biome):
+		for direction: Vector2i in NEIGHBORS:
+			if biomes.get(cell + direction, biome) == Biome.GRASS:
+				return {"coords": EDGE_TILE[biome], "alt": EDGE_ALT_FOR_DIRECTION[direction]}
+	return {"coords": BIOME_TILE[biome], "alt": 0}
+
+
+func _build_ground() -> void:
+	var biome_rng: RandomNumberGenerator = RandomNumberGenerator.new()
+	biome_rng.randomize()
+	var biomes: Dictionary = generate_biomes(biome_rng)
+	for x: int in GameState.GRID_SIZE.x:
+		for y: int in GameState.GRID_SIZE.y:
+			var cell: Vector2i = Vector2i(x, y)
+			var tile: Dictionary = _ground_tile(cell, biomes)
+			_ground[cell] = tile
+			set_cell(cell, SOURCE_ID, tile["coords"], tile["alt"])
 	var site_rng: RandomNumberGenerator = RandomNumberGenerator.new()
 	site_rng.randomize()
 	set_minesites(layout_override.duplicate() if not layout_override.is_empty() else generate_minesites(site_rng))
@@ -187,7 +245,7 @@ func _build_ground() -> void:
 ## Makes these cells the map's minesites (a loaded save puts its own back). The previous ones turn back into ground.
 func set_minesites(cells: Array[Vector2i]) -> void:
 	for cell: Vector2i in minesites:
-		set_cell(cell, SOURCE_ID, _ground[cell])
+		set_cell(cell, SOURCE_ID, _ground[cell]["coords"], _ground[cell]["alt"])
 	minesites = cells.duplicate()
 	for cell: Vector2i in minesites:
 		set_cell(cell, SOURCE_ID, MINESITE_TILE)
