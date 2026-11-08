@@ -42,6 +42,7 @@ func check_key() -> void:
 	if provider.config_error() != "":
 		EventBus.key_checked.emit("error", provider.config_error())
 		return
+	var key: String = Settings.get_api_key(Settings.provider)
 	var response: Dictionary = await _send(provider.build_check_request())
 	if id != _key_check_id:
 		return
@@ -52,7 +53,7 @@ func check_key() -> void:
 		EventBus.key_checked.emit("valid", "")
 	else:
 		var state: String = "invalid" if status == 401 or status == 403 else "error"
-		EventBus.key_checked.emit(state, _http_error(status, response["body"]))
+		EventBus.key_checked.emit(state, _http_error(status, response["body"], key))
 
 
 func _pump() -> void:
@@ -67,10 +68,11 @@ func _pump() -> void:
 
 func _run(job: Dictionary) -> void:
 	var provider: LLMProvider = _make_provider()
+	var provider_name: String = Settings.provider
 	var outcome: Dictionary = {"calls": [], "error": "unknown provider '%s'" % Settings.provider, "status": 0}
 	if provider != null:
 		for attempt: int in range(MAX_RETRIES + 1):
-			outcome = await _execute(provider, job)
+			outcome = await _execute(provider, provider_name, job)
 			if not _requester_alive(job["requester_id"]):
 				break
 			if outcome["status"] != 429 or attempt == MAX_RETRIES:
@@ -93,8 +95,9 @@ func _run(job: Dictionary) -> void:
 	_pump()
 
 
-func _execute(provider: LLMProvider, job: Dictionary) -> Dictionary:
-	if provider.requires_network() and Settings.get_api_key(Settings.provider) == "":
+func _execute(provider: LLMProvider, provider_name: String, job: Dictionary) -> Dictionary:
+	var key: String = Settings.get_api_key(provider_name)
+	if provider.requires_network() and key == "":
 		return _outcome([], "no API key (set one in Settings or .env)", 0)
 	if provider.config_error() != "":
 		return _outcome([], provider.config_error(), 0)
@@ -115,7 +118,7 @@ func _execute(provider: LLMProvider, job: Dictionary) -> Dictionary:
 	if result != HTTPRequest.RESULT_SUCCESS:
 		return _outcome([], "network error (result %d)" % result, 0)
 	if status != 200:
-		return _outcome([], _http_error(status, raw), status)
+		return _outcome([], _http_error(status, raw, key), status)
 	var parsed: Variant = JSON.parse_string(raw.get_string_from_utf8())
 	if typeof(parsed) != TYPE_DICTIONARY:
 		return _outcome([], "invalid JSON response", status)
@@ -147,13 +150,13 @@ func _send(request: Dictionary) -> Dictionary:
 ## "HTTP 401 (authentication_error)": the status plus the API's error type. The type always has
 ## the configured key masked (a provider could echo it there instead of in `message`); the
 ## message itself (which may also echo part of the key) is appended only when diagnostics are on.
-func _http_error(status: int, raw: PackedByteArray) -> String:
+func _http_error(status: int, raw: PackedByteArray, key: String) -> String:
 	var parsed: Variant = JSON.parse_string(raw.get_string_from_utf8())
 	var error: Variant = parsed.get("error") if typeof(parsed) == TYPE_DICTIONARY else null
-	var type: String = _mask_key(str(error.get("type", ""))) if typeof(error) == TYPE_DICTIONARY else ""
+	var type: String = _mask_key(str(error.get("type", "")), key) if typeof(error) == TYPE_DICTIONARY else ""
 	var text: String = "HTTP %d (%s)" % [status, type] if type != "" else "HTTP %d" % status
 	if typeof(error) == TYPE_DICTIONARY and _debug_enabled():
-		var message: String = _sanitize(str(error.get("message", "")))
+		var message: String = _sanitize(str(error.get("message", "")), key)
 		if message != "":
 			text += ": " + message
 	return text
@@ -167,16 +170,15 @@ func _debug_enabled() -> bool:
 ## Replaces the configured API key, verbatim, with [redacted]. Safe to apply unconditionally,
 ## unlike _sanitize's token-shaped heuristic, which would also catch short provider-defined
 ## identifiers (e.g. "authentication_error" is 21 characters).
-func _mask_key(text: String) -> String:
-	var key: String = Settings.get_api_key(Settings.provider)
+func _mask_key(text: String, key: String) -> String:
 	if key != "":
 		text = text.replace(key, "[redacted]")
 	return text
 
 
 ## One line, secrets masked, capped at DEBUG_MAX_CHARS.
-func _sanitize(message: String) -> String:
-	message = _mask_key(message)
+func _sanitize(message: String, key: String) -> String:
+	message = _mask_key(message, key)
 	# shortcut: masks any 20+ char token-like run (covers other key formats), may hide long identifiers
 	var secret: RegEx = RegEx.create_from_string("[A-Za-z0-9_\\-]{20,}")
 	message = secret.sub(message, "[redacted]", true)
