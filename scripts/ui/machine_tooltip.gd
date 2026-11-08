@@ -135,12 +135,16 @@ func _refresh_operation() -> void:
 	var stock: Array[Dictionary] = []
 	if _machine is CraftMachine:
 		var craft: CraftMachine = _machine as CraftMachine
+		if craft is Assembler:
+			var fast: bool = (craft as Assembler).mode == Assembler.MODE_FAST
+			op.append(_icon_entry("mode_fast" if fast else "mode_normal", "", "Fast mode: extra inputs, shorter time" if fast else "Normal mode"))
 		var product: ItemData = craft.get_product()
 		if product == null:
 			op.append(_icon_entry("warn", "", "No product"))
 		else:
-			for id: String in product.inputs:
-				op.append(_item_entry(id, "x%d" % int(product.inputs[id]) if int(product.inputs[id]) > 1 else "", "Needs %s"))
+			var needs: Dictionary = craft.get_effective_inputs()
+			for id: String in needs:
+				op.append(_item_entry(id, "x%d" % int(needs[id]) if int(needs[id]) > 1 else "", "Needs %s"))
 			op.append(_icon_entry("dir_right", "", "Makes"))
 			op.append(_item_entry(product.id, "", "Makes %s"))
 		for id: String in craft.stock:

@@ -75,6 +75,7 @@ Tooltip current-action content:
 - Miner: production rate (one unit of its resource per `mine_ticks`, which depends on the resource) and whether its output is blocked.
 - Smelter / Assembler: recipe inputs and output, stock, idle/working/output-blocked state, and remaining craft time while working.
 - Smelter additionally shows temperature and whether cooling is enabled.
+- Assembler additionally shows its production mode (an icon, normal or fast) first in the recipe row; the recipe quantities shown are the active mode's (fast mode doubles each input).
 - Conveyor: facing direction and whether it holds an item (and the item type when occupied).
 - Collector: items sold and money earned.
 
