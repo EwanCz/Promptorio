@@ -172,6 +172,24 @@ func test_debug_off_reports_status_and_type_only() -> void:
 	check(not _llm._debug_enabled(), "diagnostics are off by default")
 
 
+## A provider could put the key in `error.type` instead of `error.message`; that field must be
+## masked too, since it is always included in the ChipLog text regardless of the debug flag.
+func test_error_type_field_is_sanitized_with_debug_off() -> void:
+	_settings.api_key = "my-secret-key-123"
+	var body: String = JSON.stringify({"error": {"type": "my-secret-key-123"}})
+	var id: int = await _ask([_reply(HTTPRequest.RESULT_SUCCESS, 401, body)])
+	_check_failed(id, "HTTP 401 ([redacted])", "type field masked, diagnostics off")
+	check(not _failed[id].contains("my-secret-key-123"), "key never appears in the failure")
+
+
+func test_error_type_field_is_sanitized_with_debug_on() -> void:
+	_debug_on()
+	var body: String = JSON.stringify({"error": {"type": "my-secret-key-123"}})
+	var id: int = await _ask([_reply(HTTPRequest.RESULT_SUCCESS, 401, body)])
+	_check_failed(id, "HTTP 401 ([redacted])", "type field masked, diagnostics on")
+	check(not _failed[id].contains("my-secret-key-123"), "key never appears in the failure")
+
+
 func test_debug_flag_value_must_be_exactly_one() -> void:
 	OS.set_environment("PROMPTORIO_DEBUG_LLM", "true")
 	check(not _llm._debug_enabled(), "'true' does not enable diagnostics")

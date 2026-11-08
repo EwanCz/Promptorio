@@ -144,12 +144,13 @@ func _send(request: Dictionary) -> Dictionary:
 	return {"result": response[0], "status": response[1], "body": response[3]}
 
 
-## "HTTP 401 (authentication_error)": the status plus the API's error type. The API's message
-## (which may echo part of the key) is appended only when local diagnostics are on.
+## "HTTP 401 (authentication_error)": the status plus the API's error type. The type always has
+## the configured key masked (a provider could echo it there instead of in `message`); the
+## message itself (which may also echo part of the key) is appended only when diagnostics are on.
 func _http_error(status: int, raw: PackedByteArray) -> String:
 	var parsed: Variant = JSON.parse_string(raw.get_string_from_utf8())
 	var error: Variant = parsed.get("error") if typeof(parsed) == TYPE_DICTIONARY else null
-	var type: String = str(error.get("type", "")) if typeof(error) == TYPE_DICTIONARY else ""
+	var type: String = _mask_key(str(error.get("type", ""))) if typeof(error) == TYPE_DICTIONARY else ""
 	var text: String = "HTTP %d (%s)" % [status, type] if type != "" else "HTTP %d" % status
 	if typeof(error) == TYPE_DICTIONARY and _debug_enabled():
 		var message: String = _sanitize(str(error.get("message", "")))
@@ -163,11 +164,19 @@ func _debug_enabled() -> bool:
 	return OS.has_feature("editor") and OS.get_environment("PROMPTORIO_DEBUG_LLM") == "1"
 
 
-## One line, secrets masked, capped at DEBUG_MAX_CHARS.
-func _sanitize(message: String) -> String:
+## Replaces the configured API key, verbatim, with [redacted]. Safe to apply unconditionally,
+## unlike _sanitize's token-shaped heuristic, which would also catch short provider-defined
+## identifiers (e.g. "authentication_error" is 21 characters).
+func _mask_key(text: String) -> String:
 	var key: String = Settings.get_api_key(Settings.provider)
 	if key != "":
-		message = message.replace(key, "[redacted]")
+		text = text.replace(key, "[redacted]")
+	return text
+
+
+## One line, secrets masked, capped at DEBUG_MAX_CHARS.
+func _sanitize(message: String) -> String:
+	message = _mask_key(message)
 	# shortcut: masks any 20+ char token-like run (covers other key formats), may hide long identifiers
 	var secret: RegEx = RegEx.create_from_string("[A-Za-z0-9_\\-]{20,}")
 	message = secret.sub(message, "[redacted]", true)
