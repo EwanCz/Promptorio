@@ -193,6 +193,41 @@ func test_smelter_cooler_manages_heat_with_cooling_and_pauses_only_in_an_emergen
 	_restore_path()
 
 
+## A Smelter heats at HEAT_PER_TICK while working continuously (0.6/tick), and the shipped Cooler only
+## starts cooling at 100deg, 50deg below EXPLODE_AT (150). The component's own default timeout (100 ticks,
+## 10s) alone lets temperature climb 60deg between two polls, more than that margin, so the registry ships
+## this chip with a tighter default_timeout instead (see ChipRessource.default_timeout).
+func test_smelter_cooler_ships_with_a_safe_default_timeout() -> void:
+	_use_tmp_path()
+	var cooler: ChipRessource = _smelter_cooler(_registry.get_all())
+	check(cooler.default_timeout > 0 and cooler.default_timeout < ChipComponent.DEFAULT_TIMEOUT, "tighter than the component default")
+	var margin: float = Smelter.EXPLODE_AT - Smelter.OVERHEAT_AT
+	check(cooler.default_timeout * Smelter.HEAT_PER_TICK < margin, "one full poll interval heats less than the cooling margin")
+	var smelter: Machine = load("res://scenes/machines/smelter.tscn").instantiate()
+	tree.root.add_child(smelter)
+	var component: ChipComponent = smelter.attach_chip(cooler.id)
+	check_eq(component.timeout, cooler.default_timeout, "a fresh attachment from the registry starts at the safe default, not the component's")
+	smelter.free()
+	_restore_path()
+
+
+func test_existing_unedited_cooler_receives_timeout_default() -> void:
+	_use_tmp_path()
+	var cooler: ChipRessource = _registry.get_from_id(2)
+	cooler.default_timeout = 0
+	_registry.update(cooler.id, cooler.name, cooler.description, cooler.prompt)
+	_registry.load_registry()
+	check_eq(_registry.get_from_id(2).default_timeout, 30, "existing unedited cooler receives the shipped timeout")
+	_registry.load_registry()
+	check_eq(_registry.get_from_id(2).default_timeout, 30, "timeout migration persists")
+	cooler = _registry.get_from_id(2)
+	cooler.default_timeout = 0
+	_registry.update(cooler.id, cooler.name, cooler.description, "custom prompt")
+	_registry.load_registry()
+	check_eq(_registry.get_from_id(2).default_timeout, 0, "edited starter keeps its own default")
+	_restore_path()
+
+
 func test_edits_survive_a_reload_with_stable_ids() -> void:
 	_use_tmp_path()
 	var added: ChipRessource = _registry.add("persist_new", "np", "nd")

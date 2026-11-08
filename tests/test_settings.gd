@@ -26,6 +26,9 @@ func before_each() -> void:
 		"request_timeout": _settings.request_timeout,
 		"chip_cooldown": _settings.chip_cooldown,
 		"max_tokens": _settings.max_tokens,
+		"master_volume": _settings.master_volume,
+		"sfx_volume": _settings.sfx_volume,
+		"muted": _settings.muted,
 		"env_path": _settings.env_path,
 	}
 
@@ -41,6 +44,7 @@ func after_each() -> void:
 		_settings.set(key, _saved_values[key])
 	DirAccess.remove_absolute(TMP_ENV)
 	_settings.load_env()
+	_settings.apply_audio()
 
 
 func test_save_and_load_round_trip() -> void:
@@ -90,6 +94,90 @@ func test_load_clamps_out_of_range_values() -> void:
 	_settings.load_settings()
 	check_eq(_settings.max_concurrency, 16, "max_concurrency clamped to 16")
 	check_eq(_settings.max_tokens, 300, "max_tokens clamped to 300")
+
+
+func test_audio_defaults_and_round_trip() -> void:
+	DirAccess.remove_absolute(_settings.PATH)
+	_settings.master_volume = 0.1
+	_settings.sfx_volume = 0.1
+	_settings.muted = true
+	_settings.load_settings()
+	check_eq([_settings.master_volume, _settings.sfx_volume, _settings.muted], [0.1, 0.1, true], "a missing file leaves the audio values alone")
+	_settings.master_volume = 0.25
+	_settings.sfx_volume = 0.5
+	_settings.muted = true
+	_settings.save_settings()
+	_settings.master_volume = 0.8
+	_settings.sfx_volume = 1.0
+	_settings.muted = false
+	_settings.load_settings()
+	check_eq([_settings.master_volume, _settings.sfx_volume, _settings.muted], [0.25, 0.5, true], "audio values round-trip through the [audio] section")
+	var cfg: ConfigFile = ConfigFile.new()
+	cfg.load(_settings.PATH)
+	check(cfg.has_section_key("audio", "master_volume") and cfg.has_section_key("audio", "muted"), "saved under [audio]")
+
+
+func test_old_settings_file_without_audio_section_loads() -> void:
+	var cfg: ConfigFile = ConfigFile.new()
+	cfg.set_value(_settings.SECTION, "provider", "anthropic")
+	cfg.set_value(_settings.SECTION, "max_concurrency", 2)
+	cfg.save(_settings.PATH)
+	_settings.master_volume = 0.3
+	_settings.sfx_volume = 0.3
+	_settings.muted = true
+	_settings.load_settings()
+	check_eq([_settings.provider, _settings.max_concurrency], ["anthropic", 2], "other settings load")
+	check_eq([_settings.master_volume, _settings.sfx_volume, _settings.muted], [0.8, 1.0, false], "audio falls back to its defaults")
+
+
+func test_load_clamps_and_sanitizes_audio_values() -> void:
+	var cfg: ConfigFile = ConfigFile.new()
+	cfg.set_value(_settings.SECTION, "provider", "openai")
+	cfg.set_value(_settings.AUDIO_SECTION, "master_volume", 7.5)
+	cfg.set_value(_settings.AUDIO_SECTION, "sfx_volume", -3)
+	cfg.set_value(_settings.AUDIO_SECTION, "muted", true)
+	cfg.save(_settings.PATH)
+	_settings.load_settings()
+	check_eq([_settings.master_volume, _settings.sfx_volume], [1.0, 0.0], "out-of-range volumes are clamped")
+	check_eq([_settings.muted, _settings.provider], [true, "openai"], "mute and other settings unaffected")
+	cfg.set_value(_settings.AUDIO_SECTION, "master_volume", "loud")
+	cfg.set_value(_settings.AUDIO_SECTION, "sfx_volume", NAN)
+	cfg.set_value(_settings.AUDIO_SECTION, "muted", "yes")
+	cfg.save(_settings.PATH)
+	_settings.load_settings()
+	check_eq([_settings.master_volume, _settings.sfx_volume, _settings.muted], [0.8, 1.0, false], "wrong types and NaN fall back to the defaults")
+
+
+func test_audio_settings_do_not_change_the_key_requirement() -> void:
+	_settings.provider = "anthropic"
+	_settings.api_key = ""
+	_settings.openai_api_key = ""
+	_settings.env_path = "user://missing_test_settings.env"
+	_settings.load_env()
+	_settings.muted = true
+	_settings.master_volume = 0.0
+	check(_settings.needs_api_key(), "needs_api_key does not depend on audio")
+
+
+func test_apply_audio_drives_the_master_bus() -> void:
+	var master: int = AudioServer.get_bus_index("Master")
+	var before_db: float = AudioServer.get_bus_volume_db(master)
+	var before_mute: bool = AudioServer.is_bus_mute(master)
+	_settings.master_volume = 0.5
+	_settings.muted = false
+	_settings.apply_audio()
+	check(absf(AudioServer.get_bus_volume_db(master) - linear_to_db(0.5)) < 0.01, "master volume applied as dB")
+	check(not AudioServer.is_bus_mute(master), "not muted")
+	_settings.muted = true
+	_settings.apply_audio()
+	check(AudioServer.is_bus_mute(master), "mute applied to the bus")
+	_settings.master_volume = 0.0
+	_settings.muted = false
+	_settings.apply_audio()
+	check_eq(AudioServer.get_bus_volume_db(master), -80.0, "volume 0 is the -80 dB floor")
+	check_eq(_settings.volume_to_db(1.0), 0.0, "full volume is 0 dB")
+	AudioServer.set_bus_volume_db(master, before_db)
+	AudioServer.set_bus_mute(master, before_mute)
 
 
 func test_settings_changed_signal() -> void:

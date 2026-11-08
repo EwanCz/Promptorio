@@ -115,6 +115,18 @@ func test_chip_timers_do_not_share_progress() -> void:
 	autoload("ChipRegistry").remove(second.id)
 
 
+func test_attach_without_an_explicit_timeout_follows_the_chip_default() -> void:
+	var plain: ChipRessource = _new_chip("plain", "no opinion")
+	var tight: ChipRessource = _new_chip("tight", "needs a fast poll")
+	tight.default_timeout = 45
+	check_eq(_machine.attach_chip(plain.id).timeout, ChipComponent.DEFAULT_TIMEOUT, "a chip with no opinion starts at the component default")
+	check_eq(_machine.attach_chip(tight.id).timeout, 45, "a chip with its own default_timeout starts there instead")
+	_machine.detach_chip(tight.id)
+	check_eq(_machine.attach_chip(tight.id, 12).timeout, 12, "an explicit timeout still overrides the chip's own default")
+	autoload("ChipRegistry").remove(plain.id)
+	autoload("ChipRegistry").remove(tight.id)
+
+
 func test_attach_detach_and_timeout() -> void:
 	check_eq(_machine.chips, [_comp], "attached")
 	check_eq(_comp.get_parent(), _machine, "component is a child of the machine")
