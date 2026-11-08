@@ -35,8 +35,8 @@ func test_pause_menu_and_bar_button_are_in_the_scene() -> void:
 	check(_menu != null and not _menu.visible, "the pause menu exists and starts hidden")
 	check_eq(_menu.process_mode, Node.PROCESS_MODE_ALWAYS, "it keeps working while paused")
 	var button: Button = _main.get_node("%MenuButton")
-	check(button.get_parent() == _main.get_node("Game/Bar/VBoxContainer"), "the Menu button sits in the Bar")
-	check(button.get_index() < _main.get_node("%SettingsButton").get_index(), "above Settings, which stays last")
+	check(button.get_parent() == _main.get_node("%BarButtons"), "the Menu button sits in the Bar's button row")
+	check(button.get_index() < _main.get_node("%SettingsButton").get_index(), "before Settings, which stays last")
 
 
 func test_bar_button_opens_and_resume_closes() -> void:

@@ -14,6 +14,7 @@
 [ext_resource type="Script" uid="uid://wrtngwcfpfw4" path="res://scripts/world/placement.gd" id="12_placement"]
 [ext_resource type="PackedScene" path="res://scenes/ui/pages/build_page.tscn" id="13_build"]
 [ext_resource type="PackedScene" path="res://scenes/ui/popups/resources_page.tscn" id="14_resources"]
+[ext_resource type="PackedScene" path="res://scenes/ui/popups/tools_page.tscn" id="15_tools"]
 [ext_resource type="PackedScene" path="res://scenes/ui/popups/save_dialog.tscn" id="14_save"]
 [ext_resource type="PackedScene" path="res://scenes/ui/popups/pause_menu.tscn" id="15_pause"]
 
@@ -113,25 +114,30 @@ layout_mode = 2
 unique_name_in_owner = true
 layout_mode = 2
 
-[node name="MenuButton" type="Button" parent="Game/Bar/VBoxContainer"]
+[node name="BarButtons" type="HBoxContainer" parent="Game/Bar/VBoxContainer"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "Menu"
+alignment = 2
 
-[node name="ResourcesButton" type="Button" parent="Game/Bar/VBoxContainer"]
+[node name="MenuButton" type="Button" parent="Game/Bar/VBoxContainer/BarButtons"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "Resources"
 
-[node name="SavesButton" type="Button" parent="Game/Bar/VBoxContainer" unique_id=1767811997]
+[node name="ResourcesButton" type="Button" parent="Game/Bar/VBoxContainer/BarButtons"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "Save / Load"
 
-[node name="SettingsButton" type="Button" parent="Game/Bar/VBoxContainer" unique_id=947646898]
+[node name="ToolsButton" type="Button" parent="Game/Bar/VBoxContainer/BarButtons"]
 unique_name_in_owner = true
 layout_mode = 2
-size_flags_horizontal = 8
+
+[node name="SavesButton" type="Button" parent="Game/Bar/VBoxContainer/BarButtons" unique_id=1767811997]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="SettingsButton" type="Button" parent="Game/Bar/VBoxContainer/BarButtons" unique_id=947646898]
+unique_name_in_owner = true
+layout_mode = 2
 
 [node name="UI" type="CanvasLayer" parent="." unique_id=1858705596]
 
@@ -148,6 +154,9 @@ unique_name_in_owner = true
 unique_name_in_owner = true
 
 [node name="ResourcesPage" parent="UI" instance=ExtResource("14_resources")]
+unique_name_in_owner = true
+
+[node name="ToolsPage" parent="UI" instance=ExtResource("15_tools")]
 unique_name_in_owner = true
 
 [node name="PauseMenu" parent="UI" instance=ExtResource("15_pause")]
