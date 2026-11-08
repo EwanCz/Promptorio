@@ -73,7 +73,9 @@ func _listed(manager: ChipManager, chip_name: String) -> bool:
 
 func test_the_menu_has_its_five_buttons_and_no_credits() -> void:
 	for button_name: String in ["PlayButton", "LoadButton", "ChipsButton", "OptionsButton", "ExitButton"]:
-		check(_menu.get_node_or_null("%" + button_name) is PixelButton, button_name + " exists")
+		var button: Button = _menu.get_node_or_null("%" + button_name)
+		check(button is Button, button_name + " exists")
+		check(button != null and button.icon != null, button_name + " has an icon")
 	check(_menu.get_node_or_null("%CreditsButton") == null, "there is no Credits button")
 	check(not (_menu.get_node("%SaveDialog") as Control).visible, "popups start hidden")
 
