@@ -27,6 +27,9 @@ const COSTS: Dictionary = {"miner": 20, "smelter": 30, "assembler": 40, "conveyo
 ## Share of the price given back when the player destroys a machine: one over this (half).
 const REFUND_DIVISOR: int = 2
 
+## How long a freshly placed machine takes to pop in to full size.
+const PLACE_ANIM_SECONDS: float = 0.18
+
 @export var grid: GridMap2D
 @export var machines: Node2D
 
@@ -79,11 +82,12 @@ func place(type: String, cell: Vector2i) -> Machine:
 	return machine
 
 
-## Recreates a machine from a save: same rules as place(), but with the saved direction and id.
+## Recreates a machine from a save: same rules as place(), but with the saved direction and id, and no
+## placement animation (a loaded game should not have every machine pop in at once).
 func restore_machine(type: String, cell: Vector2i, direction: Vector2i, id: int) -> Machine:
 	if not SCENES.has(type) or not grid.can_place(type, cell):
 		return null
-	return _spawn(type, cell, direction, id)
+	return _spawn(type, cell, direction, id, false)
 
 
 ## Money given back for destroying a machine of this type: half its price, rounded down. 0 for a type
@@ -109,7 +113,7 @@ func try_place(type: String, cell: Vector2i) -> Machine:
 	return machine
 
 
-func _spawn(type: String, cell: Vector2i, direction: Vector2i, id: int) -> Machine:
+func _spawn(type: String, cell: Vector2i, direction: Vector2i, id: int, animate: bool = true) -> Machine:
 	var machine: Machine = (SCENES[type] as PackedScene).instantiate() as Machine
 	machine.cell = cell
 	machine.facing = direction
@@ -117,7 +121,20 @@ func _spawn(type: String, cell: Vector2i, direction: Vector2i, id: int) -> Machi
 	machine.position = GameState.cell_to_world(cell)
 	machines.add_child(machine)
 	GameState.register_machine(machine, cell)
+	if animate:
+		_play_placement_animation(machine)
 	return machine
+
+
+## Pops the machine in from nothing: a purely visual tween on its own node, so it never touches simulation
+## timing (EventBus.tick_fired keeps its own fixed pace regardless).
+func _play_placement_animation(machine: Machine) -> void:
+	machine.scale = Vector2.ZERO
+	machine.modulate.a = 0.0
+	var tween: Tween = machine.create_tween()
+	tween.set_parallel(true)
+	tween.tween_property(machine, "scale", Vector2.ONE, PLACE_ANIM_SECONDS).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tween.tween_property(machine, "modulate:a", 1.0, PLACE_ANIM_SECONDS).set_ease(Tween.EASE_OUT)
 
 
 func _set_selected(type: String) -> void:
