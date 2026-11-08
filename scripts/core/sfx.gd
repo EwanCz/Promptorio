@@ -53,6 +53,7 @@ func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	library = load(SfxLibrary.PATH) as SfxLibrary
 	setup_buses()
+	apply_volumes()
 	for i: int in POOL_SIZE:
 		var voice: Voice = Voice.new()
 		voice.player = AudioStreamPlayer.new()
@@ -139,6 +140,14 @@ func reset_stats() -> void:
 	stats = {"requested": 0, "played": 0, "unknown": 0, "cooldown": 0, "paused": 0, "too_far": 0, "stolen": 0, "dropped": 0}
 	_last_play_msec.clear()
 	_warned.clear()
+
+
+func apply_volumes() -> void:
+	AudioServer.set_bus_volume_db(AudioServer.get_bus_index(BUS_MASTER), Settings.volume_to_db(Settings.master_volume))
+	AudioServer.set_bus_mute(AudioServer.get_bus_index(BUS_MASTER), Settings.muted)
+	var effects: int = AudioServer.get_bus_index(BUS_SFX)
+	if effects >= 0:
+		AudioServer.set_bus_volume_db(effects, Settings.volume_to_db(Settings.sfx_volume))
 
 
 ## Gain in dB for a screen-space distance: 0 inside FULL_VOLUME_RADIUS, then a linear fade of the amplitude to
