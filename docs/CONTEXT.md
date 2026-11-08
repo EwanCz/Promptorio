@@ -148,6 +148,7 @@ Env: `GODOT` (godot binary, default `godot`), `TEST_TIMEOUT` (seconds, default 1
 - Leave no global state behind. Disconnect any signals you connect, restore any `Settings` / `GameState` value you change, and free any node you create (`after_each()`). `test_settings.gd` shows how to back up and restore `user://settings.cfg`.
 - Never store a lambda in a member variable of a test (it captures `self`, creating a reference cycle that leaks and prints "ObjectDB instances were leaked" at exit). Use a method for signal handlers, or a local lambda inside the test. A clean run prints no leak warnings.
 - Test through public methods and signals, not private `_members`, unless there is no other way (the LLM queue tests read `_in_flight` / `_queue`).
+- The map draws random minesites at every start. The runner forces a fixed layout (`GridMap2D.layout_override`, set in `tests/run_tests.gd`), so tests may rely on those cells; a test about the random draw clears it and puts it back.
 - New `class_name` scripts need a class-cache refresh; `tests/run.sh` does it, a bare `godot --headless -s` does not.
 - The real HTTP path is tested offline by replaying scripted responses through `LLMManager._send()` (`tests/test_llm_http.gd`, `tests/support/scripted_llm_manager.gd`). A real network round-trip is still untested.
 

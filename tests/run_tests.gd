@@ -7,6 +7,13 @@ extends SceneTree
 const TESTS_DIR: String = "res://tests"
 ## Tests save chips here, never to the player's user://chip_registry.tres.
 const TEST_CHIPS_PATH: String = "user://test_chip_registry.tres"
+## The map draws random minesites; tests get this fixed layout so the cells they use stay valid.
+const TEST_MINESITES: Array[Vector2i] = [
+	Vector2i(4, 4), Vector2i(5, 4), Vector2i(4, 5),
+	Vector2i(26, 4), Vector2i(27, 4), Vector2i(27, 5),
+	Vector2i(4, 15), Vector2i(5, 15), Vector2i(5, 14),
+	Vector2i(26, 15), Vector2i(27, 15), Vector2i(26, 14),
+]
 
 
 func _initialize() -> void:
@@ -20,6 +27,9 @@ func _initialize() -> void:
 	registry.user_path = TEST_CHIPS_PATH
 	DirAccess.remove_absolute(TEST_CHIPS_PATH)
 	registry.load_registry()
+
+	# Loaded at run time: this script compiles before the autoloads that GridMap2D needs exist.
+	(load("res://scripts/world/grid_map_2d.gd") as GDScript).set("layout_override", TEST_MINESITES)
 
 	var total_checks: int = 0
 	var total_failures: int = 0

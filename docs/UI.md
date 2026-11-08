@@ -3,7 +3,7 @@
 The UI will split the screen in 2.
 ## Factory View
 It display the factory as a up view on the left on the screen taking 80% on the screen.
-The factory will be a tile map with some of them being minesite. On those site can be place miner which will extract the ressource.
+The factory will be a tile map with some of them being minesite. On those site can be place miner which will extract the ressource. The minesites are random: 4 groups of 3 touching tiles drawn at every game start, one of them always within 10 tiles of the Collector, and none closer than 5 tiles to it.
 In the center of the map is placed a collector it is where our ressource are sold.
 The camera can be zoomed in/out and move in x/y axis. At startup it is zoomed out so the whole grid is visible (centered on an axis where the view is larger than the grid). While the player has not zoomed or panned, resizing the window keeps the whole grid in view. If the view is too small for the usual minimum zoom (0.4), the fit goes lower and that becomes the floor.
 
