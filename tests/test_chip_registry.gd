@@ -114,6 +114,31 @@ func test_starter_prompts_only_use_real_tools() -> void:
 	_restore_path()
 
 
+func _smelter_cooler(registry_chips: Array[ChipRessource]) -> ChipRessource:
+	for chip: ChipRessource in registry_chips:
+		if chip.name == "Smelter Cooler":
+			return chip
+	return null
+
+
+func test_smelter_cooler_manages_heat_with_cooling_and_pauses_only_in_an_emergency() -> void:
+	_use_tmp_path()
+	var prompt: String = _smelter_cooler(_registry.get_all()).prompt
+	check(prompt.contains("set_cooling") and prompt.contains("on=true") and prompt.contains("on=false"), "cooling on and off")
+	check(prompt.contains("set_emergency_stop") and prompt.contains("emergency_stop is true"), "the emergency pause and its own resume")
+	check(prompt.contains("state does not say why it was disabled") and prompt.contains("keep it disabled"), "unknown pauses are left alone without assuming their cause")
+	check(prompt.contains("never set_enabled"), "it does not use the plain pause")
+	var cool_on: int = 100
+	var cool_off: int = 70
+	var emergency_stop_at: int = 130
+	for number: int in [cool_on, cool_off, emergency_stop_at, int(Smelter.SAFE_AT)]:
+		check(prompt.contains(str(number)), "prompt states %d" % number)
+	check(prompt.contains("temperature is 130 or higher") and not prompt.contains("status is \"overheating\""), "emergency stop is delayed beyond the OVERHEATING status")
+	check(prompt.contains("Never pause for routine temperature control"), "no routine pausing")
+	check(cool_off < cool_on and cool_on == Smelter.OVERHEAT_AT and emergency_stop_at < Smelter.EXPLODE_AT, "cooling starts at overheating and emergency stop precedes explosion")
+	_restore_path()
+
+
 func test_edits_survive_a_reload_with_stable_ids() -> void:
 	_use_tmp_path()
 	var added: ChipRessource = _registry.add("persist_new", "np", "nd")
@@ -176,4 +201,75 @@ func test_failed_save_is_reported_and_keeps_the_edit() -> void:
 	check_eq(seen.size(), 2, "recovery is reported")
 	check_eq(seen[1], "", "with an empty message")
 	autoload("EventBus").chip_storage_error.disconnect(on_error)
+	_restore_path()
+
+
+## The starter prompt reaches installs whose user file still holds an older one.
+const OLD_COOLER_V1: String = """You control a Smelter. Working heats it up, and it explodes if it gets too hot.
+- If temperature is 70 or higher, call set_cooling with on=true.
+- If temperature is 40 or lower, call set_cooling with on=false.
+- Otherwise do nothing. A status of "overheating" means you are late: turn the cooling on at once."""
+const OLD_COOLER_V2: String = """You control a Smelter. Working heats it up, and it explodes if it gets too hot. Cooling only slows the heating while it works, so pausing is what saves it.
+Check the state in this order and call at most one tool:
+- If temperature is 110 or higher and enabled is true, call set_enabled with on=false (pause).
+- If temperature is 40 or lower and enabled is false, call set_enabled with on=true (resume). Never resume above 40.
+- If temperature is 60 or higher and cooling is false, call set_cooling with on=true.
+- If temperature is 30 or lower and cooling is true, call set_cooling with on=false.
+- Otherwise do nothing. The gaps between 110 and 40, and between 60 and 30, stop it from toggling every turn."""
+const OLD_COOLER_V3: String = """You control a Smelter. Working heats it up, and it explodes if it gets too hot. Cooling is the normal way to manage the heat, but crafts take twice as long while it is on, so use it only when needed. Stopping is for emergencies only.
+Check the state in this order and call at most one tool:
+- If status is "overheating" and enabled is true, call set_enabled with on=false (emergency pause).
+- If enabled is false and temperature is 80 or lower, call set_enabled with on=true (resume).
+- If temperature is 60 or higher and cooling is false, call set_cooling with on=true.
+- If temperature is 40 or lower and cooling is true, call set_cooling with on=false.
+- Otherwise do nothing. Never pause for routine temperature control; the gap between 60 and 40 stops cooling from toggling every turn."""
+const OLD_COOLER_V4: String = """You control a Smelter. Working heats it up, and it explodes if it gets too hot. Cooling is the normal way to manage the heat, but crafts take twice as long while it is on, so use it only when needed. Stopping is for emergencies only, and it is done with set_emergency_stop, never set_enabled.
+Check the state in this order and call at most one tool:
+- If status is "overheating" and enabled is true, call set_emergency_stop with on=true (emergency pause).
+- If emergency_stop is true and temperature is 80 or lower, call set_emergency_stop with on=false (resume). Only resume your own emergency stop: if enabled is false but emergency_stop is false, another chip paused the smelter on purpose, so leave it disabled.
+- If temperature is 60 or higher and cooling is false, call set_cooling with on=true.
+- If temperature is 40 or lower and cooling is true, call set_cooling with on=false.
+- Otherwise do nothing. Never pause for routine temperature control; the gap between 60 and 40 stops cooling from toggling every turn."""
+
+
+func _save_user_library(smelter_prompt: String, smelter_name: String = "Smelter Cooler") -> void:
+	var library: ChipLibrary = ChipLibrary.new()
+	for chip: ChipRessource in _registry.get_all():
+		var copy: ChipRessource = ChipRessource.new()
+		copy.id = chip.id
+		copy.name = chip.name
+		copy.description = chip.description
+		copy.prompt = chip.prompt
+		if chip.id == 2:
+			copy.name = smelter_name
+			copy.prompt = smelter_prompt
+		library.chips.append(copy)
+	library.next_id = 10
+	ResourceSaver.save(library, TMP_PATH)
+
+
+func test_outdated_starter_prompt_is_replaced_and_saved() -> void:
+	_use_tmp_path()
+	var shipped: String = _smelter_cooler(_registry.get_all()).prompt
+	for old: String in [OLD_COOLER_V1, OLD_COOLER_V2, OLD_COOLER_V3, OLD_COOLER_V4]:
+		_save_user_library(old)
+		_registry.load_registry()
+		check_eq(_registry.get_from_id(2).prompt, shipped, "unedited older prompt upgraded")
+		check_eq(_registry.save_error, "", "no error")
+		_registry.load_registry()
+		check_eq(_registry.get_from_id(2).prompt, shipped, "the upgrade was saved")
+	_restore_path()
+
+
+func test_edited_or_custom_prompts_are_never_overwritten() -> void:
+	_use_tmp_path()
+	_save_user_library(OLD_COOLER_V2 + "\nMy own rule.")
+	_registry.load_registry()
+	check_eq(_registry.get_from_id(2).prompt, OLD_COOLER_V2 + "\nMy own rule.", "edited prompt kept")
+	_save_user_library(OLD_COOLER_V2, "My cooler")
+	_registry.load_registry()
+	check_eq(_registry.get_from_id(2).prompt, OLD_COOLER_V2, "a renamed chip with the old text is left alone")
+	_save_user_library("custom")
+	_registry.load_registry()
+	check_eq(_registry.get_from_id(2).prompt, "custom", "custom prompt kept")
 	_restore_path()

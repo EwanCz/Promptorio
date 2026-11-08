@@ -76,7 +76,7 @@ func test_chip_decision_goes_through_the_anthropic_request() -> void:
 	check("x-api-key: test-key" in request["headers"], "the key is sent as the x-api-key header")
 	check_eq(request["body"]["system"], "Keep the smelter cool", "the chip prompt is the system prompt")
 	var names: Array = (request["body"]["tools"] as Array).map(func(tool: Dictionary) -> String: return tool["name"])
-	check_eq(names, ["set_enabled", "set_cooling", "set_product", "discard_stock"], "the smelter tools are offered")
+	check_eq(names, ["set_enabled", "set_cooling", "set_emergency_stop", "set_product", "discard_stock"], "the smelter tools are offered")
 	check(str(request["body"]["messages"][0]["content"]).contains("temperature"), "the machine state is sent")
 
 

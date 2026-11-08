@@ -141,7 +141,12 @@ func _tick() -> void:
 		for item: String in product.inputs:
 			stock[item] = int(stock[item]) - int(product.inputs[item])
 		_making = product.id
-		progress = product.ticks
+		progress = _craft_ticks()
+
+
+## Duration of a craft starting now (the product being made). Subclasses can slow it down.
+func _craft_ticks() -> int:
+	return ItemCatalog.shared().ticks_of(_making)
 
 
 func _can_start() -> bool:
