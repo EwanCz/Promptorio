@@ -124,6 +124,18 @@ func release_created_by(machine_id: int) -> void:
 		_save()
 
 
+## Machine IDs belong to a game, so they cannot retain ownership across game changes.
+func release_all_creators() -> void:
+	var changed: bool = false
+	for chip: ChipRessource in _chips.values():
+		if chip.created_by != 0:
+			chip.created_by = 0
+			changed = true
+			EventBus.chip_updated.emit(chip)
+	if changed:
+		_save()
+
+
 ## Puts a chip from a save file in the registry under its own id: a chip with that id is overwritten (the
 ## save wins), else it is created. A name already used by another chip gets a number appended, so names
 ## stay unique. Null for an invalid id or an empty name.

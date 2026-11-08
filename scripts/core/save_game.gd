@@ -54,6 +54,9 @@ static func snapshot(placement: Placement) -> Dictionary:
 		machines.append(machine.to_dict())
 		for component: ChipComponent in machine.chips:
 			chip_ids[component.chip.id] = true
+	for chip: ChipRessource in ChipRegistry.get_all():
+		if chip.created_by != 0:
+			chip_ids[chip.id] = true
 	var chips: Array = []
 	for chip_id: int in chip_ids:
 		var chip: ChipRessource = ChipRegistry.get_from_id(chip_id)
@@ -80,6 +83,7 @@ static func restore(placement: Placement, data: Variant) -> String:
 		var machine: Machine = node as Machine
 		if machine != null:
 			machine.discard()
+	ChipRegistry.release_all_creators()
 	if save.has("minesites"):
 		placement.grid.set_minesites(_to_cells(save["minesites"]))
 	for entry: Dictionary in save["chips"]:
