@@ -1,4 +1,61 @@
-[gd_resource type="Theme" load_steps=14 format=3]
+[gd_resource type="Theme" load_steps=19 format=3]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_menu_btn_normal"]
+bg_color = Color(0.09, 0.114, 0.169, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.29, 0.561, 0.847, 1)
+content_margin_left = 22.0
+content_margin_top = 10.0
+content_margin_right = 22.0
+content_margin_bottom = 10.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_menu_btn_hover"]
+bg_color = Color(0.129, 0.165, 0.251, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.486, 0.722, 0.941, 1)
+content_margin_left = 22.0
+content_margin_top = 10.0
+content_margin_right = 22.0
+content_margin_bottom = 10.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_menu_btn_pressed"]
+bg_color = Color(0.039, 0.051, 0.082, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.29, 0.561, 0.847, 1)
+content_margin_left = 22.0
+content_margin_top = 10.0
+content_margin_right = 22.0
+content_margin_bottom = 10.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_menu_btn_focus"]
+bg_color = Color(0, 0, 0, 0)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0.659, 0.863, 1, 1)
+content_margin_left = 22.0
+content_margin_top = 10.0
+content_margin_right = 22.0
+content_margin_bottom = 10.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_menu_panel"]
+bg_color = Color(0.071, 0.094, 0.149, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.2, 0.353, 0.51, 1)
+
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel"]
 bg_color = Color(0.082, 0.09, 0.145, 1)
@@ -166,3 +223,17 @@ PopupMenu/styles/panel = SubResource("StyleBoxFlat_popupmenu_panel")
 PopupMenu/styles/hover = SubResource("StyleBoxFlat_popupmenu_hover")
 PopupMenu/colors/font_color = Color(0.88, 0.9, 0.96, 1)
 PopupMenu/colors/font_hover_color = Color(1, 1, 1, 1)
+MainMenuButton/base_type = &"Button"
+MainMenuButton/colors/font_color = Color(0.957, 0.965, 0.973, 1)
+MainMenuButton/colors/font_hover_color = Color(0.847, 0.925, 1, 1)
+MainMenuButton/colors/font_pressed_color = Color(0.78, 0.8, 0.831, 1)
+MainMenuButton/colors/font_focus_color = Color(0.957, 0.965, 0.973, 1)
+MainMenuButton/constants/h_separation = 12
+MainMenuButton/font_sizes/font_size = 22
+MainMenuButton/styles/normal = SubResource("StyleBoxFlat_menu_btn_normal")
+MainMenuButton/styles/hover = SubResource("StyleBoxFlat_menu_btn_hover")
+MainMenuButton/styles/pressed = SubResource("StyleBoxFlat_menu_btn_pressed")
+MainMenuButton/styles/hover_pressed = SubResource("StyleBoxFlat_menu_btn_pressed")
+MainMenuButton/styles/focus = SubResource("StyleBoxFlat_menu_btn_focus")
+MainMenuPanel/base_type = &"PanelContainer"
+MainMenuPanel/styles/panel = SubResource("StyleBoxFlat_menu_panel")

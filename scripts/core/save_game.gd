@@ -5,9 +5,10 @@ extends RefCounted
 ## so a bad file leaves the current game as it was. Slots live in `save_dir`; any other path works too.
 ##
 ## Format (version 1): {version, tick_count, money, next_machine_id, minesites: [[x, y]] (the cells where a miner can
-## go; a file without it keeps the current map's), chips: [{id, name, description, prompt}],
+## go; a file without it keeps the current map's), chips: [{id, name, description, prompt, created_by}],
 ## machines: [{type, id, cell: [x, y], facing: [x, y], enabled, status, chips: [{id, timeout}],
-## data: {...state of the machine type, see Machine._save_data()}}]}
+## data: {...state of the machine type, see Machine._save_data()}}],
+## order: {product, quantity, progress, reward} (the current order; a file without it leaves the order alone)}
 
 const VERSION: int = 1
 ## Slots go to `saves/` in the project folder when run from the editor (so a save can be committed and shared),
@@ -54,11 +55,14 @@ static func snapshot(placement: Placement) -> Dictionary:
 		machines.append(machine.to_dict())
 		for component: ChipComponent in machine.chips:
 			chip_ids[component.chip.id] = true
+	for chip: ChipRessource in ChipRegistry.get_all():
+		if chip.created_by != 0:
+			chip_ids[chip.id] = true
 	var chips: Array = []
 	for chip_id: int in chip_ids:
 		var chip: ChipRessource = ChipRegistry.get_from_id(chip_id)
 		if chip != null:
-			chips.append({"id": chip.id, "name": chip.name, "description": chip.description, "prompt": chip.prompt})
+			chips.append({"id": chip.id, "name": chip.name, "description": chip.description, "prompt": chip.prompt, "created_by": chip.created_by})
 	return {
 		"version": VERSION,
 		"tick_count": GameState.tick_count,
@@ -67,6 +71,12 @@ static func snapshot(placement: Placement) -> Dictionary:
 		"minesites": placement.grid.minesites.map(func(site: Vector2i) -> Array: return [site.x, site.y]),
 		"chips": chips,
 		"machines": machines,
+		"order": {
+			"product": GameState.order_product,
+			"quantity": GameState.order_quantity,
+			"progress": GameState.order_progress,
+			"reward": GameState.order_reward,
+		},
 	}
 
 
@@ -80,10 +90,11 @@ static func restore(placement: Placement, data: Variant) -> String:
 		var machine: Machine = node as Machine
 		if machine != null:
 			machine.discard()
+	ChipRegistry.release_all_creators()
 	if save.has("minesites"):
 		placement.grid.set_minesites(_to_cells(save["minesites"]))
 	for entry: Dictionary in save["chips"]:
-		ChipRegistry.import_chip(int(entry["id"]), entry["name"], entry.get("description", ""), entry.get("prompt", ""))
+		ChipRegistry.import_chip(int(entry["id"]), entry["name"], entry.get("description", ""), entry.get("prompt", ""), int(entry.get("created_by", 0)))
 	var highest_id: int = 0
 	for entry: Dictionary in save["machines"]:
 		var cell: Vector2i = _to_cell(entry["cell"])
@@ -96,6 +107,9 @@ static func restore(placement: Placement, data: Variant) -> String:
 	placement.next_id = maxi(int(save["next_machine_id"]), highest_id + 1)
 	GameState.tick_count = int(save["tick_count"])
 	GameState.add_money(int(save["money"]) - GameState.money)
+	if save.has("order"):
+		var order: Dictionary = save["order"]
+		GameState.restore_order(str(order["product"]), int(order["quantity"]), int(order["progress"]), int(order["reward"]))
 	return ""
 
 
@@ -117,12 +131,17 @@ static func validate(placement: Placement, data: Variant) -> String:
 	var chip_error: String = _validate_chips(save.get("chips"))
 	if chip_error != "":
 		return chip_error
+	if save.has("order") and not _order_valid(save["order"]):
+		return "The save has an invalid order."
 	var sites: Variant = placement.grid.minesites if placement != null else null
 	if save.has("minesites"):
 		if not _minesites_valid(save["minesites"]):
 			return "The save has an invalid list of minesites."
 		sites = _to_cells(save["minesites"])
-	return _validate_machines(save.get("machines"), _chip_ids(save["chips"]), sites)
+	var machine_error: String = _validate_machines(save.get("machines"), _chip_ids(save["chips"]), sites)
+	if machine_error != "":
+		return machine_error
+	return _validate_chip_creators(save["chips"], save["machines"])
 
 
 ## Writes the document through a temporary file, so a failed write never destroys an older save.
@@ -258,15 +277,50 @@ static func _validate_machines(machines: Variant, chip_ids: Dictionary, sites: V
 		has_collector = has_collector or machine["type"] == "collector"
 	if not has_collector:
 		return "The save has no Collector."
-	var orchestrators: Dictionary = {}
-	for machine: Dictionary in machines:
-		if machine["type"] == "orchestrator":
-			orchestrators[int(machine["id"])] = true
+	var orchestrators: Dictionary = _orchestrator_ids(machines)
 	for machine: Dictionary in machines:
 		for chip: Dictionary in machine.get("chips", []):
 			var owner: Variant = chip.get("assigned_by", 0)
 			if not _is_whole(owner) or int(owner) < 0 or (int(owner) != 0 and not orchestrators.has(int(owner))):
 				return "The save has a chip with an invalid Orchestrator owner."
+	return ""
+
+
+static func _order_valid(order: Variant) -> bool:
+	if typeof(order) != TYPE_DICTIONARY:
+		return false
+	var data: Dictionary = order
+	if typeof(data.get("product")) != TYPE_STRING:
+		return false
+	if not _is_whole(data.get("quantity")) or int(data["quantity"]) < 0:
+		return false
+	if not _is_whole(data.get("progress")) or int(data["progress"]) < 0:
+		return false
+	if not _is_whole(data.get("reward")) or int(data["reward"]) < 0 or int(data["reward"]) > MAX_MONEY:
+		return false
+	if data["product"] == "":
+		return int(data["quantity"]) == 0 and int(data["progress"]) == 0 and int(data["reward"]) == 0
+	return ItemCatalog.shared().has_item(data["product"]) and int(data["quantity"]) > 0 and int(data["progress"]) < int(data["quantity"])
+
+
+## Every Orchestrator machine_id in the save, for cross-checking a chip's assigned_by/created_by.
+static func _orchestrator_ids(machines: Array) -> Dictionary:
+	var orchestrators: Dictionary = {}
+	for machine: Dictionary in machines:
+		if machine["type"] == "orchestrator":
+			orchestrators[int(machine["id"])] = true
+	return orchestrators
+
+
+## Checked once the machine list itself is known valid: a registry chip's created_by must be 0 (player) or
+## the id of an Orchestrator actually present in the save, same cross-check as a component's assigned_by
+## in _validate_machines (there it is per machine-chip, here it is the chip resource's own ownership).
+static func _validate_chip_creators(chips: Array, machines: Array) -> String:
+	var orchestrators: Dictionary = _orchestrator_ids(machines)
+	for chip: Dictionary in chips:
+		var creator: Variant = chip.get("created_by", 0)
+		if not _is_whole(creator) or int(creator) < 0 or (int(creator) != 0 and not orchestrators.has(int(creator))):
+			return "The save has a chip with an invalid Orchestrator creator."
 	return ""
 
 
