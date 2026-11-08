@@ -38,7 +38,14 @@ prompt = "Control the Assembler. Call at most one tool:
 - In fast mode, if stock has less than any quantity in needs, call set_mode with mode=normal.
 - Otherwise do nothing. needs reflects the selected mode; missing stock counts are zero. Mode changes affect the next craft."
 
+[sub_resource type="Resource" id="Resource_manager"]
+script = ExtResource("1_pak5r")
+id = 4
+name = "Factory Manager"
+description = "Assigns Miner Pacer to nearby Miners."
+prompt = "For each nearby Miner without Miner Pacer, assign it the Miner Pacer chip from available_chips using assign_chip. Do not remove or replace any other chips."
+
 [resource]
 script = ExtResource("2_y2hmt")
-chips = Array[ExtResource("1_pak5r")]([SubResource("Resource_0lho2"), SubResource("Resource_1axuh"), SubResource("Resource_axdw1")])
-next_id = 4
+chips = Array[ExtResource("1_pak5r")]([SubResource("Resource_0lho2"), SubResource("Resource_1axuh"), SubResource("Resource_axdw1"), SubResource("Resource_manager")])
+next_id = 5
