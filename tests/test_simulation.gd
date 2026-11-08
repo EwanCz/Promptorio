@@ -494,3 +494,122 @@ func test_set_cooling_description_matches_the_real_durations() -> void:
 	check(not description.contains("twice"), "no stale 'twice'")
 	cooled.cooling = false
 	check_eq(cooled.progress, 40, "a craft already started keeps the duration it started with")
+
+
+## The trembling art. The machine node itself (grid position, facing) never moves: only the sprite does.
+func _sprite_of(machine: Machine) -> Sprite2D:
+	return machine.get_node("Sprite2D") as Sprite2D
+
+
+func _shake_frames(smelter: Smelter, frames: int) -> Array[Vector2]:
+	var seen: Array[Vector2] = []
+	for i: int in frames:
+		smelter._process(0.013)
+		seen.append(_sprite_of(smelter).position)
+	return seen
+
+
+func test_shake_amplitude_starts_at_100_and_is_almost_invisible_until_120() -> void:
+	check_eq(Smelter.SHAKE_FROM, 100.0, "it starts at the overheating line")
+	for heat: float in [Smelter.AMBIENT, 60.0, 80.0, 99.0, 100.0]:
+		check_eq(Smelter.shake_amplitude(heat), 0.0, "no shake at %d degrees" % int(heat))
+	check(Smelter.shake_amplitude(101.0) > 0.0, "it starts right above 100")
+	check_eq(Smelter.shake_amplitude(Smelter.EXPLODE_AT), Smelter.SHAKE_MAX_PIXELS, "full at the explosion point")
+	check_eq(Smelter.shake_amplitude(Smelter.EXPLODE_AT + 50.0), Smelter.SHAKE_MAX_PIXELS, "never beyond the maximum")
+	var last: float = 0.0
+	for heat: int in range(101, 151, 3):
+		var amplitude: float = Smelter.shake_amplitude(float(heat))
+		check(amplitude > last, "stronger at %d degrees" % heat)
+		last = amplitude
+	check(Smelter.shake_amplitude(110.0) < 0.1, "a hair at 110 (%.3f px)" % Smelter.shake_amplitude(110.0))
+	check(Smelter.shake_amplitude(120.0) < 0.3, "almost invisible at 120 (%.2f px, under a third of a pixel)" % Smelter.shake_amplitude(120.0))
+	check(Smelter.shake_amplitude(135.0) > 1.0, "clearly there by 135")
+	check(Smelter.SHAKE_MAX_PIXELS <= 4.0, "never more than a small fraction of a 64 px cell")
+
+
+func test_a_cool_smelter_does_not_move_and_a_hot_one_trembles_within_its_amplitude() -> void:
+	var smelter: Smelter = _put("smelter", Vector2i(4, 4)) as Smelter
+	var sprite: Sprite2D = _sprite_of(smelter)
+	var rest: Vector2 = sprite.position
+	var machine_position: Vector2 = smelter.position
+	check(_shake_frames(smelter, 20).all(func(p: Vector2) -> bool: return p == rest), "no movement when cool")
+	smelter.temperature = 90.0
+	check(_shake_frames(smelter, 20).all(func(p: Vector2) -> bool: return p == rest), "and not below 100 either (90 degrees)")
+	smelter.temperature = 135.0
+	var amplitude: float = Smelter.shake_amplitude(135.0)
+	var frames: Array[Vector2] = _shake_frames(smelter, 60)
+	check(frames.any(func(p: Vector2) -> bool: return p != rest), "it trembles when hot")
+	check(frames.all(func(p: Vector2) -> bool: return absf(p.x - rest.x) <= amplitude + 0.001 and absf(p.y - rest.y) <= amplitude + 0.001), "never farther than the amplitude from rest (%.2f px)" % amplitude)
+	check_eq(smelter.position, machine_position, "the machine itself stays on its cell")
+	check_eq(smelter.cell, Vector2i(4, 4), "grid cell unchanged")
+	check_eq(smelter.facing, Vector2i.RIGHT, "facing unchanged")
+
+
+func test_the_shake_grows_and_shrinks_with_the_temperature_and_resets() -> void:
+	var smelter: Smelter = _put("smelter", Vector2i(4, 4)) as Smelter
+	var rest: Vector2 = _sprite_of(smelter).position
+	var reach: Callable = func(heat: float) -> float:
+		smelter.temperature = heat
+		var farthest: float = 0.0
+		for p: Vector2 in _shake_frames(smelter, 80):
+			farthest = maxf(farthest, (p - rest).length())
+		return farthest
+	var mild: float = reach.call(110.0)
+	var strong: float = reach.call(140.0)
+	check(mild > 0.0 and strong > mild * 3.0, "stronger when hotter (%.2f then %.2f px)" % [mild, strong])
+	var cooling_down: float = reach.call(110.0)
+	check(cooling_down < strong / 3.0, "reduced again as it cools (%.2f px)" % cooling_down)
+	smelter.temperature = Smelter.AMBIENT
+	smelter._process(0.013)
+	check_eq(_sprite_of(smelter).position, rest, "back exactly at rest, with nothing accumulated")
+	for i: int in 200:
+		smelter.temperature = 130.0 if i % 2 == 0 else Smelter.AMBIENT
+		smelter._process(0.013)
+	smelter.temperature = Smelter.AMBIENT
+	smelter._process(0.013)
+	check_eq(_sprite_of(smelter).position, rest, "and after many cycles too")
+
+
+func test_the_shake_follows_the_machine_through_a_rotation() -> void:
+	var smelter: Smelter = _put("smelter", Vector2i(4, 4), Vector2i.RIGHT) as Smelter
+	var sprite: Sprite2D = _sprite_of(smelter)
+	var rest_right: Vector2 = sprite.position
+	smelter.temperature = 130.0
+	_shake_frames(smelter, 10)
+	smelter.facing = Vector2i.DOWN
+	var rest_down: Vector2 = Vector2.ZERO
+	smelter.temperature = Smelter.AMBIENT
+	smelter._process(0.013)
+	rest_down = sprite.position
+	check(rest_down != rest_right, "the two facings rest in different places (the right-facing art is turned and moved)")
+	smelter.temperature = 130.0
+	var amplitude: float = Smelter.shake_amplitude(130.0)
+	smelter.facing = Vector2i.RIGHT
+	check(_shake_frames(smelter, 30).all(func(p: Vector2) -> bool: return (p - rest_right).length() <= amplitude * 1.5 + 0.001), "turned back while shaking: it trembles around the right place")
+	smelter.facing = Vector2i.DOWN
+	check(_shake_frames(smelter, 30).all(func(p: Vector2) -> bool: return (p - rest_down).length() <= amplitude * 1.5 + 0.001), "turned while shaking: it trembles around the new place, not the old one")
+	smelter.temperature = Smelter.AMBIENT
+	smelter._process(0.013)
+	check_eq(sprite.position, rest_down, "and it rests at the new place once cool")
+
+
+func test_the_shake_stops_when_it_explodes_and_removal_is_safe() -> void:
+	var smelter: Smelter = _put("smelter", Vector2i(4, 4)) as Smelter
+	var sprite: Sprite2D = _sprite_of(smelter)
+	var rest: Vector2 = sprite.position
+	smelter.temperature = Smelter.EXPLODE_AT - 1.0
+	_shake_frames(smelter, 5)
+	check(sprite.position != rest, "trembling right before the blast")
+	smelter.temperature = Smelter.EXPLODE_AT + 1.0
+	_ticks(1)
+	check_eq(smelter.status, Machine.Status.DOWN, "it explodes")
+	check_eq(sprite.position, rest, "the shake stops at once: the explosion starts from the resting place")
+	check(_shake_frames(smelter, 10).all(func(p: Vector2) -> bool: return p == rest), "and stays still while it burns")
+	var other: Smelter = _put("smelter", Vector2i(8, 8)) as Smelter
+	other.temperature = 120.0
+	_shake_frames(other, 5)
+	_nodes.erase(other)
+	other.destroy()
+	check(other.is_queued_for_deletion(), "a shaking smelter can be removed")
+	await tree.process_frame
+	check(not is_instance_valid(other) or other.is_queued_for_deletion(), "without errors")
