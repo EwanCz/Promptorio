@@ -209,6 +209,14 @@ const OLD_MINER: String = """You control a Miner. Every decision, check the stat
 - If "blocked" is true (ore is waiting for a free output), call set_mine_ticks with 40 so it slows down.
 - If "blocked" is false and mine_ticks is above 10, call set_mine_ticks with 10 to mine faster.
 - Otherwise do nothing. Call at most one tool."""
+const OLD_MINER_PACER: String = """You control a Miner. Every decision, check the state and the allowed range of set_mine_ticks for the current resource.
+- If blocked is true and mine_ticks is below the allowed maximum, set it to that maximum.
+- If blocked is false and mine_ticks is above the allowed minimum, set it to that minimum.
+- Otherwise do nothing. Call at most one tool."""
+const OLD_ASSEMBLER_STOCKER: String = """You control an Assembler. It needs several inputs, so a small stock keeps one item from starving the others.
+- If status is not "normal", do nothing.
+- If stock_limit is above 6, call set_stock_limit with 6.
+- Otherwise do nothing."""
 const OLD_COOLER_V1: String = """You control a Smelter. Working heats it up, and it explodes if it gets too hot.
 - If temperature is 70 or higher, call set_cooling with on=true.
 - If temperature is 40 or lower, call set_cooling with on=false.
@@ -245,7 +253,7 @@ Check the state in this order and call at most one tool:
 - Otherwise do nothing. Never pause for routine temperature control; the gap between 100 and 70 stops cooling from toggling every turn."""
 
 
-func _save_user_library(smelter_prompt: String, smelter_name: String = "Smelter Cooler", miner_prompt: String = "") -> void:
+func _save_user_library(smelter_prompt: String, smelter_name: String = "Smelter Cooler", miner_prompt: String = "", assembler_prompt: String = "", assembler_name: String = "Assembler Stocker") -> void:
 	var library: ChipLibrary = ChipLibrary.new()
 	for chip: ChipRessource in _registry.get_all():
 		var copy: ChipRessource = ChipRessource.new()
@@ -258,6 +266,9 @@ func _save_user_library(smelter_prompt: String, smelter_name: String = "Smelter 
 		if chip.id == 2:
 			copy.name = smelter_name
 			copy.prompt = smelter_prompt
+		if chip.id == 3 and assembler_prompt != "":
+			copy.name = assembler_name
+			copy.prompt = assembler_prompt
 		library.chips.append(copy)
 	library.next_id = 10
 	ResourceSaver.save(library, TMP_PATH)
@@ -274,6 +285,31 @@ func test_miner_starter_upgrade_respects_resource_limits_and_custom_edits() -> v
 	_save_user_library(smelter_prompt, "Smelter Cooler", OLD_MINER + "\nMy own rule.")
 	_registry.load_registry()
 	check_eq(_registry.get_from_id(1).prompt, OLD_MINER + "\nMy own rule.", "custom Miner prompt kept")
+	_restore_path()
+
+
+func test_updated_machine_starters_upgrade_only_unedited_saved_prompts() -> void:
+	_use_tmp_path()
+	var miner: String = _registry.get_from_id(1).prompt
+	var smelter: String = _registry.get_from_id(2).prompt
+	var assembler: String = _registry.get_from_id(3).prompt
+	check(miner.contains("start_prospecting") and miner.contains("blocked") and miner.contains("mode is prospecting or boost"), "Miner starter handles prospecting and blockage")
+	check(assembler.contains("set_mode") and assembler.contains("twice each quantity in needs"), "Assembler starter considers fast mode inputs")
+	check(assembler.contains("needs reflects the selected mode") and assembler.contains("set_stock_limit"), "Assembler starter accounts for scaled needs and retains its stock policy")
+	_save_user_library(smelter, "Smelter Cooler", OLD_MINER_PACER, OLD_ASSEMBLER_STOCKER)
+	_registry.load_registry()
+	check_eq(_registry.get_from_id(1).prompt, miner, "unedited Miner prompt upgraded")
+	check_eq(_registry.get_from_id(3).prompt, assembler, "unedited Assembler prompt upgraded")
+	_registry.load_registry()
+	check_eq(_registry.get_from_id(1).prompt, miner, "Miner upgrade persisted")
+	check_eq(_registry.get_from_id(3).prompt, assembler, "Assembler upgrade persisted")
+	_save_user_library(smelter, "Smelter Cooler", OLD_MINER_PACER + "\nMy rule.", OLD_ASSEMBLER_STOCKER + "\nMy rule.")
+	_registry.load_registry()
+	check_eq(_registry.get_from_id(1).prompt, OLD_MINER_PACER + "\nMy rule.", "edited Miner prompt kept")
+	check_eq(_registry.get_from_id(3).prompt, OLD_ASSEMBLER_STOCKER + "\nMy rule.", "edited Assembler prompt kept")
+	_save_user_library(smelter, "Smelter Cooler", "", OLD_ASSEMBLER_STOCKER, "My assembler")
+	_registry.load_registry()
+	check_eq(_registry.get_from_id(3).prompt, OLD_ASSEMBLER_STOCKER, "renamed Assembler prompt kept")
 	_restore_path()
 
 

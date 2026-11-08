@@ -8,10 +8,10 @@ script = ExtResource("1_pak5r")
 id = 1
 name = "Miner Pacer"
 description = "Keeps a Miner running without clogging the line."
-prompt = "You control a Miner. Every decision, check the state and the allowed range of set_mine_ticks for the current resource.
-- If blocked is true and mine_ticks is below the allowed maximum, set it to that maximum.
-- If blocked is false and mine_ticks is above the allowed minimum, set it to that minimum.
-- Otherwise do nothing. Call at most one tool."
+prompt = "Control the Miner. Call at most one tool:
+- If disabled, not normal, blocked, or mode is prospecting or boost, do nothing.
+- If mine_ticks exceeds the allowed minimum for the current resource, call set_mine_ticks with that minimum.
+- Otherwise call start_prospecting. The boost expires even if output becomes blocked."
 
 [sub_resource type="Resource" id="Resource_1axuh"]
 script = ExtResource("1_pak5r")
@@ -31,10 +31,12 @@ script = ExtResource("1_pak5r")
 id = 3
 name = "Assembler Stocker"
 description = "Sets how many input items an Assembler keeps in stock."
-prompt = "You control an Assembler. It needs several inputs, so a small stock keeps one item from starving the others.
-- If status is not \"normal\", do nothing.
-- If stock_limit is above 6, call set_stock_limit with 6.
-- Otherwise do nothing."
+prompt = "Control the Assembler. Call at most one tool:
+- If disabled or not normal, do nothing.
+- If stock_limit exceeds 6, call set_stock_limit with 6.
+- In normal mode, if stock has at least twice each quantity in needs, call set_mode with mode=fast.
+- In fast mode, if stock has less than any quantity in needs, call set_mode with mode=normal.
+- Otherwise do nothing. needs reflects the selected mode; missing stock counts are zero. Mode changes affect the next craft."
 
 [resource]
 script = ExtResource("2_y2hmt")
