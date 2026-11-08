@@ -25,7 +25,7 @@ const BIOME_SEEDS_MAX: int = 12
 ## Checked in this order for the one neighbor (if any) a non-dirt cell blends into; a cell between two
 ## foreign biomes (a corner) just gets whichever of these is checked first, not a dedicated corner tile.
 const EDGE_DIRECTIONS: Array[Vector2i] = [Vector2i.UP, Vector2i.DOWN, Vector2i.RIGHT, Vector2i.LEFT]
-## Orients the "biome above, dirt below" edge art so the dirt side faces each direction.
+## Orients the "dirt above, biome below" edge art so the dirt side faces each direction.
 const EDGE_TRANSFORMS: Dictionary = {
 	Vector2i.UP: 0,
 	Vector2i.DOWN: TileSetAtlasSource.TRANSFORM_FLIP_V,
