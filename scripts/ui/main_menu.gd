@@ -28,6 +28,8 @@ const BUTTON_ICONS: Dictionary = {
 
 func _ready() -> void:
 	_apply_button_icons()
+	for button: Button in [_play_button, _load_button, _chips_button, _options_button, _exit_button]:
+		SfxEvents.attach_click(button)
 	_save_dialog.use_as_menu()
 	_play_button.pressed.connect(start_game)
 	_load_button.pressed.connect(_save_dialog.open)

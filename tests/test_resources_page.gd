@@ -17,26 +17,15 @@ func _page() -> ResourcesPage:
 	return page
 
 
-## Text of a grid cell: a plain Label for every column except "Resource", whose cell is an
-## HBoxContainer pairing the item's icon with a Label.
-func _cell_text(cell: Node) -> String:
-	if cell is Label:
-		return (cell as Label).text
-	return (_cell_name_label(cell as HBoxContainer)).text
-
-
-func _cell_name_label(cell: HBoxContainer) -> Label:
-	return cell.get_child(1) as Label
-
-
-func _cell_icon(cell: HBoxContainer) -> TextureRect:
-	return cell.get_child(0) as TextureRect
-
-
+## Each cell's text. The "Resource" column wraps its icon and name in an HBoxContainer, so a plain
+## Label cast would fail there; read the last child instead, which is always the name Label.
 func _cells(page: ResourcesPage) -> Array[String]:
 	var texts: Array[String] = []
 	for cell: Node in page.get_node("%Grid").get_children():
-		texts.append(_cell_text(cell))
+		var label: Label = cell as Label
+		if label == null:
+			label = cell.get_child(cell.get_child_count() - 1) as Label
+		texts.append(label.text)
 	return texts
 
 
@@ -67,28 +56,33 @@ func test_lists_every_resource_with_its_build() -> void:
 		check_eq(row[4], str(item.price), "%s: price" % item.id)
 
 
-func test_resource_icon_matches_the_catalog_item() -> void:
+func test_resource_cell_shows_its_icon_before_the_name() -> void:
 	var page: ResourcesPage = _page()
 	var grid: GridContainer = page.get_node("%Grid")
 	var columns: int = grid.columns
 	var catalog: ItemCatalog = ItemCatalog.shared()
 	for i: int in catalog.items.size():
 		var item: ItemData = catalog.items[i]
-		var cell: HBoxContainer = grid.get_child(columns * (i + 1)) as HBoxContainer
-		var picture: TextureRect = _cell_icon(cell)
-		check_eq(picture.texture, item.icon, "%s: icon wired to the matching item" % item.id)
-		check_eq(picture.texture_filter, CanvasItem.TEXTURE_FILTER_NEAREST, "%s: nearest filter" % item.id)
+		var cell: Node = grid.get_child(columns * (i + 1))
+		check(cell is HBoxContainer, "%s: name cell wraps icon and label" % item.id)
+		if item.icon == null:
+			continue
+		var icon_rect: TextureRect = cell.get_child(0) as TextureRect
+		check(icon_rect != null, "%s: icon comes before the name" % item.id)
+		check_eq(icon_rect.texture, item.icon, "%s: icon matches the catalog" % item.id)
+		check_eq(icon_rect.get_combined_minimum_size(), Vector2(20, 20), "%s: icon fits its cell" % item.id)
+		check_eq(icon_rect.texture_filter, CanvasItem.TEXTURE_FILTER_NEAREST, "%s: nearest filtering" % item.id)
 
 
-func test_resource_with_no_icon_renders_name_only() -> void:
+func test_resource_without_icon_shows_its_name() -> void:
+	var item: ItemData = ItemCatalog.shared().items[0]
+	var original: Texture2D = item.icon
+	item.icon = null
 	var page: ResourcesPage = _page()
-	var item: ItemData = ItemData.new()
-	item.display_name = "No Icon"
-	page._add_resource_cell(item)
-	var grid: GridContainer = page.get_node("%Grid")
-	var cell: HBoxContainer = grid.get_child(grid.get_child_count() - 1) as HBoxContainer
-	check_eq(_cell_icon(cell).texture, null, "no icon set means an empty texture, not a placeholder")
-	check_eq(_cell_name_label(cell).text, "No Icon", "name still renders")
+	item.icon = original
+	var cell: Node = page.get_node("%Grid").get_child(5)
+	check_eq(cell.get_child_count(), 1, "no icon placeholder")
+	check_eq((cell.get_child(0) as Label).text, item.display_name, "name remains visible")
 
 
 func test_needs_text() -> void:

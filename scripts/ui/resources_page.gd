@@ -4,7 +4,7 @@ extends PanelContainer
 ## it takes to mine or build and what the Collector pays for it.
 
 const HEADERS: PackedStringArray = ["Resource", "Built by", "Needs", "Ticks", "Price"]
-const ICON_PX: int = 32
+const ICON_SIZE: int = 20
 
 @onready var _grid: GridContainer = %Grid
 @onready var _close_button: Button = %CloseButton
@@ -48,19 +48,20 @@ func _add_cell(text: String) -> void:
 	_grid.add_child(label)
 
 
-## The "Resource" cell: the item's icon (nearest filter, same as every other pixel-art icon) immediately
-## before its display name. A missing icon leaves the texture empty rather than showing a placeholder.
+## The "Resource" column cell for one item: its catalog icon (crisp pixel art, no icon if it has none)
+## followed by its display name, so the icon reads as part of the name rather than its own column.
 func _add_resource_cell(item: ItemData) -> void:
-	var cell: HBoxContainer = HBoxContainer.new()
-	cell.add_theme_constant_override("separation", 4)
-	var picture: TextureRect = TextureRect.new()
-	picture.texture = item.icon
-	picture.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	picture.custom_minimum_size = Vector2(ICON_PX, ICON_PX)
-	picture.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	picture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	cell.add_child(picture)
+	var row: HBoxContainer = HBoxContainer.new()
+	row.add_theme_constant_override("separation", 6)
+	if item.icon != null:
+		var icon_rect: TextureRect = TextureRect.new()
+		icon_rect.texture = item.icon
+		icon_rect.custom_minimum_size = Vector2(ICON_SIZE, ICON_SIZE)
+		icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		icon_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		row.add_child(icon_rect)
 	var label: Label = Label.new()
 	label.text = item.display_name
-	cell.add_child(label)
-	_grid.add_child(cell)
+	row.add_child(label)
+	_grid.add_child(row)

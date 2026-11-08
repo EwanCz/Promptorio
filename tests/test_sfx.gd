@@ -228,6 +228,25 @@ func test_pitch_jitter_stays_in_range() -> void:
 	check(varied, "pitch varies")
 
 
+func test_pitch_scale_multiplies_the_pitch() -> void:
+	_add_cue(&"plain")
+	var jittery: SfxCue = _add_cue(&"wobble")
+	jittery.pitch_jitter = 0.1
+	_sfx.play(&"plain", Vector2.INF, 1.5)
+	check_eq(_played[0]["pitch"], 1.5, "a cue without jitter plays at the requested scale")
+	_sfx.play(&"plain")
+	check_eq(_played[1]["pitch"], 1.0, "the scale defaults to 1")
+	var in_range: bool = true
+	for i: int in 20:
+		_sfx.play(&"wobble", Vector2.INF, 2.0)
+		var pitch: float = _played[_played.size() - 1]["pitch"]
+		in_range = in_range and pitch >= 2.0 * 0.9 and pitch <= 2.0 * 1.1
+		_sfx.stop_all()
+	check(in_range, "with jitter the scale multiplies the jittered pitch")
+	_sfx.play(&"plain", Vector2.INF, 0.0)
+	check(float(_played[_played.size() - 1]["pitch"]) > 0.0, "a zero scale is kept playable")
+
+
 func test_buses_and_limiter() -> void:
 	var master: int = AudioServer.get_bus_index(&"Master")
 	for bus_name: StringName in [&"SFX", &"UI"]:
