@@ -161,6 +161,11 @@ func is_blocked() -> bool:
 	return _blocked and held != ""
 
 
+## An item riding the belt toward the next machine counts as producing.
+func is_producing() -> bool:
+	return held != ""
+
+
 func _apply(tool_name: String, args: Dictionary) -> bool:
 	if tool_name == "set_direction":
 		facing = ARROWS.keys()[args["direction"]]

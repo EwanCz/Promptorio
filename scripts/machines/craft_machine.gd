@@ -78,6 +78,10 @@ func is_blocked() -> bool:
 	return _blocked
 
 
+func is_producing() -> bool:
+	return is_working()
+
+
 func clear_contents() -> void:
 	stock.clear()
 	progress = 0

@@ -134,6 +134,11 @@ func is_blocked() -> bool:
 	return _blocked
 
 
+## Mining normally or boosted counts as producing; paused to prospect does not.
+func is_producing() -> bool:
+	return enabled and mode != Mode.PROSPECTING
+
+
 func clear_contents() -> void:
 	_held = ""
 	_blocked = false

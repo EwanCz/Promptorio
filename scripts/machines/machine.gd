@@ -35,6 +35,8 @@ var facing: Vector2i = Vector2i.RIGHT:
 var chips: Array[ChipComponent] = []
 ## The icon above the machine: a spinner while any chip waits for an answer, then the last result.
 var indicator: ChipIndicator
+## In-world feedback for production_state(): particles while producing, a badge while blocked.
+var production_effect: ProductionEffect
 
 ## Where the sprite rests for the current facing, and the temporary offset an effect (the Smelter's shake)
 ## adds on top. The sprite always sits at home + offset, so an offset never accumulates or fights a rotation.
@@ -50,6 +52,8 @@ func _ready() -> void:
 	indicator = ChipIndicator.new()
 	indicator.position = Vector2(GameState.CELL_SIZE / 2.0, -Icons.SIZE * Icons.SCALE / 2.0 - 2.0)
 	add_child(indicator)
+	production_effect = ProductionEffect.new()
+	add_child(production_effect)
 	_update_sprite()
 
 
@@ -119,6 +123,24 @@ func get_progress() -> float:
 
 ## True once a delivery of the output failed and the machine is waiting for the way to clear.
 func is_blocked() -> bool:
+	return false
+
+
+## "producing", "idle" or "blocked": drives the in-world production_effect. A machine that is DOWN always
+## reads idle (it is inert, not stuck). Subclasses report active work through is_producing(), not this.
+func production_state() -> String:
+	if status == Status.DOWN:
+		return "idle"
+	if is_blocked():
+		return "blocked"
+	if is_producing():
+		return "producing"
+	return "idle"
+
+
+## True while the machine is actively working toward an output this tick. The base machine never counts;
+## subclasses with a job (Miner, CraftMachine, Conveyor, Collector) override it.
+func is_producing() -> bool:
 	return false
 
 
@@ -328,6 +350,7 @@ func _on_tick(tick_number: int) -> void:
 		_tick()
 	if _label != null:
 		_label.text = _status_text()
+	production_effect.set_state(production_state())
 
 
 ## Spinner while any chip is pending (one chip finishing never hides another still running), otherwise the
