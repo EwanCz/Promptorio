@@ -30,7 +30,7 @@ func _ready() -> void:
 	_master_slider.value_changed.connect(_on_audio_changed)
 	_sfx_slider.value_changed.connect(_on_audio_changed)
 	_mute_check.toggled.connect(_on_audio_changed)
-	_close_button.pressed.connect(_on_close_pressed)
+	_close_button.pressed.connect(close)
 
 
 func open() -> void:
@@ -42,6 +42,10 @@ func open() -> void:
 
 
 func close() -> void:
+	Settings.master_volume = _opened_audio[0]
+	Settings.sfx_volume = _opened_audio[1]
+	Settings.muted = _opened_audio[2]
+	Settings.apply_audio()
 	visible = false
 
 
@@ -58,14 +62,6 @@ func _on_audio_changed(_value: Variant) -> void:
 	Settings.sfx_volume = _sfx_slider.value
 	Settings.muted = _mute_check.button_pressed
 	Settings.apply_audio()
-
-
-func _on_close_pressed() -> void:
-	Settings.master_volume = _opened_audio[0]
-	Settings.sfx_volume = _opened_audio[1]
-	Settings.muted = _opened_audio[2]
-	Settings.apply_audio()
-	close()
 
 
 ## Shows the saved key and model of a provider. The mock provider has neither.
@@ -104,4 +100,5 @@ func _on_save_pressed() -> void:
 		Settings.set_provider_config(provider, _key_edit.text.strip_edges(), _model_picker.get_item_text(_model_picker.selected))
 	Settings.set_saved_base_url(provider, _base_url_edit.text.strip_edges())
 	Settings.save_settings()
+	_opened_audio = [Settings.master_volume, Settings.sfx_volume, Settings.muted]
 	close()

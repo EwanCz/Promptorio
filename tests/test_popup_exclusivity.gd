@@ -41,9 +41,28 @@ func test_opening_settings_over_an_open_save_dialog_closes_it() -> void:
 func test_opening_resources_over_an_open_settings_dialog_closes_it() -> void:
 	(_main.get_node("%SettingsButton") as Button).pressed.emit()
 	check(_settings_dialog.visible, "Settings opens")
+	var settings: Node = autoload("Settings")
+	var original_volume: float = settings.master_volume
+	(_settings_dialog.get_node("%MasterSlider") as HSlider).value = 0.12
 	(_main.get_node("%ResourcesButton") as Button).pressed.emit()
 	check(_resources_page.visible, "Resources opens")
 	check(not _settings_dialog.visible, "and Settings closes")
+	check_eq(settings.master_volume, original_volume, "unsaved audio changes are reverted")
+	settings.master_volume = original_volume
+	settings.apply_audio()
+
+
+func test_closing_menu_chip_editor_returns_to_chip_list() -> void:
+	var menu: Node = load("res://scenes/menu/main_menu.tscn").instantiate()
+	tree.root.add_child(menu)
+	(menu.get_node("%ChipsButton") as Button).pressed.emit()
+	var manager: ChipManager = menu.get_node("%ChipManager")
+	var page: ChipPage = menu.get_node("%ChipPage")
+	manager.chip_requested.emit(null)
+	check(page.visible and not manager.visible, "the editor replaces the chip list")
+	page.close()
+	check(manager.visible and not page.visible, "closing the editor returns to the chip list")
+	menu.free()
 
 
 func test_opening_tools_over_an_open_resources_page_closes_it() -> void:
