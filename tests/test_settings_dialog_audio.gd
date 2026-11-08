@@ -9,6 +9,7 @@ var _original_file: PackedByteArray = PackedByteArray()
 var _saved: Array = []
 var _bus_db: float = 0.0
 var _bus_mute: bool = false
+var _sfx_bus_db: float = 0.0
 
 
 func before_each() -> void:
@@ -20,6 +21,7 @@ func before_each() -> void:
 	var master: int = AudioServer.get_bus_index("Master")
 	_bus_db = AudioServer.get_bus_volume_db(master)
 	_bus_mute = AudioServer.is_bus_mute(master)
+	_sfx_bus_db = AudioServer.get_bus_volume_db(AudioServer.get_bus_index("SFX"))
 	_settings.master_volume = 0.8
 	_settings.sfx_volume = 1.0
 	_settings.muted = false
@@ -44,6 +46,7 @@ func after_each() -> void:
 	var master: int = AudioServer.get_bus_index("Master")
 	AudioServer.set_bus_volume_db(master, _bus_db)
 	AudioServer.set_bus_mute(master, _bus_mute)
+	AudioServer.set_bus_volume_db(AudioServer.get_bus_index("SFX"), _sfx_bus_db)
 
 
 func _master_slider() -> HSlider:
@@ -74,6 +77,8 @@ func test_dragging_applies_live_without_saving() -> void:
 	check(absf(AudioServer.get_bus_volume_db(master) - linear_to_db(0.4)) < 0.01, "the bus follows live")
 	_sfx_slider().value = 0.2
 	check_eq(_settings.sfx_volume, 0.2, "sfx volume changes while dragging")
+	var effects: int = AudioServer.get_bus_index("SFX")
+	check(effects >= 0 and absf(AudioServer.get_bus_volume_db(effects) - linear_to_db(0.2)) < 0.01, "effects bus follows live")
 	_mute_check().button_pressed = true
 	check(_settings.muted and AudioServer.is_bus_mute(master), "mute applies live")
 	var cfg: ConfigFile = ConfigFile.new()

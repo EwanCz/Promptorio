@@ -1,0 +1,8 @@
+[gd_resource type="Resource" script_class="SfxLibrary" format=3]
+
+[ext_resource type="Script" path="res://scripts/core/sfx_cue.gd" id="1_cue"]
+[ext_resource type="Script" path="res://scripts/core/sfx_library.gd" id="2_library"]
+
+[resource]
+script = ExtResource("2_library")
+cues = Array[ExtResource("1_cue")]([])

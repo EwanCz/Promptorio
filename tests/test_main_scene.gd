@@ -80,12 +80,30 @@ func test_menu_resources_and_save_buttons_look_like_settings() -> void:
 	main.free()
 
 
+func test_speed_button_cycles_and_drives_game_state() -> void:
+	var game_state: Node = autoload("GameState")
+	var main: Node = load("res://scenes/main.tscn").instantiate()
+	tree.root.add_child(main)
+	var button: Button = main.get_node("%SpeedButton") as Button
+	check_eq(button.text, "1x", "starts at the current (default) speed")
+	button.pressed.emit()
+	check_eq(button.text, "2x", "first click goes to 2x")
+	check_eq(game_state.time_scale, 2.0, "and GameState follows")
+	button.pressed.emit()
+	check_eq([button.text, game_state.time_scale], ["4x", 4.0], "second click goes to 4x")
+	button.pressed.emit()
+	check_eq([button.text, game_state.time_scale], ["1x", 1.0], "wraps back around to 1x")
+	check(button.tooltip_text.contains("1x") and button.tooltip_text.contains("timers speed up") and button.tooltip_text.contains("cooldowns") and button.tooltip_text.contains("latency"), "hover distinguishes tick timers from real-time cooldown and latency")
+	main.free()
+	game_state.set_time_scale(game_state.MIN_TIME_SCALE)
+
+
 func test_the_bar_buttons_share_one_row() -> void:
 	var main: Node = load("res://scenes/main.tscn").instantiate()
 	var row: Control = main.get_node("%BarButtons")
 	var names: Array[String] = []
 	for child: Node in row.get_children():
 		names.append(str(child.name))
-	check_eq(names, ["MenuButton", "ResourcesButton", "ToolsButton", "SavesButton", "SettingsButton"] as Array[String], "Menu, Resources, Tools, Save / Load, Settings, left to right")
+	check_eq(names, ["SpeedButton", "MenuButton", "ResourcesButton", "ToolsButton", "SavesButton", "SettingsButton"] as Array[String], "Speed, Menu, Resources, Tools, Save / Load, Settings, left to right")
 	check_eq((row as BoxContainer).alignment, BoxContainer.ALIGNMENT_END, "pushed to the right, where Settings used to sit")
 	main.free()
