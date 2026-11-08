@@ -66,7 +66,8 @@ func test_mock_provider_needs_no_key() -> void:
 	_settings.provider = "mock"
 	_changed()
 	check(not _settings.needs_api_key(), "mock needs no key")
-	check(not _panel.visible, "no panel for the mock provider")
+	check(_panel.visible, "the panel stays visible so a key-free player is told the AI is fake")
+	check(_shows("mock") and _hint().contains("canned") and _hint().contains("not"), "explains the decisions are canned, not a real AI")
 
 
 func test_a_key_is_being_checked_until_the_verdict() -> void:
