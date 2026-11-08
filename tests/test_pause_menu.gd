@@ -6,12 +6,14 @@ var _menu: PauseMenu
 var _game: Node
 var _saved_money: int = 0
 var _saved_ticks: int = 0
+var _saved_order: Dictionary = {}
 
 
 func before_each() -> void:
 	_game = autoload("GameState")
 	_saved_money = _game.money
 	_saved_ticks = _game.tick_count
+	_saved_order = {"product": _game.order_product, "quantity": _game.order_quantity, "progress": _game.order_progress, "reward": _game.order_reward}
 	_main = load("res://scenes/main.tscn").instantiate()
 	tree.root.add_child(_main)
 	_menu = _main.get_node("%PauseMenu")
@@ -22,6 +24,7 @@ func after_each() -> void:
 	_main.free()
 	_game.money = _saved_money
 	_game.tick_count = _saved_ticks
+	_game.restore_order(_saved_order["product"], _saved_order["quantity"], _saved_order["progress"], _saved_order["reward"])
 
 
 func _press_cancel() -> void:

@@ -8,6 +8,7 @@ var _game: Node
 var _registry: Node
 var _saved_money: int = 0
 var _saved_ticks: int = 0
+var _saved_order: Dictionary = {}
 var _saved_dir: String = ""
 var _requested: int = 0
 var _chip_ids: Array[int] = []
@@ -18,6 +19,7 @@ func before_each() -> void:
 	_registry = autoload("ChipRegistry")
 	_saved_money = _game.money
 	_saved_ticks = _game.tick_count
+	_saved_order = {"product": _game.order_product, "quantity": _game.order_quantity, "progress": _game.order_progress, "reward": _game.order_reward}
 	_saved_dir = SaveGame.save_dir
 	SaveGame.save_dir = TEST_DIR
 	_requested = 0
@@ -41,6 +43,7 @@ func after_each() -> void:
 	SaveGame.save_dir = _saved_dir
 	_game.money = _saved_money
 	_game.tick_count = _saved_ticks
+	_game.restore_order(_saved_order["product"], _saved_order["quantity"], _saved_order["progress"], _saved_order["reward"])
 
 
 func _on_game_requested() -> void:

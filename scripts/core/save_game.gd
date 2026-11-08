@@ -7,7 +7,8 @@ extends RefCounted
 ## Format (version 1): {version, tick_count, money, next_machine_id, minesites: [[x, y]] (the cells where a miner can
 ## go; a file without it keeps the current map's), chips: [{id, name, description, prompt}],
 ## machines: [{type, id, cell: [x, y], facing: [x, y], enabled, status, chips: [{id, timeout}],
-## data: {...state of the machine type, see Machine._save_data()}}]}
+## data: {...state of the machine type, see Machine._save_data()}}],
+## order: {product, quantity, progress, reward} (the current order; a file without it leaves the order alone)}
 
 const VERSION: int = 1
 ## Slots go to `saves/` in the project folder when run from the editor (so a save can be committed and shared),
@@ -67,6 +68,12 @@ static func snapshot(placement: Placement) -> Dictionary:
 		"minesites": placement.grid.minesites.map(func(site: Vector2i) -> Array: return [site.x, site.y]),
 		"chips": chips,
 		"machines": machines,
+		"order": {
+			"product": GameState.order_product,
+			"quantity": GameState.order_quantity,
+			"progress": GameState.order_progress,
+			"reward": GameState.order_reward,
+		},
 	}
 
 
@@ -96,6 +103,9 @@ static func restore(placement: Placement, data: Variant) -> String:
 	placement.next_id = maxi(int(save["next_machine_id"]), highest_id + 1)
 	GameState.tick_count = int(save["tick_count"])
 	GameState.add_money(int(save["money"]) - GameState.money)
+	if save.has("order"):
+		var order: Dictionary = save["order"]
+		GameState.restore_order(str(order["product"]), int(order["quantity"]), int(order["progress"]), int(order["reward"]))
 	return ""
 
 
@@ -117,6 +127,8 @@ static func validate(placement: Placement, data: Variant) -> String:
 	var chip_error: String = _validate_chips(save.get("chips"))
 	if chip_error != "":
 		return chip_error
+	if save.has("order") and not _order_valid(save["order"]):
+		return "The save has an invalid order."
 	var sites: Variant = placement.grid.minesites if placement != null else null
 	if save.has("minesites"):
 		if not _minesites_valid(save["minesites"]):
@@ -268,6 +280,19 @@ static func _validate_machines(machines: Variant, chip_ids: Dictionary, sites: V
 			if not _is_whole(owner) or int(owner) < 0 or (int(owner) != 0 and not orchestrators.has(int(owner))):
 				return "The save has a chip with an invalid Orchestrator owner."
 	return ""
+
+
+static func _order_valid(order: Variant) -> bool:
+	if typeof(order) != TYPE_DICTIONARY:
+		return false
+	var data: Dictionary = order
+	if typeof(data.get("product")) != TYPE_STRING:
+		return false
+	if not _is_whole(data.get("quantity")) or int(data["quantity"]) < 0:
+		return false
+	if not _is_whole(data.get("progress")) or int(data["progress"]) < 0 or int(data["progress"]) > int(data["quantity"]):
+		return false
+	return _is_whole(data.get("reward")) and int(data["reward"]) >= 0 and int(data["reward"]) <= MAX_MONEY
 
 
 static func _chips_valid(chips: Variant, chip_ids: Dictionary) -> bool:
