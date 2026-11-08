@@ -9,7 +9,10 @@ extends RefCounted
 ## threshold}], data: {...state of the machine type, see Machine._save_data()}}]}
 
 const VERSION: int = 1
-const SLOT_DIR: String = "user://saves"
+## Slots go to `saves/` in the project folder when run from the editor (so a save can be committed and shared),
+## else to the player's user folder (`res://` is read-only in an exported build).
+const PROJECT_SLOT_DIR: String = "res://saves"
+const USER_SLOT_DIR: String = "user://saves"
 const EXTENSION: String = "json"
 const MAX_FILE_BYTES: int = 4 * 1024 * 1024
 const MAX_SLOT_NAME_LENGTH: int = 40
@@ -19,7 +22,14 @@ const MAX_CHIP_TEXT: int = 20000
 const DIRECTIONS: Array[Vector2i] = [Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT, Vector2i.UP]
 
 ## Where slots are written. Tests point it elsewhere.
-static var save_dir: String = SLOT_DIR
+static var save_dir: String = default_save_dir()
+
+
+## `saves/` next to project.godot in an editor run, `user://saves` in an exported build.
+static func default_save_dir() -> String:
+	if OS.has_feature("editor"):
+		return ProjectSettings.globalize_path(PROJECT_SLOT_DIR)
+	return USER_SLOT_DIR
 
 
 ## The current game as a JSON-ready Dictionary.

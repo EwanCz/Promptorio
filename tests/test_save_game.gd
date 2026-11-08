@@ -292,6 +292,14 @@ func test_slot_names_are_checked() -> void:
 		check_eq(SaveGame.slot_path(bad), "", "refused name: '%s'" % bad)
 
 
+func test_default_dir_is_the_project_folder_in_the_editor() -> void:
+	var dir: String = SaveGame.default_save_dir()
+	if OS.has_feature("editor"):
+		check_eq(dir, ProjectSettings.globalize_path("res://").path_join("saves"), "slots go to saves/ in the project")
+	else:
+		check_eq(dir, "user://saves", "an exported build uses the user folder")
+
+
 func test_slots_are_listed_and_deleted() -> void:
 	SaveGame.write(SaveGame.slot_path("one"), {"x": 1})
 	SaveGame.write(SaveGame.slot_path("two"), {"x": 1})
