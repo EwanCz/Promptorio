@@ -112,6 +112,7 @@ Requests go to the official endpoint (`https://api.anthropic.com`, `https://api.
 By default a failed HTTP call reaches the ChipLog as `HTTP <status> (<error type>)` only, because a provider's message can echo part of the key. To see the message while debugging, launch the editor (or the project from it) with `PROMPTORIO_DEBUG_LLM=1`, e.g. `PROMPTORIO_DEBUG_LLM=1 godot --editor`; the log line becomes `HTTP 400 (invalid_request_error): <message>`.
 - Limits: only the exact value `1` enables it, and only when `OS.has_feature("editor")`, so exported builds ignore it. It adds the provider's error `message` for non-200 answers and nothing else; no headers, request body or raw response body is ever logged, and a non-JSON body adds nothing.
 - The message is made one line, the configured API key and any 20+ character token-like run are replaced by `[redacted]`, and it is cut at 200 characters (`...` marks the cut). The token mask is a heuristic (`shortcut:`): it can hide a long identifier and cannot catch a key shorter than 20 characters that is not the configured one.
+- The provider's `error.type` field has the configured API key masked before it is embedded in `HTTP <status> (<error type>)`, so a provider that echoes the key back through `type` instead of `message` cannot leak it either. This applies whether or not diagnostics are on, since `type` is always included. Unlike the message heuristic above, `type` is not scanned for generic 20+ character tokens, since legitimate provider type values (e.g. `authentication_error`) are themselves that long.
 
 ### Save files
 `SaveGame` (`scripts/core/save_game.gd`, static functions, no autoload) saves and restores the whole game as one JSON file (`version` 1). Slots live in `saves/` at the project root in an editor run (so a save can be committed and shared) and in `user://saves/` in an exported build (`SaveGame.default_save_dir()`); Import / Export in the `SaveDialog` popup reach any file. A file is never trusted: `SaveGame.validate()` checks the whole structure before anything is touched, and each machine clamps its own values in `_load_data()`. Machines add their state by overriding `_save_data()` / `_load_data()` (use the `_read_int` / `_read_float` / `_read_item` helpers). The save embeds the chips its machines use; loading overwrites a registry chip with the same id.
@@ -166,24 +167,6 @@ Env: `GODOT` (godot binary, default `godot`), `TEST_TIMEOUT` (seconds, default 1
 - The map draws random minesites at every start. The runner forces a fixed layout (`GridMap2D.layout_override`, set in `tests/run_tests.gd`), so tests may rely on those cells; a test about the random draw clears it and puts it back.
 - New `class_name` scripts need a class-cache refresh; `tests/run.sh` does it, a bare `godot --headless -s` does not.
 - The real HTTP path is tested offline by replaying scripted responses through `LLMManager._send()` (`tests/test_llm_http.gd`, `tests/support/scripted_llm_manager.gd`). A real network round-trip is still untested.
-
-## Features
-
-### LLM
-The llm system is linked via the `LLMManager`. It stores the providers (`mock`, `anthropic`, `openai`), one `LLMProvider` each.
-It help to call the models via a `request_decision` function. It can be take the message + the related tools.
-The request_decision get a list of tools to call with arguments. It save the machine which made the chat-call to call the functions related to the machine (ex: prompt ask to make a axe. The llm will ask to call the tool "make" with the param axe on the machine which called it).
-> [!Warning]
-> Complete
-
-### SIM
-Need to build the map by making a x/y grid of square tile where machine can be place on.
-Need a tick rate limit to make the game update the ressource position and the machine action completion time. Link to the eventBus.
-> [!Warning]
-> Complete
-
-### UI
-Information in docs/UI.md search any information related to UI in this file.
 
 ## Workflow
 - Branch per feature, small commits (conventional commits, e.g. `feat(llm): add queue`). Don't commit directly to `main` for features. Never commit `.env` or keys.
