@@ -216,6 +216,29 @@ func test_belt_ticks_are_shared_so_neighbours_stay_in_phase() -> void:
 	check_eq(_sprite(first).region_rect, _sprite(second).region_rect, "two belts on the same tick show the same pose")
 
 
+func test_belt_freezes_while_blocked_and_resumes_in_phase_once_clear() -> void:
+	var blocked: Conveyor = _spawn("conveyor") as Conveyor
+	blocked.receive("coal")
+	for t: int in range(1, Conveyor.MOVE_TICKS + 1):
+		_tick(t)
+	check(blocked.is_blocked(), "nothing in front: the belt is blocked once its move time has passed")
+	var frozen_pose: Rect2 = _belt(blocked).region_rect
+	for t: int in range(Conveyor.MOVE_TICKS + 1, Conveyor.MOVE_TICKS + 4):
+		_tick(t)
+	check_eq(_belt(blocked).region_rect, frozen_pose, "a blocked belt does not scroll while stuck")
+
+	var receiver: Conveyor = _spawn("conveyor") as Conveyor
+	receiver.cell = Vector2i.RIGHT
+	autoload("GameState").register_machine(receiver, receiver.cell)
+	var clear_tick: int = Conveyor.MOVE_TICKS + 4
+	_tick(clear_tick)
+	check(not blocked.is_blocked(), "a receiver is now in front: the retry delivers the item")
+
+	var reference: Conveyor = _spawn("conveyor") as Conveyor
+	_tick(clear_tick + 1)
+	check_eq(_belt(blocked).region_rect, _belt(reference).region_rect, "once clear, the belt resumes the same shared scroll phase as one that was never blocked")
+
+
 func test_belt_surface_sits_on_the_frame_rows_it_covers() -> void:
 	var conveyor: Conveyor = _spawn("conveyor") as Conveyor
 	conveyor.facing = Vector2i.RIGHT
