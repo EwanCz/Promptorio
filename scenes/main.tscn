@@ -78,6 +78,7 @@ layout_mode = 2
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
+theme_type_variation = &"BarSection"
 
 [node name="KeyStatusRow" type="HBoxContainer" parent="Game/Bar/VBoxContainer/KeyStatus"]
 layout_mode = 2

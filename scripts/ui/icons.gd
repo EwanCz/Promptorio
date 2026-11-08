@@ -23,6 +23,7 @@ const BADGES: Dictionary = {
 	"info": ["info", "dot"],
 	"warn": ["warn", "bang"],
 	"unknown": ["warn", "question"],
+	"mock": ["off", "dot"],
 	"blocked": ["bad", "dash"],
 	"no_money": ["coin", "coin"],
 	"state_normal": ["ok", "play"],

@@ -91,11 +91,20 @@ func _process(delta: float) -> void:
 	_key_badge.texture = _frames[int(_spin_time / ChipIndicator.FRAME_SECONDS) % _frames.size()]
 
 
-## Hidden for providers without a key. Otherwise a key icon with a badge: "!" missing, spinner being checked,
-## check accepted, cross rejected, "?" could not be verified. Hover for the explanation.
+## Always visible, so a player is never left thinking an unseen AI is reading their prompt. For `mock` it
+## is a fixed grey dot saying chip decisions are canned, not a real answer. Otherwise a key icon with a
+## badge: "!" missing, spinner being checked, check accepted, cross rejected, "?" could not be verified.
+## Hover for the explanation.
 func _refresh_key_status() -> void:
-	_key_status.visible = Settings.ENV_VARS.has(Settings.provider)
 	set_process(false)
+	if Settings.provider == "mock":
+		_key_status.visible = true
+		var mock_text: String = "Mock provider: chip decisions are canned and ignore the prompt, not answered by a real AI. Pick Anthropic or OpenAI in Settings to use one."
+		Icons.apply(_key_icon, "key", mock_text)
+		Icons.apply(_key_badge, "mock", mock_text)
+		_key_status.tooltip_text = mock_text
+		return
+	_key_status.visible = Settings.ENV_VARS.has(Settings.provider)
 	if not _key_status.visible:
 		return
 	var badge: String = "checking"

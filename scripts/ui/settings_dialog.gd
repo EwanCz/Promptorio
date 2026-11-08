@@ -5,12 +5,18 @@ extends PanelContainer
 
 const PROVIDERS: Array[String] = ["mock", "anthropic", "openai"]
 
+## Audio values when the dialog opened: Close puts them back, since the sliders apply live while dragging.
+var _opened_audio: Array = [0.8, 1.0, false]
+
 @onready var _provider_picker: OptionButton = %ProviderPicker
 @onready var _credentials: Control = %Credentials
 @onready var _key_edit: LineEdit = %KeyEdit
 @onready var _base_url: Control = %BaseUrl
 @onready var _base_url_edit: LineEdit = %BaseUrlEdit
 @onready var _model_picker: OptionButton = %ModelPicker
+@onready var _master_slider: HSlider = %MasterSlider
+@onready var _sfx_slider: HSlider = %SfxSlider
+@onready var _mute_check: CheckButton = %MuteCheck
 @onready var _save_button: Button = %SaveButton
 @onready var _close_button: Button = %CloseButton
 
@@ -21,17 +27,45 @@ func _ready() -> void:
 		_provider_picker.add_item(provider)
 	_provider_picker.item_selected.connect(_on_provider_selected)
 	_save_button.pressed.connect(_on_save_pressed)
-	_close_button.pressed.connect(close)
+	_master_slider.value_changed.connect(_on_audio_changed)
+	_sfx_slider.value_changed.connect(_on_audio_changed)
+	_mute_check.toggled.connect(_on_audio_changed)
+	_close_button.pressed.connect(_on_close_pressed)
 
 
 func open() -> void:
 	_provider_picker.select(maxi(PROVIDERS.find(Settings.provider), 0))
 	_load_provider(PROVIDERS[_provider_picker.selected])
+	_opened_audio = [Settings.master_volume, Settings.sfx_volume, Settings.muted]
+	_show_audio(Settings.master_volume, Settings.sfx_volume, Settings.muted)
 	visible = true
 
 
 func close() -> void:
 	visible = false
+
+
+## Sets the audio controls without firing their change handlers (no live apply, no feedback loop).
+func _show_audio(master: float, sfx: float, is_muted: bool) -> void:
+	_master_slider.set_value_no_signal(master)
+	_sfx_slider.set_value_no_signal(sfx)
+	_mute_check.set_pressed_no_signal(is_muted)
+
+
+## Dragging a slider or toggling mute changes what the player hears right away; Save makes it persistent.
+func _on_audio_changed(_value: Variant) -> void:
+	Settings.master_volume = _master_slider.value
+	Settings.sfx_volume = _sfx_slider.value
+	Settings.muted = _mute_check.button_pressed
+	Settings.apply_audio()
+
+
+func _on_close_pressed() -> void:
+	Settings.master_volume = _opened_audio[0]
+	Settings.sfx_volume = _opened_audio[1]
+	Settings.muted = _opened_audio[2]
+	Settings.apply_audio()
+	close()
 
 
 ## Shows the saved key and model of a provider. The mock provider has neither.
