@@ -211,6 +211,23 @@ func test_smelter_cooler_ships_with_a_safe_default_timeout() -> void:
 	_restore_path()
 
 
+func test_existing_unedited_cooler_receives_timeout_default() -> void:
+	_use_tmp_path()
+	var cooler: ChipRessource = _registry.get_from_id(2)
+	cooler.default_timeout = 0
+	_registry.update(cooler.id, cooler.name, cooler.description, cooler.prompt)
+	_registry.load_registry()
+	check_eq(_registry.get_from_id(2).default_timeout, 30, "existing unedited cooler receives the shipped timeout")
+	_registry.load_registry()
+	check_eq(_registry.get_from_id(2).default_timeout, 30, "timeout migration persists")
+	cooler = _registry.get_from_id(2)
+	cooler.default_timeout = 0
+	_registry.update(cooler.id, cooler.name, cooler.description, "custom prompt")
+	_registry.load_registry()
+	check_eq(_registry.get_from_id(2).default_timeout, 0, "edited starter keeps its own default")
+	_restore_path()
+
+
 func test_edits_survive_a_reload_with_stable_ids() -> void:
 	_use_tmp_path()
 	var added: ChipRessource = _registry.add("persist_new", "np", "nd")

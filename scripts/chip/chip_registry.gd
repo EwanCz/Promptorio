@@ -139,7 +139,7 @@ func release_all_creators() -> void:
 ## Puts a chip from a save file in the registry under its own id: a chip with that id is overwritten (the
 ## save wins), else it is created. A name already used by another chip gets a number appended, so names
 ## stay unique. Null for an invalid id or an empty name.
-func import_chip(chip_id: int, chip_name: String, desc: String, prompt: String, created_by: int = 0) -> ChipRessource:
+func import_chip(chip_id: int, chip_name: String, desc: String, prompt: String, created_by: int = 0, default_timeout: int = -1) -> ChipRessource:
 	if chip_id <= 0 or chip_name == "":
 		return null
 	var unique_name: String = chip_name
@@ -158,6 +158,8 @@ func import_chip(chip_id: int, chip_name: String, desc: String, prompt: String, 
 	chip.description = desc
 	chip.prompt = prompt
 	chip.created_by = created_by
+	if default_timeout >= 0:
+		chip.default_timeout = default_timeout
 	if created:
 		EventBus.chip_registered.emit(chip)
 	else:
@@ -206,6 +208,9 @@ func _upgrade_starter_prompts() -> bool:
 		var outdated: Array = OUTDATED_STARTER_PROMPTS.get(shipped.id, [])
 		if saved != null and saved.name == shipped.name and saved.prompt.md5_text() in outdated:
 			saved.prompt = shipped.prompt
+			changed = true
+		if saved != null and saved.name == shipped.name and saved.prompt == shipped.prompt and saved.default_timeout == 0 and shipped.default_timeout > 0:
+			saved.default_timeout = shipped.default_timeout
 			changed = true
 	return changed
 
