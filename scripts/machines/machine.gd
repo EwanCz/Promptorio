@@ -471,6 +471,8 @@ func _on_tick(tick_number: int) -> void:
 ## Spinner while any chip is pending (one chip finishing never hides another still running), otherwise the
 ## result of the one that just finished.
 func _on_chip_activity(outcome: String) -> void:
+	if outcome in ["applied", "none", "failed"]:
+		chip_outcome_reported.emit(outcome)
 	for component: ChipComponent in chips:
 		if component.pending:
 			indicator.show_pending()
@@ -479,8 +481,6 @@ func _on_chip_activity(outcome: String) -> void:
 		indicator.clear()
 	else:
 		indicator.show_result(outcome)
-		if outcome != "checking":
-			chip_outcome_reported.emit(outcome)
 
 
 func _on_chip_decision_applied(reason: String, applied: int, chip_id: int) -> void:
