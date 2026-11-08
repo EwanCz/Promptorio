@@ -143,7 +143,7 @@ The "Save / Load" button (Bar, below the Menu button and above Settings) opens `
 - Not saved: requests in flight, chip cooldowns, chip logs. An exploding Smelter is left out.
 
 ### API key status
-At the top of the Bar (above the page tabs), the `KeyStatus` panel reports the state of the selected provider's key as a key icon with a badge; hovering either shows the explanation. It is hidden for `mock`, which needs no key. States:
+At the top of the Bar (above the page tabs), the `KeyStatus` panel reports the state of the selected provider's key as a key icon with a badge; hovering either shows the explanation. For `mock` it always stays visible with a fixed grey dot badge, "Mock provider: chip decisions are canned and ignore the prompt, not answered by a real AI...": a key-free player is never left thinking an unseen AI is reading their prompt. States for a real provider:
 - Orange "!" badge, "No active API key...": neither a saved key nor a `.env` one (`Settings.needs_api_key()`).
 - Animated spinner badge (it turns while the check is pending and stops at the verdict), "Checking the API key...": a key exists and no verdict has arrived yet. Any settings change discards the previous verdict.
 - Green check, "API key verified.": the provider accepted the key.

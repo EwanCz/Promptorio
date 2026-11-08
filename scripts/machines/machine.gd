@@ -84,13 +84,16 @@ func _exit_tree() -> void:
 ## Adds a ChipComponent child running the registry chip. Null for an unknown id or a chip already attached.
 ## `assigned_by` is 0 for a player-made attachment (the default: the tooltip's "add chip" never passes
 ## anything else), else the machine_id of the Orchestrator that made it (see ChipComponent.assigned_by).
-func attach_chip(chip_id: int, timeout_ticks: int = ChipComponent.DEFAULT_TIMEOUT, assigned_by: int = 0) -> ChipComponent:
+## `timeout_ticks` left at its default (unspecified) starts the component at the chip's own
+## effective_default_timeout() instead of always ChipComponent.DEFAULT_TIMEOUT; pass a positive value
+## (e.g. a saved component's own timeout) to pick the ticks explicitly instead.
+func attach_chip(chip_id: int, timeout_ticks: int = -1, assigned_by: int = 0) -> ChipComponent:
 	var chip: ChipRessource = ChipRegistry.get_from_id(chip_id)
 	if chip == null or get_chip(chip_id) != null:
 		return null
 	var component: ChipComponent = ChipComponent.new()
 	component.chip = chip
-	component.set_timeout(timeout_ticks)
+	component.set_timeout(timeout_ticks if timeout_ticks > 0 else chip.effective_default_timeout())
 	component.assigned_by = assigned_by
 	component.decision_applied.connect(_on_chip_decision_applied.bind(chip_id))
 	component.activity_changed.connect(_on_chip_activity)

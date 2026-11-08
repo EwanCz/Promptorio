@@ -41,7 +41,7 @@ Main (Node)
 │  │        └─ Camera2D          (zoom in/out, pan x/y; camera.gd)
 │  └─ Bar (PanelContainer, size_flags_stretch_ratio 1)
 │     └─ VBoxContainer
-│        ├─ KeyStatus (API key state as key icon + badge, hidden for mock)
+│        ├─ KeyStatus (API key state as key icon + badge, with a mock-provider indicator)
 │        ├─ OrderStatus (current order: resource icon, progress "N/M", reward coin + amount)
 │        ├─ TopHalf (VBoxContainer, top half of the Bar)
 │        │  ├─ PageTabs (HFlowContainer of page markers at the top)
