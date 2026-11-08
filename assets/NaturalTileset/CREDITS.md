@@ -1,19 +1,20 @@
 # Natural tileset
 
-`natural_tileset.png`, 32x32 pixel-art tiles for `data/tilesets/natural_tileset.tres`, used by `GridMap2D` (`scenes/main.tscn`) as the ground tileset (sourced for GR2-27, replacing the old `IndustrialScifiTileset` / `data/tilesets/factory_tileset.tres` per GR2-21).
+`natural_tileset.png`, 32x32 pixel-art tiles for `data/tilesets/natural_tileset.tres`, used by `GridMap2D` (`scenes/main.tscn`) as the ground tileset (sourced for GR2-21/GR2-27, swapped to Kenney art per GR2-43 after the original OpenGameArt tiles didn't read well).
 
 | Tile (atlas coords) | Content | Source |
 |---|---|---|
-| 0:0 | dirt | Cropped from [Grass on dirt & stone tileset](https://opengameart.org/content/grass-on-dirt-stone-tileset) (hitmanrec), CC0 |
-| 1:0 | rock | Cropped from the same CC0 pack |
-| 2:0 | grass | Drawn for this project (procedural pixel fill using the grass palette sampled from the CC0 pack above) |
-| 3:0 | rock/dirt straight edge (rock above, dirt below) | Composited from the 0:0 and 1:0 tiles above, using the same border shape as the 0:1 edge tile |
-| 4:0 | minesite (ore vein in rock) | Drawn for this project: the rock tile with procedural silver/copper flecks |
-| 0:1 | dirt/grass straight edge (grass above, dirt below) | Cropped from the same CC0 pack |
-| 1:1 | rock/grass straight edge (grass above, rock below) | Composited from the 1:0 and 2:0 tiles above, using the border shape cut from the 0:1 edge tile (the originally committed 1:1 tile was a mis-cropped plain rock tile with no grass at all — this replaces it) |
-| 2:1 | dirt/grass outer corner (grass wraps the top-left corner) | Composited from the 0:0 and 2:0 tiles above, using an L-shaped border built by combining the 0:1 edge border with a 90°-rotated copy of itself |
-| 3:1 | rock/grass outer corner (grass wraps the top-left corner) | Composited from the 1:0 and 2:0 tiles above, using the same L-shaped border as 2:1 |
+| 0:0 | dirt | Cropped from [Desert Shooter Pack](https://kenney.nl/assets/desert-shooter-pack) (Kenney, CC0), tile (1,3) of `PNG/Tiles/Tilemap/tilemap_packed.png`, upscaled 2x (16px source -> 32px project tiles) |
+| 1:0 | rock | Same pack, tile (1,1), upscaled 2x |
+| 2:0 | grass | Same pack, tile (6,1), upscaled 2x |
+| 4:0 | minesite (ore vein in rock) | Same pack: the dirt tile (1,3) with the crystal prop at (3,3) composited on top, so a minesite reads as "ore sticking out of the ground" regardless of which biome it overlays |
+| 0:1 | rock/dirt edge (dirt above, rock below) | Same pack, tile (1,2), upscaled 2x and flipped vertically so the blended-toward color sits on top at the identity orientation |
+| 1:1 | grass/dirt edge (dirt above, grass below) | Same pack, tile (6,2), upscaled 2x and flipped vertically, same reason as above |
 
-Credit is not required for CC0 but is given anyway, matching the convention in `assets/items/CREDITS.md`.
+Kenney's CC0 tiles don't require credit but it is given anyway, matching the convention in `assets/items/CREDITS.md`. License: [CC0 1.0](http://creativecommons.org/publicdomain/zero/1.0/).
 
-`GridMap2D` uses the grass straight edges in four orientations. Corner and rock/dirt edge art is available for future use; those borders currently remain hard-edged.
+Notes (GR2-43, wired up in `GridMap2D._generate_ground`):
+- Kenney's sheet pairs each ground color (rock, grass) with its own dirt transition tile, rather than every biome transitioning into one shared "overlay" biome. So unlike the previous art, dirt is the common tile both rock and grass blend toward: a rock or grass cell touching dirt gets the matching edge tile (`ROCK_DIRT_EDGE` / `GRASS_DIRT_EDGE`), oriented toward the dirt side; dirt cells are never edge-tiled.
+- Only straight-edge transitions are provided (dirt on top, the other biome below in the baked art). `GridMap2D` reuses these two transition tiles for all 4 orientations via the atlas's built-in `TileSetAtlasSource.TRANSFORM_FLIP_H` / `TRANSFORM_FLIP_V` / `TRANSFORM_TRANSPOSE` alternative-tile flags, passed as the `alternative_tile` argument to `set_cell`, instead of new source images.
+- No direct rock/grass transition tile was made (only each paired with dirt), so a direct rock/grass border (no dirt between them) stays a harder edge than the dirt transitions.
+- No corner tiles were carried over from the previous tileset revision: they were unused by `GridMap2D` (a corner cell just blends toward the first direction checked, see `EDGE_DIRECTIONS`), so they weren't worth sourcing again.

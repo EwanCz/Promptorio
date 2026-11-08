@@ -72,10 +72,10 @@ func test_every_biome_appears_across_seeded_maps() -> void:
 		var found: Dictionary = {}
 		for cell: Vector2i in ground:
 			var tile: Vector2i = ground[cell]["atlas"]
-			if tile == GridMap2D.DIRT_GRASS_EDGE:
-				tile = GridMap2D.DIRT_TILE
-			elif tile == GridMap2D.ROCK_GRASS_EDGE:
+			if tile == GridMap2D.ROCK_DIRT_EDGE:
 				tile = GridMap2D.ROCK_TILE
+			elif tile == GridMap2D.GRASS_DIRT_EDGE:
+				tile = GridMap2D.GRASS_TILE
 			found[tile] = true
 		if not (found.has(GridMap2D.DIRT_TILE) and found.has(GridMap2D.ROCK_TILE) and found.has(GridMap2D.GRASS_TILE)):
 			missing.append(seed_value)
@@ -98,7 +98,7 @@ func test_ground_biomes_are_randomized_per_build() -> void:
 func test_minesite_restores_its_ground_tile_including_edge_art() -> void:
 	_grid._build_ground()
 	var edge_cell: Vector2i = Vector2i.ZERO
-	_grid._ground[edge_cell] = {"atlas": GridMap2D.DIRT_GRASS_EDGE, "alt": TileSetAtlasSource.TRANSFORM_FLIP_V}
+	_grid._ground[edge_cell] = {"atlas": GridMap2D.ROCK_DIRT_EDGE, "alt": TileSetAtlasSource.TRANSFORM_FLIP_V}
 	var before: Dictionary = _grid._ground[edge_cell].duplicate()
 	var with_edge_cell: Array[Vector2i] = _grid.minesites.duplicate()
 	with_edge_cell.append(edge_cell)
@@ -113,11 +113,11 @@ func test_minesite_restores_its_ground_tile_including_edge_art() -> void:
 	check_eq(_grid.get_cell_alternative_tile(edge_cell), before["alt"], "with the same orientation")
 
 
-func test_minesite_art_does_not_replace_terrain_corner() -> void:
+func test_minesite_art_is_distinct_from_ground_tiles() -> void:
 	var atlas: TileSetAtlasSource = _grid.tile_set.get_source(GridMap2D.SOURCE_ID)
-	check(GridMap2D.MINESITE_TILE != Vector2i(2, 1), "minesite and dirt/grass corner use different atlas cells")
 	check(atlas.has_tile(GridMap2D.MINESITE_TILE), "minesite art exists in the atlas")
-	check(atlas.has_tile(Vector2i(2, 1)) and atlas.has_tile(Vector2i(3, 1)), "both terrain corners remain available")
+	for ground_tile: Vector2i in GridMap2D.BIOME_TILES:
+		check(GridMap2D.MINESITE_TILE != ground_tile, "minesite and %s use different atlas cells" % ground_tile)
 	var image: Image = atlas.texture.get_image()
 	var origin: Vector2i = GridMap2D.MINESITE_TILE * atlas.texture_region_size
 	var opaque: int = 0
