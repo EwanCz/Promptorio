@@ -2,6 +2,10 @@ extends Node
 ## Grid, machine registry, tick clock and money.
 
 const TICK_RATE: int = 10
+## Simulation speed-up range: how many simulated seconds pass per real second. Real time itself (chip
+## cooldowns, request latency, the mock provider's delay) is untouched; only the tick clock speeds up.
+const MIN_TIME_SCALE: float = 1.0
+const MAX_TIME_SCALE: float = 4.0
 const GRID_SIZE: Vector2i = Vector2i(32, 20)
 const CELL_SIZE: int = 64
 const START_MONEY: int = 100
@@ -14,6 +18,9 @@ const ORDER_QUANTITY: int = 5
 const ORDER_REWARD_MULTIPLIER: int = 2
 
 var tick_count: int = 0
+## How many simulated seconds pass per real second (clamped to [MIN_TIME_SCALE, MAX_TIME_SCALE]), set
+## through set_time_scale(). A UI control (the Bar's speed button) is the only writer.
+var time_scale: float = MIN_TIME_SCALE
 var money: int = START_MONEY
 ## "" while no order is active (only true before the first reset(), e.g. at the main menu).
 var order_product: String = ""
@@ -32,8 +39,13 @@ func _ready() -> void:
 
 func _physics_process(_delta: float) -> void:
 	var now: int = Time.get_ticks_usec()
-	_advance_clock(float(now - _last_tick_time_usec) / 1000000.0)
+	_advance_clock(float(now - _last_tick_time_usec) / 1000000.0 * time_scale)
 	_last_tick_time_usec = now
+
+
+## Clamped to [MIN_TIME_SCALE, MAX_TIME_SCALE].
+func set_time_scale(value: float) -> void:
+	time_scale = clampf(value, MIN_TIME_SCALE, MAX_TIME_SCALE)
 
 
 func _notification(what: int) -> void:
@@ -47,7 +59,7 @@ func _notification(what: int) -> void:
 func tick_fraction() -> float:
 	var elapsed: float = 0.0
 	if not get_tree().paused:
-		elapsed = float(Time.get_ticks_usec() - _last_tick_time_usec) / 1000000.0
+		elapsed = float(Time.get_ticks_usec() - _last_tick_time_usec) / 1000000.0 * time_scale
 	return clampf((_tick_accumulator + elapsed) * TICK_RATE, 0.0, 1.0)
 
 

@@ -86,6 +86,9 @@ A new game starts with one order: a goal tied to money, separate from ambient Co
 ### Destroy shortcut
 `X` or `Delete` (`destroy_machine`) removes the machine shown in the details panel, like its Destroy button. It does nothing while any popup of the UI layer is open (Resources, Settings, Saves, Chip Page, Chip Log, the pause menu), so a key meant for a popup never deletes the machine behind it, and it never removes the Collector.
 
+### Simulation speed
+The `SpeedButton` (Bar, leftmost of the bottom button row) shows the current speed as plain text ("1x", "2x", "4x") and cycles through those three on each click; hover explains it. It speeds up `GameState`'s tick clock, including chip timers measured in ticks. Chip cooldowns and request latency remain in real time, so decisions can take longer relative to the simulation and may arrive too late to prevent overheating. Not saved; a new game or a reload leaves it as is (it lives on `GameState`, which survives a scene change).
+
 ### Machine actions
 The machine tooltip panel provides the actions that apply to an existing machine:
 - Rotate output: rotate `facing` clockwise (right, down, left, up) for Miner, Smelter, Assembler, and Conveyor. The Collector has no facing and shows no rotate action. Rotation changes where future output is sent; it does not alter stored items. The `rotate_placement` action (default R) rotates the next machine during placement; it also rotates the machine whose tooltip is open, so one press turns both the selected machine and the next placement (same as the Rotate button, nothing happens for the Collector).
