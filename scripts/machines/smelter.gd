@@ -1,13 +1,18 @@
 class_name Smelter
 extends CraftMachine
-## Smelts ore into ingots. Working heats it up, idling cools it, and set_cooling cools it faster.
+## Smelts ore into ingots. Working heats it up and idling cools it. Cooling is a trade-off: crafts take
+## COOLED_CRAFT_FACTOR times longer (the factor applies to the next craft) and the smelter cools even while working.
 ## Above OVERHEAT_AT it is OVERHEATING; at EXPLODE_AT it explodes (fail state): it goes DOWN, flashes and
 ## fades out, then is destroyed and frees its cell. The art turns redder as it heats up.
 
 const AMBIENT: float = 20.0
 const HEAT_PER_TICK: float = 0.6
 const COOL_PER_TICK: float = 0.3
+## Idle only: cooling on adds this to COOL_PER_TICK (-0.6 in all).
 const COOLING_EXTRA_PER_TICK: float = 0.3
+## Net change per tick while working with cooling on: the temperature falls.
+const COOLED_WORK_PER_TICK: float = -0.2
+const COOLED_CRAFT_FACTOR: int = 2
 const OVERHEAT_AT: float = 100.0
 const SAFE_AT: float = 80.0
 const EXPLODE_AT: float = 150.0
@@ -19,18 +24,25 @@ const FLASH_COLOR: Color = Color(3.0, 2.2, 0.8)
 
 var temperature: float = AMBIENT
 var cooling: bool = false
+## True while the smelter is stopped by set_emergency_stop(on=true). Any set_enabled call clears it, so a
+## pause from another chip is never mistaken for the emergency stop.
+var emergency_stop: bool = false
 
 
 func _own_tool_schemas() -> Array:
 	return [{
 		"name": "set_cooling",
-		"description": "Turn the cooling on or off. Cooling only slows the heating while working (it cannot keep a working smelter stable), and speeds up the cooldown while idle.",
+		"description": "Turn the cooling on or off. While on, the smelter cools down even while working but crafts take twice as long; it also cools faster while idle.",
+		"input_schema": {"type": "object", "properties": {"on": {"type": "boolean"}}},
+	}, {
+		"name": "set_emergency_stop",
+		"description": "on=true: stop this smelter and mark it as an emergency stop (emergency_stop in the state). on=false: resume it only if it is still in that emergency stop; a pause set by anything else (set_enabled) stays in effect.",
 		"input_schema": {"type": "object", "properties": {"on": {"type": "boolean"}}},
 	}]
 
 
 func get_state() -> Dictionary:
-	return super.get_state().merged({"temperature": roundi(temperature), "cooling": cooling})
+	return super.get_state().merged({"temperature": roundi(temperature), "cooling": cooling, "emergency_stop": emergency_stop})
 
 
 func get_action_text() -> String:
@@ -41,15 +53,25 @@ func _apply(tool_name: String, args: Dictionary) -> void:
 	if tool_name == "set_cooling":
 		cooling = args["on"]
 		return
+	if tool_name == "set_emergency_stop":
+		if args["on"]:
+			enabled = false
+			emergency_stop = true
+		elif emergency_stop:
+			enabled = true
+			emergency_stop = false
+		return
+	if tool_name == "set_enabled":
+		emergency_stop = false
 	super._apply(tool_name, args)
 
 
 func _tick() -> void:
 	var working: bool = is_working()
 	super._tick()
-	var change: float = HEAT_PER_TICK if working else -COOL_PER_TICK
-	if cooling:
-		change -= COOLING_EXTRA_PER_TICK
+	var change: float = -COOL_PER_TICK - (COOLING_EXTRA_PER_TICK if cooling else 0.0)
+	if working:
+		change = COOLED_WORK_PER_TICK if cooling else HEAT_PER_TICK
 	temperature = maxf(AMBIENT, temperature + change)
 	_update_heat_tint()
 	if temperature >= EXPLODE_AT:
@@ -58,6 +80,10 @@ func _tick() -> void:
 		status = Status.OVERHEATING
 	elif status == Status.OVERHEATING and temperature <= SAFE_AT:
 		status = Status.NORMAL
+
+
+func _craft_ticks() -> int:
+	return super._craft_ticks() * (COOLED_CRAFT_FACTOR if cooling else 1)
 
 
 func _status_text() -> String:

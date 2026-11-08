@@ -23,7 +23,7 @@ func build_request(system_prompt: String, state: Dictionary, tools: Array) -> Di
 			"instructions": system_prompt,
 			"input": JSON.stringify(state),
 			"tools": _convert_tools(tools),
-			"tool_choice": "required",
+			"tool_choice": "auto",
 		},
 	}
 

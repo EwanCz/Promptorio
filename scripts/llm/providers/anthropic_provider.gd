@@ -25,7 +25,7 @@ func build_request(system_prompt: String, state: Dictionary, tools: Array) -> Di
 			"system": system_prompt,
 			"messages": [{"role": "user", "content": JSON.stringify(state)}],
 			"tools": tools,
-			"tool_choice": {"type": "any"},
+			"tool_choice": {"type": "auto"},
 		},
 	}
 
