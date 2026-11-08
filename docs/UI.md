@@ -79,6 +79,7 @@ Tooltip current-action content:
 - Miner: effective production rate (ticks per unit, including the boost) and whether its output is blocked. While prospecting or boosted, an extra icon (magnifying glass / bolt) shows the ticks left in that span.
 - Smelter / Assembler: recipe inputs and output, stock, idle/working/output-blocked state, and remaining craft time while working.
 - Smelter additionally shows temperature and whether cooling is enabled.
+- Assembler additionally shows its production mode (an icon, normal or fast) first in the recipe row; the recipe quantities shown are the active mode's (fast mode doubles each input).
 - Conveyor: facing direction and whether it holds an item (and the item type when occupied).
 - Collector: items sold and money earned.
 

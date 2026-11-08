@@ -11,7 +11,7 @@ const SCENES: Dictionary = {
 const EXPECTED_OWN: Dictionary = {
 	"miner": ["set_mine_ticks", "set_mined_item", "start_prospecting"],
 	"smelter": ["set_cooling", "set_emergency_stop", "set_product", "discard_stock"],
-	"assembler": ["set_stock_limit", "set_product", "discard_stock"],
+	"assembler": ["set_mode", "set_stock_limit", "set_product", "discard_stock"],
 	"collector": ["set_accepting"],
 	"conveyor": ["set_direction"],
 }

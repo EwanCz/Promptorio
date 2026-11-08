@@ -48,6 +48,8 @@ const BADGES: Dictionary = {
 	"cooling_off": ["off", "snow"],
 	"prospecting": ["info", "search"],
 	"boost": ["ok", "bolt"],
+	"mode_fast": ["info", "bolt"],
+	"mode_normal": ["off", "bolt"],
 }
 const GLYPHS: Dictionary = {
 	"check": ["........", "......#.", ".....##.", "#...##..", "##.##...", ".###....", "..#.....", "........"],
