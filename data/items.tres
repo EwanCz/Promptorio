@@ -2,10 +2,27 @@
 
 [ext_resource type="Script" path="res://scripts/items/item_data.gd" id="1_item"]
 [ext_resource type="Script" path="res://scripts/items/item_catalog.gd" id="2_catalog"]
+[ext_resource type="Texture2D" path="res://assets/items/ore.png" id="icon_ore"]
+[ext_resource type="Texture2D" path="res://assets/items/coal.png" id="icon_coal"]
+[ext_resource type="Texture2D" path="res://assets/items/silver.png" id="icon_silver"]
+[ext_resource type="Texture2D" path="res://assets/items/redstone.png" id="icon_redstone"]
+[ext_resource type="Texture2D" path="res://assets/items/diamond.png" id="icon_diamond"]
+[ext_resource type="Texture2D" path="res://assets/items/ingot.png" id="icon_ingot"]
+[ext_resource type="Texture2D" path="res://assets/items/power.png" id="icon_power"]
+[ext_resource type="Texture2D" path="res://assets/items/silver_bar.png" id="icon_silver_bar"]
+[ext_resource type="Texture2D" path="res://assets/items/steel.png" id="icon_steel"]
+[ext_resource type="Texture2D" path="res://assets/items/gem.png" id="icon_gem"]
+[ext_resource type="Texture2D" path="res://assets/items/part.png" id="icon_part"]
+[ext_resource type="Texture2D" path="res://assets/items/circuit.png" id="icon_circuit"]
+[ext_resource type="Texture2D" path="res://assets/items/battery.png" id="icon_battery"]
+[ext_resource type="Texture2D" path="res://assets/items/gun.png" id="icon_gun"]
+[ext_resource type="Texture2D" path="res://assets/items/drill.png" id="icon_drill"]
+[ext_resource type="Texture2D" path="res://assets/items/robot.png" id="icon_robot"]
 
 [sub_resource type="Resource" id="Item_ore"]
 script = ExtResource("1_item")
 id = "ore"
+icon = ExtResource("icon_ore")
 display_name = "Ore"
 price = 1
 machine = "miner"
@@ -14,6 +31,7 @@ ticks = 20
 [sub_resource type="Resource" id="Item_coal"]
 script = ExtResource("1_item")
 id = "coal"
+icon = ExtResource("icon_coal")
 display_name = "Coal"
 price = 2
 machine = "miner"
@@ -22,6 +40,7 @@ ticks = 25
 [sub_resource type="Resource" id="Item_silver"]
 script = ExtResource("1_item")
 id = "silver"
+icon = ExtResource("icon_silver")
 display_name = "Silver"
 price = 4
 machine = "miner"
@@ -30,6 +49,7 @@ ticks = 35
 [sub_resource type="Resource" id="Item_redstone"]
 script = ExtResource("1_item")
 id = "redstone"
+icon = ExtResource("icon_redstone")
 display_name = "Redstone"
 price = 5
 machine = "miner"
@@ -38,6 +58,7 @@ ticks = 40
 [sub_resource type="Resource" id="Item_diamond"]
 script = ExtResource("1_item")
 id = "diamond"
+icon = ExtResource("icon_diamond")
 display_name = "Diamond"
 price = 15
 machine = "miner"
@@ -46,6 +67,7 @@ ticks = 80
 [sub_resource type="Resource" id="Item_ingot"]
 script = ExtResource("1_item")
 id = "ingot"
+icon = ExtResource("icon_ingot")
 display_name = "Ingot"
 price = 3
 machine = "smelter"
@@ -57,6 +79,7 @@ ticks = 20
 [sub_resource type="Resource" id="Item_power"]
 script = ExtResource("1_item")
 id = "power"
+icon = ExtResource("icon_power")
 display_name = "Power"
 price = 8
 machine = "smelter"
@@ -68,6 +91,7 @@ ticks = 30
 [sub_resource type="Resource" id="Item_silver_bar"]
 script = ExtResource("1_item")
 id = "silver_bar"
+icon = ExtResource("icon_silver_bar")
 display_name = "Silver Bar"
 price = 9
 machine = "smelter"
@@ -79,6 +103,7 @@ ticks = 25
 [sub_resource type="Resource" id="Item_steel"]
 script = ExtResource("1_item")
 id = "steel"
+icon = ExtResource("icon_steel")
 display_name = "Steel"
 price = 14
 machine = "smelter"
@@ -91,6 +116,7 @@ ticks = 40
 [sub_resource type="Resource" id="Item_gem"]
 script = ExtResource("1_item")
 id = "gem"
+icon = ExtResource("icon_gem")
 display_name = "Gem"
 price = 30
 machine = "smelter"
@@ -102,6 +128,7 @@ ticks = 40
 [sub_resource type="Resource" id="Item_part"]
 script = ExtResource("1_item")
 id = "part"
+icon = ExtResource("icon_part")
 display_name = "Part"
 price = 10
 machine = "assembler"
@@ -113,6 +140,7 @@ ticks = 30
 [sub_resource type="Resource" id="Item_circuit"]
 script = ExtResource("1_item")
 id = "circuit"
+icon = ExtResource("icon_circuit")
 display_name = "Circuit"
 price = 30
 machine = "assembler"
@@ -125,6 +153,7 @@ ticks = 40
 [sub_resource type="Resource" id="Item_battery"]
 script = ExtResource("1_item")
 id = "battery"
+icon = ExtResource("icon_battery")
 display_name = "Battery"
 price = 28
 machine = "assembler"
@@ -137,6 +166,7 @@ ticks = 50
 [sub_resource type="Resource" id="Item_gun"]
 script = ExtResource("1_item")
 id = "gun"
+icon = ExtResource("icon_gun")
 display_name = "Gun"
 price = 80
 machine = "assembler"
@@ -150,6 +180,7 @@ ticks = 60
 [sub_resource type="Resource" id="Item_drill"]
 script = ExtResource("1_item")
 id = "drill"
+icon = ExtResource("icon_drill")
 display_name = "Drill"
 price = 90
 machine = "assembler"
@@ -162,6 +193,7 @@ ticks = 60
 [sub_resource type="Resource" id="Item_robot"]
 script = ExtResource("1_item")
 id = "robot"
+icon = ExtResource("icon_robot")
 display_name = "Robot"
 price = 200
 machine = "assembler"

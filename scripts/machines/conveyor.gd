@@ -6,6 +6,8 @@ extends Machine
 ## no jump. Down and left are the up and right art flipped, which also flips the scroll direction.
 const MOVE_TICKS: int = 5
 const TEXTURE_SIZE: int = 16
+## The item icon rests at the center of the cell.
+const ICON_CENTER: Vector2 = Vector2(32, 32)
 ## The horizontal art only repeats on the surface rows (its rivets do not), so only those scroll.
 const SURFACE_TOP: int = 2
 const SURFACE_ROWS: int = 8
@@ -21,11 +23,27 @@ const ARROWS: Dictionary = {
 @export var up_texture: Texture2D
 @export var side_texture: Texture2D
 
-var held: String = ""
+## The item on the belt ("" for none). Its icon is drawn over the conveyor.
+var held: String = "":
+	set(value):
+		held = value
+		_update_item_icon()
 
 var _wait: int = 0
+## True when the item arrived during the current tick before this conveyor's turn in it: that tick must not
+## count, or the item would be one tick ahead on every conveyor that plays after its sender.
+var _skip_tick: bool = false
+## Where the held item came from, in pixels from this cell's center (zero when it was put here directly).
+## The icon glides from there to the center over MOVE_TICKS, so it slides from one machine to the next.
+var _slide_from: Vector2 = Vector2.ZERO
 
 @onready var _belt: Sprite2D = get_node_or_null("Belt") as Sprite2D
+@onready var _item_icon: Sprite2D = get_node_or_null("ItemIcon") as Sprite2D
+
+
+func _ready() -> void:
+	super._ready()
+	_update_item_icon()
 
 
 func get_state() -> Dictionary:
@@ -45,9 +63,19 @@ func _own_tool_schemas() -> Array:
 func receive(item: String) -> bool:
 	if held != "" or status == Status.DOWN:
 		return false
+	_slide_from = Vector2.ZERO
+	_skip_tick = false
 	held = item
 	_wait = 0
 	return true
+
+
+func note_sender(sender_cell: Vector2i, sender_tick: int) -> void:
+	_skip_tick = sender_tick != _tick_number
+	# What a Smelter or an Assembler makes is put straight on the belt; only an item coming off another belt (or a miner) slides in.
+	var from_craft_machine: bool = GameState.get_machine_at(sender_cell) is CraftMachine
+	_slide_from = Vector2.ZERO if from_craft_machine else Vector2(sender_cell - cell) * GameState.CELL_SIZE
+	_place_item_icon()
 
 
 func get_action_text() -> String:
@@ -57,6 +85,8 @@ func get_action_text() -> String:
 func clear_contents() -> void:
 	held = ""
 	_wait = 0
+	_skip_tick = false
+	_slide_from = Vector2.ZERO
 
 
 func _save_data() -> Dictionary:
@@ -64,13 +94,20 @@ func _save_data() -> Dictionary:
 
 
 func _load_data(data: Dictionary) -> void:
+	_slide_from = Vector2.ZERO
 	held = _read_item(data, "held", ItemCatalog.shared().get_ids())
 	_wait = _read_int(data, "wait", 0, 0, MOVE_TICKS)
+	_place_item_icon()
+
+
+func _process(_delta: float) -> void:
+	_place_item_icon()
 
 
 func _on_tick(tick_number: int) -> void:
 	super._on_tick(tick_number)
 	_scroll(tick_number)
+	_place_item_icon()
 
 
 func _update_sprite() -> void:
@@ -100,7 +137,10 @@ func _scroll(tick_number: int) -> void:
 func _tick() -> void:
 	if held == "":
 		return
-	_wait += 1
+	if _skip_tick:
+		_skip_tick = false
+	else:
+		_wait += 1
 	if _wait >= MOVE_TICKS and _push(held):
 		held = ""
 
@@ -112,5 +152,24 @@ func _apply(tool_name: String, args: Dictionary) -> bool:
 	return super._apply(tool_name, args)
 
 
-func _status_text() -> String:
-	return "•" if held != "" else ""
+## Shows the held item's icon, or nothing when the belt is empty (or the item has no icon).
+func _update_item_icon() -> void:
+	if _item_icon == null:
+		return
+	var data: ItemData = ItemCatalog.shared().get_item(held)
+	_item_icon.texture = null if data == null else data.icon
+	_item_icon.visible = _item_icon.texture != null
+	_place_item_icon()
+
+
+## How far the held item is along its way to the center of this cell, 0 to 1: the ticks waited plus the part of
+## the current tick already gone. A blocked item (waited MOVE_TICKS) rests at the center.
+func get_slide_progress() -> float:
+	if _wait >= MOVE_TICKS:
+		return 1.0
+	return (float(_wait) + GameState.tick_fraction()) / float(MOVE_TICKS)
+
+
+func _place_item_icon() -> void:
+	if _item_icon != null and held != "":
+		_item_icon.position = ICON_CENTER + _slide_from * (1.0 - get_slide_progress())

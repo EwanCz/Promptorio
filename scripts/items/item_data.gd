@@ -4,6 +4,8 @@ extends Resource
 
 @export var id: String = ""
 @export var display_name: String = ""
+## Pixel art (32x32) shown for the resource, e.g. on the conveyor that carries it.
+@export var icon: Texture2D
 ## Money the Collector pays for one.
 @export var price: int = 1
 ## machine_type of the only machine that builds it: "miner", "smelter" or "assembler".

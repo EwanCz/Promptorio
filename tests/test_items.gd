@@ -380,3 +380,10 @@ func test_every_refusal_says_what_the_machine_cannot_build() -> void:
 	check_eq(lines.size(), 2, "one line each")
 	check(lines[0].contains("'ingot' cannot be made by this miner: it is built by smelters"), "the miner log explains")
 	check(lines[1].contains("'wood' is not a resource of the game"), "the unknown resource is explained")
+
+
+func test_every_resource_has_a_pixel_icon() -> void:
+	for item: ItemData in ItemCatalog.shared().items:
+		check(item.icon != null, "%s has an icon" % item.id)
+		if item.icon != null:
+			check_eq(item.icon.get_size(), Vector2(32, 32), "%s icon is 32x32" % item.id)

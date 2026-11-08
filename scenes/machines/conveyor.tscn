@@ -18,3 +18,9 @@ scale = Vector2(4, 4)
 centered = false
 region_enabled = true
 region_rect = Rect2(0, 0, 16, 16)
+
+[node name="ItemIcon" type="Sprite2D" parent="." index="2"]
+visible = false
+z_index = 1
+texture_filter = 1
+position = Vector2(32, 32)
