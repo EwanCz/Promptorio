@@ -29,8 +29,8 @@ const COSTS: Dictionary = {"miner": 20, "smelter": 30, "assembler": 40, "conveyo
 
 var selected: String = ""
 var facing: Vector2i = Vector2i.RIGHT
-
-var _next_id: int = 1
+## Id given to the next machine placed. A loaded save sets it so ids never repeat.
+var next_id: int = 1
 
 
 func _ready() -> void:
@@ -71,15 +71,16 @@ func rotate_facing() -> void:
 func place(type: String, cell: Vector2i) -> Machine:
 	if not SCENES.has(type) or not grid.can_place(type, cell):
 		return null
-	var machine: Machine = (SCENES[type] as PackedScene).instantiate() as Machine
-	machine.cell = cell
-	machine.facing = facing
-	machine.machine_id = _next_id
-	machine.position = GameState.cell_to_world(cell)
-	_next_id += 1
-	machines.add_child(machine)
-	GameState.register_machine(machine, cell)
+	var machine: Machine = _spawn(type, cell, facing, next_id)
+	next_id += 1
 	return machine
+
+
+## Recreates a machine from a save: same rules as place(), but with the saved direction and id.
+func restore_machine(type: String, cell: Vector2i, direction: Vector2i, id: int) -> Machine:
+	if not SCENES.has(type) or not grid.can_place(type, cell):
+		return null
+	return _spawn(type, cell, direction, id)
 
 
 ## Same rules as place(), plus the cost: charged once, only on success. Emits placement_rejected otherwise.
@@ -96,6 +97,17 @@ func try_place(type: String, cell: Vector2i) -> Machine:
 		placement_rejected.emit("Cannot place a %s here" % type)
 		return null
 	GameState.add_money(-cost)
+	return machine
+
+
+func _spawn(type: String, cell: Vector2i, direction: Vector2i, id: int) -> Machine:
+	var machine: Machine = (SCENES[type] as PackedScene).instantiate() as Machine
+	machine.cell = cell
+	machine.facing = direction
+	machine.machine_id = id
+	machine.position = GameState.cell_to_world(cell)
+	machines.add_child(machine)
+	GameState.register_machine(machine, cell)
 	return machine
 
 

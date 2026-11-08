@@ -82,6 +82,20 @@ func clear_contents() -> void:
 	_progress = 0
 
 
+func _save_data() -> Dictionary:
+	return {"item": item, "mine_ticks": mine_ticks, "progress": _progress, "held": _held, "blocked": _blocked}
+
+
+func _load_data(data: Dictionary) -> void:
+	var saved_item: String = _read_item(data, "item", ItemCatalog.shared().get_built_by_ids(machine_type))
+	if saved_item != "":
+		item = saved_item
+	mine_ticks = _read_int(data, "mine_ticks", get_min_mine_ticks(), get_min_mine_ticks(), MAX_MINE_TICKS)
+	_progress = _read_int(data, "progress", 0, 0, mine_ticks)
+	_held = _read_item(data, "held", ItemCatalog.shared().get_ids())
+	_blocked = _held != "" and data.get("blocked") == true
+
+
 func _tick() -> void:
 	if _held != "":
 		_blocked = not _push(_held)

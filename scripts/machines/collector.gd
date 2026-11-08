@@ -33,6 +33,16 @@ func get_state() -> Dictionary:
 	return super.get_state().merged({"accepting": accepting, "sold": sold})
 
 
+func _save_data() -> Dictionary:
+	return {"sold": sold, "earned": earned, "accepting": accepting}
+
+
+func _load_data(data: Dictionary) -> void:
+	sold = _read_int(data, "sold", 0, 0, 2147483647)
+	earned = _read_int(data, "earned", 0, 0, 2147483647)
+	accepting = data.get("accepting", true) == true
+
+
 func _own_tool_schemas() -> Array:
 	return [{
 		"name": "set_accepting",

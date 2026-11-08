@@ -10,7 +10,7 @@ func test_main_scene_layout() -> void:
 	check(main.get_node_or_null("UI") is CanvasLayer, "UI layer exists")
 	check(main.get_node_or_null("Game/Bar/VBoxContainer/TopHalf/PageScroll/Pages/BuildPage") != null, "bar has the build page")
 	check(main.get_node_or_null("Game/Bar/VBoxContainer/TopHalf/PageScroll/Pages/ChipRegistryPage") != null, "bar has the chip registry page")
-	for popup_name: String in ["ChipPage", "ChipLog", "ResourcesPage", "SettingsDialog"]:
+	for popup_name: String in ["ChipPage", "ChipLog", "ResourcesPage", "SettingsDialog", "SaveDialog"]:
 		check(main.get_node_or_null("UI/" + popup_name) != null, "UI has " + popup_name)
 	var factory: Control = main.get_node("Game/FactoryView")
 	var bar: Control = main.get_node("Game/Bar")

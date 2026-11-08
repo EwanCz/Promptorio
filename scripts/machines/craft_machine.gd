@@ -115,6 +115,35 @@ func _apply(tool_name: String, args: Dictionary) -> bool:
 	return super._apply(tool_name, args)
 
 
+func _save_data() -> Dictionary:
+	return {"product": product_id, "stock": stock.duplicate(), "stock_limit": stock_limit, "progress": progress, "making": _making, "output": _output, "blocked": _blocked}
+
+
+## Any resource of the catalog can be stored, each within the stock limit. A saved product this machine
+## type cannot build is dropped for the default one.
+func _load_data(data: Dictionary) -> void:
+	var catalog: ItemCatalog = ItemCatalog.shared()
+	stock_limit = _read_int(data, "stock_limit", MAX_STOCK, 1, MAX_STOCK)
+	stock.clear()
+	_output = ""
+	_making = ""
+	progress = 0
+	_blocked = false
+	var saved_product: String = _read_item(data, "product", catalog.get_built_by_ids(machine_type))
+	if saved_product != "":
+		product_id = saved_product
+	var saved_stock: Variant = data.get("stock")
+	if typeof(saved_stock) == TYPE_DICTIONARY:
+		for item: String in catalog.get_ids():
+			var count: int = _read_int(saved_stock, item, 0, 0, stock_limit)
+			if count > 0:
+				stock[item] = count
+	_making = _read_item(data, "making", catalog.get_built_by_ids(machine_type))
+	progress = _read_int(data, "progress", 0, 0, catalog.ticks_of(_making))
+	_output = _read_item(data, "output", catalog.get_ids())
+	_blocked = _output != "" and data.get("blocked") == true
+
+
 func _items_text(items: Dictionary) -> String:
 	if items.is_empty():
 		return "empty"

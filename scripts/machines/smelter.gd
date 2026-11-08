@@ -49,6 +49,22 @@ func get_action_text() -> String:
 	return "%s\nTemperature: %d°, cooling %s" % [super.get_action_text(), roundi(temperature), "on" if cooling else "off"]
 
 
+## An exploding smelter is already lost, so a save leaves it out.
+func is_saveable() -> bool:
+	return temperature < EXPLODE_AT
+
+
+func _save_data() -> Dictionary:
+	return super._save_data().merged({"temperature": temperature, "cooling": cooling})
+
+
+func _load_data(data: Dictionary) -> void:
+	super._load_data(data)
+	temperature = _read_float(data, "temperature", AMBIENT, AMBIENT, EXPLODE_AT - 1.0)
+	cooling = data.get("cooling") == true
+	_update_heat_tint()
+
+
 func _apply(tool_name: String, args: Dictionary) -> bool:
 	if tool_name == "set_cooling":
 		cooling = args["on"]

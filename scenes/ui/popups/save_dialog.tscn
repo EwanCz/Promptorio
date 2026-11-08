@@ -1,0 +1,93 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/save_dialog.gd" id="1_script"]
+[ext_resource type="Theme" path="res://data/ui/theme.tres" id="2_theme"]
+
+[node name="SaveDialog" type="PanelContainer"]
+process_mode = 3
+visible = false
+custom_minimum_size = Vector2(460, 0)
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("2_theme")
+script = ExtResource("1_script")
+
+[node name="Margin" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="VBox" type="VBoxContainer" parent="Margin"]
+layout_mode = 2
+
+[node name="NameLabel" type="Label" parent="Margin/VBox"]
+layout_mode = 2
+text = "Save the game as"
+
+[node name="NameRow" type="HBoxContainer" parent="Margin/VBox"]
+layout_mode = 2
+
+[node name="NameEdit" type="LineEdit" parent="Margin/VBox/NameRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "save name"
+
+[node name="SaveButton" type="Button" parent="Margin/VBox/NameRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Save"
+
+[node name="SlotsLabel" type="Label" parent="Margin/VBox"]
+layout_mode = 2
+text = "Saves"
+
+[node name="SlotScroll" type="ScrollContainer" parent="Margin/VBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 160)
+horizontal_scroll_mode = 0
+
+[node name="SlotBox" type="VBoxContainer" parent="Margin/VBox/SlotScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="EmptyLabel" type="Label" parent="Margin/VBox/SlotScroll/SlotBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "No save yet."
+
+[node name="SlotList" type="VBoxContainer" parent="Margin/VBox/SlotScroll/SlotBox"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="FileRow" type="HBoxContainer" parent="Margin/VBox"]
+layout_mode = 2
+
+[node name="ImportButton" type="Button" parent="Margin/VBox/FileRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Import a file..."
+
+[node name="ExportButton" type="Button" parent="Margin/VBox/FileRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Export to a file..."
+
+[node name="StatusLabel" type="Label" parent="Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+autowrap_mode = 3
+
+[node name="CloseButton" type="Button" parent="Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Close"
