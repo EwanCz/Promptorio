@@ -4,11 +4,11 @@ Godot 4 (GDScript) 2D Factorio-like. Every machine has an "AI chip" whose behavi
 
 48h hackathon, 2-3 devs. Prefer simple, working and demoable over general and elegant. No speculative abstractions.
 
-Roadmap, phases, decisions and risks: see `docs/PLAN.md`. Read it before starting a task and keep it updated (tick completed items, record changed decisions).
+Read `docs/PLAN.md` for project goals, decisions and risks, and the relevant issue for task status, whether it is in GitHub, Superflix or another tracker. Update the relevant issue as work progresses when the tracker is accessible; update the plan when goals or decisions change. Keep implemented behavior documented alongside the code; `docs/IMPLEMENTATION.md` is a historical reference, not a task tracker.
 
 ## Scope (MVP)
 - Machines: Miner -> Smelter -> Assembler -> Collector. Conveyors are plain, hardcoded logic (AI on conveyors is post-MVP). In the current prototype, select a conveyor with the `select_conveyor` action (default `5`), rotate its direction with `rotate_placement` (default `R`), and place it with a left click on an empty grid cell. It holds one item and attempts to deliver it to the adjacent machine in its facing direction every five 10 Hz ticks; a blocked delivery stays on the conveyor. Adjacent machines can also pass items directly, without a conveyor.
-- Items: (Coal/Silver/Redstone/etc...). They are the resource catalog (`ItemCatalog`, `data/items.tres`, table in `docs/PLAN.md` "Resources"): each has a price, one machine type that builds it and its inputs; the Resources popup (Bar button) lists them all.
+- Items: (Coal/Silver/Redstone/etc...). They are the resource catalog (`ItemCatalog`, `data/items.tres`, table in `docs/IMPLEMENTATION.md` "Resources"): each has a price, one machine type that builds it and its inputs; the Resources popup (Bar button) lists them all.
   - Fuze them in a Assembler which take one or more different ressources.
   - Each assembler take any ressources with a max stock size in each assembler. Any resource can be stored in any smelter/assembler, needed or not; only the `discard_stock` tool removes it.
   - The IA will be prompted the ressource to build then will by itself check in the stockage if can be built. If the ressource can be made. Consume them then start a assemble event on for the ressource be build.
@@ -82,7 +82,7 @@ Machine (Node2D, machine.gd)
   - `parse_response(body: Dictionary) -> Array[Dictionary]` returns a normalized list of `{name, args}` tool calls
   - `build_check_request()` returns the free key-check GET (list models), and `config_error()` returns a message when the provider's relay base URL is unusable (see "Provider base URL")
 - Implementations: `AnthropicProvider` (Messages API), `OpenAIProvider` (Responses API) and `MockProvider` (offline, deterministic). `Settings.provider` is `mock`, `anthropic` or `openai`. Nothing outside `scripts/llm/providers/` knows provider formats. Neither real provider has been run against its live API: tests use scripted responses.
-- Machines expose their tool schemas via `get_tool_schemas()` (the shared `set_enabled(on: bool)` plus one tool per machine type, e.g. `set_mine_ticks(ticks: mining time of the resource..100)` on the Miner and `set_cooling(on: bool)` on the Smelter; the full list is in `docs/PLAN.md`, "AI tool inventory"). `apply_tool_call(name, args)` is the only way LLM output touches a machine.
+- Machines expose their tool schemas via `get_tool_schemas()` (the shared `set_enabled(on: bool)` plus one tool per machine type, e.g. `set_mine_ticks(ticks: mining time of the resource..100)` on the Miner and `set_cooling(on: bool)` on the Smelter; a reference list is in `docs/IMPLEMENTATION.md`, "AI tool inventory"). `apply_tool_call(name, args)` is the only way LLM output touches a machine.
 
 ### Chip triggers
 Each `ChipComponent` (one chip, one prompt) requests a decision on exactly two triggers: its fixed timer and the manual "Ask now" button. A machine's state or events (temperature, OVERHEATING, error, output full, input empty) never wake a chip; temperature and status are only sent in the state when the chip is asked. All go through one method, `request_decision(reason: String)`, which enforces the per-chip cooldown and the "one request in flight per chip" rule.
