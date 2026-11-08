@@ -7,6 +7,10 @@ signal tool_applied(tool_name: String, args: Dictionary)
 signal chip_decision_applied(chip_id: int, reason: String, applied: int)
 signal chips_changed
 signal predefined_behaviors_changed
+## The machine handed one unit of its own production to the next machine (see _note_produced()).
+signal produced
+## A chip of this machine finished a request: "applied", "none" or "failed".
+signal chip_outcome_reported(outcome: String)
 
 enum Status { NORMAL, DOWN, OVERHEATING }
 ## PRODUCING: enabled and a job is in progress. STALLED: its output cannot be delivered (wins over
@@ -400,6 +404,7 @@ func _tick() -> void:
 ## Marks one completed, delivered unit of production right now. Call it only for something the machine
 ## itself made (not merely moved, like a Conveyor), right after a successful hand-off.
 func _note_produced() -> void:
+	produced.emit()
 	_production_ticks.append(_tick_number)
 	var window: int = int(PRODUCTION_WINDOW_SECONDS) * GameState.TICK_RATE
 	while not _production_ticks.is_empty() and _production_ticks[0] <= _tick_number - window:
@@ -474,6 +479,8 @@ func _on_chip_activity(outcome: String) -> void:
 		indicator.clear()
 	else:
 		indicator.show_result(outcome)
+		if outcome != "checking":
+			chip_outcome_reported.emit(outcome)
 
 
 func _on_chip_decision_applied(reason: String, applied: int, chip_id: int) -> void:

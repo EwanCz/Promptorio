@@ -26,7 +26,7 @@ Read `docs/PLAN.md` for project goals, decisions and risks, and the relevant iss
 - `GameState` (`scripts/core/game_state/`): grid, machine registry, tick clock, resources.
 - `Settings` (`scripts/core/settings.gd`): API key, provider, model, cooldowns, and audio (`master_volume` 0.8, `sfx_volume` 1.0, both 0..1, and `muted`, in the `[audio]` section; clamped on load; `apply_audio()` pushes them to the buses). Persisted via `ConfigFile` in `user://settings.cfg`.
 - `EventBus` (`scripts/core/event_bus.gd`): global signals only. No logic.
-- `Sfx` (`scripts/core/sfx.gd`): the audio engine. `Sfx.play(&"cue", world_position)` is the only way code makes a sound: cues, buses (`SFX`, `UI`), voice limits and the pause rule live there (`docs/IMPLEMENTATION.md`, "Audio").
+- `Sfx` (`scripts/core/sfx.gd`): the audio engine. `Sfx.play(&"cue", world_position)` is the only way code makes a sound: cues, buses (`SFX`, `UI`), voice limits and the pause rule live there (`docs/IMPLEMENTATION.md`, "Audio"). `SfxEvents` (`scripts/core/sfx_events.gd`, created by `Main`) is the one listener that turns factory events into cues; machines and the UI only emit signals.
 
 ### Scene / node layout
 The project starts on the main menu (`scenes/menu/main_menu.tscn`: Play, Load Game, Chips, Options, Exit, see `docs/UI.md`), which switches to `scenes/main.tscn` below. `GameState` survives scene changes, so a new game calls `GameState.reset()` first; a save picked in the menu waits in `SaveGame.pending` until `Main` restores it.
