@@ -28,6 +28,7 @@ Roadmap, phases, decisions and risks: see `docs/PLAN.md`. Read it before startin
 - `EventBus` (`scripts/core/event_bus.gd`): global signals only. No logic.
 
 ### Scene / node layout
+The project starts on the main menu (`scenes/menu/main_menu.tscn`: Play, Load Game, Chips, Options, Exit, see `docs/UI.md`), which switches to `scenes/main.tscn` below. `GameState` survives scene changes, so a new game calls `GameState.reset()` first; a save picked in the menu waits in `SaveGame.pending` until `Main` restores it.
 Screen split (see `docs/UI.md`): Factory View 80% left, Bar 20% right. The world is rendered in a `SubViewport` so the camera and the 80% region stay independent of the UI.
 ```
 Main (Node)
@@ -53,6 +54,7 @@ Main (Node)
    ├─ ChipPage        (popup, centered; name, description, message; edit/save/remove)
    ├─ ChipLog         (log page opened from the machine panel)
    ├─ SaveDialog      (save slots, import/export a save file; pauses the game)
+   ├─ PauseMenu       (Resume / Restart / Main Menu; pauses the game; Bar "Menu" button or Escape)
    └─ SettingsDialog
 ```
 UI rules:

@@ -66,8 +66,19 @@ Open Settings from the Bar. Offer `mock`, `anthropic`, and `openai` providers. F
 
 For `anthropic` and `openai`, an optional "Base URL" field (blank by default, saved per provider) lets the player use a compatible relay; it takes precedence over the editor-only `ANTHROPIC_BASE_URL` / `OPENAI_BASE_URL` environment and .env overrides (see "Provider base URL" in `CLAUDE.md`). A malformed value is not blocked in the dialog: the Bar's key status reports that the base URL is invalid and nothing is sent.
 
+### Main menu
+The game starts on `scenes/menu/main_menu.tscn` (`run/main_scene`), not on the factory. Buttons, top to bottom: Play, Load Game, Chips, Options, Exit (no Credits). Each is a `PixelButton` (`scripts/ui/pixel_button.gd`) drawn with the pack art (`assets/pixel_art_buttons_pack/btn_<name>_{normal,hover,pressed}@8x.png`, 64x16 art shown 4x bigger, label included in the image).
+- Play: `GameState.reset()` (starting money, clock at 0) then the game scene.
+- Load Game: the `SaveDialog` in menu mode (`use_as_menu()`): slots of `saves/` with Load / Delete, plus "Import a file...", no Save row and no Export, no pause. A picked save is fully validated (`SaveGame.validate(null, data)`), stored in `SaveGame.pending`, and the game scene restores it when it starts. A refused file keeps the player in the menu with the reason.
+- Chips: `ChipManager` popup (the Chip Registry list with "New chip") and the same `ChipPage` popup as in game, to prepare chips before playing. They are saved to `user://chip_registry.tres` like in game.
+- Options: the `SettingsDialog`. Exit quits.
+- Art still missing: the Chips button has no image in the pack yet, so it shows a text label in the pack's colors. Dropping `btn_chips_normal@8x.png`, `btn_chips_hover@8x.png` and `btn_chips_pressed@8x.png` in `assets/pixel_art_buttons_pack/` makes it use them with no code change.
+
+### Pause menu
+The "Menu" button of the Bar, or `cancel_placement` (Escape) when no machine type is selected, opens `PauseMenu` (a popup that pauses the game like `ChipPage`; Escape closes it). Resume closes it, Restart starts a new game (`GameState.reset()`, scene reloaded), Main Menu goes back to the start screen. Nothing is saved automatically: the menu says unsaved progress is lost. Art: `assets/pixel_ui_pack/pause_{resume,restart,main_menu}_*@8x.png`.
+
 ### Save / Load dialog
-The "Save / Load" button (Bar, above Settings) opens `SaveDialog`, a popup that pauses the game like `ChipPage`. A name field and "Save" write a slot to `saves/<name>.json` (in the project folder in an editor run, `user://saves/` in an exported build); the list below shows each slot with its date, a "Load" and a "Delete" button. "Import a file..." and "Export to a file..." use the system file dialog to read or write a save anywhere on the disk. A successful load or import replaces the whole game and closes the dialog. Messages never show a path or the file content.
+The "Save / Load" button (Bar, below the Menu button and above Settings) opens `SaveDialog`, a popup that pauses the game like `ChipPage`. A name field and "Save" write a slot to `saves/<name>.json` (in the project folder in an editor run, `user://saves/` in an exported build); the list below shows each slot with its date, a "Load" and a "Delete" button. "Import a file..." and "Export to a file..." use the system file dialog to read or write a save anywhere on the disk. A successful load or import replaces the whole game and closes the dialog. Messages never show a path or the file content.
 - Slot names: 40 characters at most, a valid file name, not starting with a dot.
 - A refused file (bad JSON, wrong version, unknown machine type, cell outside the grid or taken, miner off a minesite, no Collector, ...) leaves the current game untouched and says why.
 - The save embeds the chips its machines use. Loading overwrites a registry chip that has the same id (the save wins); a name already used by another chip gets a number appended.
