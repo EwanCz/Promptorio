@@ -122,6 +122,45 @@ func test_tooltip_toggle_and_chips() -> void:
 	check(chip != null, "chip fixture exists")
 
 
+## GR2-6: the predefined-behavior picker/list is a separate control from the chip picker/list, so a
+## canned behavior is never mistaken for a real chip prompt at the point of selection.
+func test_tooltip_distinguishes_predefined_behaviors_from_chip_prompts() -> void:
+	var tooltip: MachineTooltip = _spawn("res://scenes/ui/popups/machine_tooltip.tscn")
+	var miner: Machine = _spawn("res://scenes/machines/miner.tscn")
+	var bus: Node = autoload("EventBus")
+	var chip: ChipRessource = _add("ui_distinct", "a real prompt an LLM would read")
+	bus.machine_selected.emit(miner)
+	var predefined_row: HBoxContainer = tooltip.get_node("%PredefinedRow")
+	var predefined_picker: OptionButton = tooltip.get_node("%PredefinedPicker")
+	var chip_picker: OptionButton = tooltip.get_node("%ChipPicker")
+	check(predefined_row.visible, "a miner offers predefined behaviors")
+	check_eq(predefined_picker.item_count, 2, "the miner's fixed list, not the chip registry")
+	check_eq(chip_picker.item_count, autoload("ChipRegistry").get_all().size(), "the chip picker lists the whole chip registry, independently of the fixed list")
+	(tooltip.get_node("%AddPredefinedButton") as Button).pressed.emit()
+	check_eq(miner.predefined_behaviors.size(), 1, "add attaches a predefined behavior")
+	check_eq(miner.chips.size(), 0, "not a chip")
+	check_eq(tooltip.get_node("%PredefinedList").get_child_count(), 1, "listed in its own section")
+	check_eq(tooltip.get_node("%ChipsList").get_child_count(), 0, "not mixed into the chip list")
+	var row: Node = tooltip.get_node("%PredefinedList").get_child(0)
+	var row_name: Label = row.find_child("Name", true, false) as Label
+	check(row_name.tooltip_text.contains("Canned, no AI"), "hover names it canned, not a chip prompt")
+	check(not row_name.tooltip_text.contains("a real prompt"), "never shows chip prompt text")
+	check(row.find_child("Timeout", true, false) == null, "no timer control: its schedule is fixed, not a chip setting")
+	(tooltip.get_node("%AddButton") as Button).pressed.emit()
+	check_eq(miner.chips.size(), 1, "the chip picker still attaches an ordinary chip")
+	check_eq(tooltip.get_node("%ChipsList").get_child_count(), 1, "into the chip list, not the predefined one")
+	check_eq(tooltip.get_node("%PredefinedList").get_child_count(), 1, "predefined list unaffected")
+	check(chip != null, "chip fixture exists")
+
+
+func test_tooltip_hides_predefined_picker_for_a_machine_type_with_none() -> void:
+	var tooltip: MachineTooltip = _spawn("res://scenes/ui/popups/machine_tooltip.tscn")
+	var collector: Machine = _spawn("res://scenes/machines/collector.tscn")
+	var bus: Node = autoload("EventBus")
+	bus.machine_selected.emit(collector)
+	check(not (tooltip.get_node("%PredefinedRow") as HBoxContainer).visible, "nothing predefined to offer a Collector")
+
+
 func test_chip_log_capture_and_cap() -> void:
 	var log: ChipLog = _spawn("res://scenes/ui/popups/chip_log.tscn")
 	var machine: Machine = _spawn("res://scenes/machines/machine.tscn")
