@@ -49,8 +49,8 @@ func test_every_machine_scene_has_art_one_cell_wide() -> void:
 
 
 
-func test_craft_machines_show_their_back_only_when_facing_up() -> void:
-	for type: String in ["smelter", "assembler"]:
+func test_directional_machines_show_their_back_only_when_facing_up() -> void:
+	for type: String in ["smelter", "assembler", "miner"]:
 		var machine: Machine = _spawn(type)
 		check(machine.back_texture != null and machine.back_texture != machine.front_texture, "%s has distinct back art" % type)
 		for facing: Vector2i in FACINGS:
@@ -69,9 +69,9 @@ func _cell_rect(machine: Machine) -> Rect2:
 	return rect
 
 
-func test_craft_machines_turn_the_front_on_the_sides_and_keep_it_over_their_cell() -> void:
+func test_directional_machines_turn_the_front_on_the_sides_and_keep_it_over_their_cell() -> void:
 	var cell: float = float(autoload("GameState").CELL_SIZE)
-	for type: String in ["smelter", "assembler"]:
+	for type: String in ["smelter", "assembler", "miner"]:
 		var machine: Machine = _spawn(type)
 		var turns: Dictionary = {Vector2i.DOWN: 0.0, Vector2i.UP: 0.0, Vector2i.RIGHT: -PI / 2.0, Vector2i.LEFT: PI / 2.0}
 		for facing: Vector2i in turns:
@@ -83,7 +83,7 @@ func test_craft_machines_turn_the_front_on_the_sides_and_keep_it_over_their_cell
 
 
 func test_other_machines_stay_upright_in_every_facing() -> void:
-	for type: String in ["miner", "collector", "conveyor"]:
+	for type: String in ["collector", "conveyor"]:
 		var machine: Machine = _spawn(type)
 		for facing: Vector2i in FACINGS:
 			machine.facing = facing
@@ -101,13 +101,24 @@ func test_rotating_cycles_the_art() -> void:
 	check(seen[3] == machine.front_texture, "and ends on the front again (facing right)")
 
 
+func test_rotating_a_miner_cycles_its_art_too() -> void:
+	var machine: Machine = _spawn("miner")
+	var seen: Array[Texture2D] = []
+	for i: int in 4:
+		machine.rotate_facing()
+		seen.append(_sprite(machine).texture)
+	check(seen[0] == machine.front_texture and seen[1] == machine.front_texture, "down and left show the front")
+	check(seen[2] == machine.back_texture, "a full turn passes through up, which shows the back")
+	check(seen[3] == machine.front_texture, "and ends on the front again (facing right)")
+
+
 func test_art_follows_a_facing_set_before_the_machine_enters_the_tree() -> void:
 	var machine: Machine = _spawn("assembler", Vector2i.UP)
 	check(_sprite(machine).texture == machine.back_texture, "placement-style spawn facing up shows the back")
 
 
 func test_machines_with_one_view_keep_it_in_every_facing() -> void:
-	for type: String in ["miner", "collector"]:
+	for type: String in ["collector"]:
 		var machine: Machine = _spawn(type)
 		for facing: Vector2i in FACINGS:
 			machine.facing = facing
