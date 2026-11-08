@@ -169,6 +169,10 @@ func _refresh_operation() -> void:
 		op.append(_icon_entry("applied", str(collector.sold), "Items sold"))
 		if not collector.accepting:
 			op.append(_icon_entry("blocked", "", "Not accepting items"))
+	elif _machine is Orchestrator:
+		var orchestrator: Orchestrator = _machine as Orchestrator
+		op.append(_icon_entry("info", str(orchestrator.range_cells), "Visible range (cells)"))
+		op.append(_icon_entry("applied", str(orchestrator.managed_count()), "Machines it currently manages"))
 	if _machine.is_blocked():
 		op.append(_icon_entry("blocked", "", "Output blocked: nothing takes it"))
 	_fill_row(_op_row, op, catalog)
@@ -258,6 +262,8 @@ func _make_row(component: ChipComponent) -> Control:
 	chip_name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	chip_name.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	row.add_child(chip_name)
+	if component.assigned_by != 0:
+		row.add_child(Icons.rect("settings", "Assigned by Orchestrator #%d" % component.assigned_by))
 	var timeout: SpinBox = SpinBox.new()
 	timeout.name = "Timeout"
 	timeout.min_value = 1
