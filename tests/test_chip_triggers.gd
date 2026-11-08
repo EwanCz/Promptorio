@@ -32,6 +32,8 @@ func after_each() -> void:
 
 
 func _spawn(path: String) -> ChipComponent:
+	if _machine != null:
+		_machine.free()
 	_machine = (load(path) as PackedScene).instantiate() as Machine
 	tree.root.add_child(_machine)
 	var chip: ChipComponent = _machine.attach_chip(_res.id, 100000)
@@ -52,39 +54,44 @@ func _finish(chip: ChipComponent) -> void:
 	await wait_until(func() -> bool: return not chip.pending)
 
 
-func test_event_fires_when_it_appears() -> void:
+var _started: int = 0
+
+
+func _on_started(_id: int) -> void:
+	_started += 1
+
+
+func test_machine_events_never_wake_a_chip() -> void:
+	var bus: Node = autoload("EventBus")
+	_started = 0
+	bus.llm_request_started.connect(_on_started)
 	var chip: ChipComponent = _spawn(MINER)
-	_tick(5)
-	check(not chip.pending, "nothing happening, no request")
-	_tick((_machine as Miner).mine_ticks + 2)
-	check(chip.pending, "output full wakes the chip")
-	await _finish(chip)
-	check_eq(_reason, "event:output_full", "reason names the event")
+	var miner: Miner = _machine as Miner
+	var before: Array = [miner.enabled, miner.mine_ticks]
+	_tick(miner.mine_ticks + 2)
+	check("output_full" in miner.get_events(), "the miner really is blocked (the event exists)")
+	check(not chip.pending, "output full does not wake the chip")
+	miner.status = Machine.Status.DOWN
+	_tick(3)
+	check("error" in miner.get_events() and not chip.pending, "a machine error does not wake it either")
+	check_eq([miner.enabled, miner.mine_ticks], before, "no machine setting changed")
+	var assembler: ChipComponent = _spawn(ASSEMBLER)
+	_tick(3)
+	check("input_empty" in _machine.get_events() and not assembler.pending, "nor does an empty input")
+	bus.llm_request_started.disconnect(_on_started)
+	check_eq(_started, 0, "the LLM was never called")
+	check_eq(_reason, "", "no decision was ever asked for")
 
 
-func test_event_held_over_does_not_refire() -> void:
+func test_timer_trigger_still_fires() -> void:
 	var chip: ChipComponent = _spawn(MINER)
-	_tick((_machine as Miner).mine_ticks + 2)
-	await _finish(chip)
-	_tick(10)
-	check(not chip.pending, "same event is not raised again every tick")
-
-
-func test_event_already_true_at_attach_does_not_fire() -> void:
-	var chip: ChipComponent = _spawn(ASSEMBLER)
-	check("input_empty" in _machine.get_events(), "an empty assembler has the input_empty event")
-	_tick(5)
-	check(not chip.pending, "starting state is not a new event")
-
-
-func test_error_event_when_machine_not_normal() -> void:
-	var chip: ChipComponent = _spawn(MINER)
+	chip.set_timeout(5)
+	_tick(4)
+	check(not chip.pending, "not before the timeout")
 	_tick(1)
-	_machine.status = Machine.Status.DOWN
-	_tick(1)
-	check(chip.pending, "leaving normal wakes the chip")
+	check(chip.pending, "the timer wakes the chip")
 	await _finish(chip)
-	check_eq(_reason, "event:error", "reason is error")
+	check_eq(_reason, "timer", "reason is timer")
 
 
 func test_threshold_fires_on_crossing_only() -> void:

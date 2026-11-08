@@ -65,3 +65,12 @@ func test_action_icons_make_square_buttons_with_a_hover() -> void:
 		check(button.icon != null and button.icon.get_size() == Vector2(Icons.SIZE * Icons.SCALE, Icons.SIZE * Icons.SCALE), "%s icon is pre-scaled" % icon_name)
 		check(button.text == "" and button.tooltip_text == "hint %s" % icon_name, "%s: icon only, with a hover" % icon_name)
 		button.free()
+
+
+func test_thermometer_fills_with_the_temperature_and_changes_color() -> void:
+	var seen: Dictionary = {}
+	for fraction: float in [0.0, 0.3, 0.5, 0.9, 1.0]:
+		seen[Icons.thermometer(fraction).get_image().get_data()] = true
+	check_eq(seen.size(), 5, "each level looks different")
+	check_eq(Icons.thermometer(-1.0).get_image().get_data(), Icons.thermometer(0.0).get_image().get_data(), "clamped below")
+	check_eq(Icons.thermometer(5.0).get_image().get_data(), Icons.thermometer(1.0).get_image().get_data(), "clamped above")

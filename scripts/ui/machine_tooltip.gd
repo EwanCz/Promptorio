@@ -25,6 +25,10 @@ var _machine: Machine = null
 @onready var _action_label: Label = %ActionLabel
 @onready var _rotate_button: Button = %RotateButton
 @onready var _destroy_button: Button = %DestroyButton
+@onready var _heat_row: HBoxContainer = %HeatRow
+@onready var _thermo_icon: TextureRect = %ThermoIcon
+@onready var _temp_label: Label = %TempLabel
+@onready var _cool_icon: TextureRect = %CoolIcon
 @onready var _chips_list: VBoxContainer = %ChipsList
 @onready var _picker: OptionButton = %ChipPicker
 @onready var _add_button: Button = %AddButton
@@ -84,10 +88,23 @@ func _show_details(shown: bool) -> void:
 
 
 func _refresh_status() -> void:
-	var state: String = Machine.Status.keys()[_machine.status].to_lower()
-	Icons.apply(_status_icon, "state_" + state, STATE_HINTS[state])
+	var status: String = Machine.Status.keys()[_machine.status].to_lower()
+	Icons.apply(_status_icon, "state_" + status, STATE_HINTS[status])
 	_action_label.text = _machine.get_action_text()
 	_action_label.visible = _action_label.text != ""
+	var state: Dictionary = _machine.get_state()
+	_heat_row.visible = state.has("temperature")
+	if _heat_row.visible:
+		var heat: float = float(state["temperature"])
+		var fraction: float = inverse_lerp(Smelter.AMBIENT, Smelter.EXPLODE_AT, heat)
+		_thermo_icon.texture = Icons.thermometer(fraction)
+		_thermo_icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		_thermo_icon.custom_minimum_size = Vector2(Icons.SIZE * Icons.SCALE, Icons.SIZE * Icons.SCALE)
+		_thermo_icon.tooltip_text = "Temperature (explodes at %d)" % int(Smelter.EXPLODE_AT)
+		_thermo_icon.mouse_filter = Control.MOUSE_FILTER_STOP
+		_temp_label.text = "%d°" % int(heat)
+		var cooling: bool = state.get("cooling", false)
+		Icons.apply(_cool_icon, "cooling_on" if cooling else "cooling_off", "Cooling on" if cooling else "Cooling off")
 
 
 func _refresh_chips() -> void:

@@ -46,8 +46,24 @@ func test_start_money_and_catalog() -> void:
 func test_page_lists_machines_with_cost_and_money() -> void:
 	var buttons: Array[Button] = _buttons()
 	check_eq(buttons.size(), 4, "one button per buildable machine")
-	check_eq(buttons[0].text, "Miner - 20", "cost shown")
-	check_eq((_page.get_node("%MoneyLabel") as Label).text, "Money: 100", "money shown")
+	check_eq(buttons[0].text, "20", "the cost is just a number")
+	var price_icon: Image = Icons.icon("money").get_image()
+	price_icon.resize(Icons.SIZE * Icons.SCALE, Icons.SIZE * Icons.SCALE, Image.INTERPOLATE_NEAREST)
+	for button: Button in buttons:
+		var strip: Image = button.icon.get_image()
+		var at: Vector2i = Vector2i(BuildPage.ART_SIZE + BuildPage.COIN_GAP, (BuildPage.ART_SIZE - price_icon.get_height()) / 2)
+		check(strip.get_region(Rect2i(0, 0, BuildPage.ART_SIZE, BuildPage.ART_SIZE)).get_data() != Image.create_empty(BuildPage.ART_SIZE, BuildPage.ART_SIZE, false, Image.FORMAT_RGBA8).get_data(), "%s: the machine art is still there" % button.tooltip_text)
+		check_eq(strip.get_region(Rect2i(at, price_icon.get_size())).get_data(), price_icon.get_data(), "%s: the money icon sits between the art and the number, so it reads as a price" % button.tooltip_text)
+	check_eq([buttons[1].text, buttons[2].text, buttons[3].text], ["30", "40", "2"], "every cost beside its machine")
+	for i: int in buttons.size():
+		check(buttons[i].icon != null, "%s shows its machine art" % buttons[i].tooltip_text)
+	check(buttons[0].get_combined_minimum_size().x < 200.0, "buttons stay small however many times the page is built")
+	check_eq(buttons.map(func(b: Button) -> String: return b.tooltip_text), ["Miner", "Smelter", "Assembler", "Conveyor"], "names on hover")
+	check_eq((_page.get_node("%MoneyLabel") as Label).text, "100", "money is a bare amount")
+	var coin: TextureRect = _page.get_node("%MoneyIcon") as TextureRect
+	check_eq(coin.texture.get_image().get_data(), Icons.icon("money").get_image().get_data(), "beside a coin icon")
+	check_eq(coin.tooltip_text, "Money", "which explains itself on hover")
+	check(not _page.find_children("*", "Label", true, false).any(func(l: Label) -> bool: return l.text.contains("Money") or l.text.contains("-")), "no money or cost words")
 
 
 func test_unaffordable_machines_are_disabled() -> void:
@@ -55,7 +71,7 @@ func test_unaffordable_machines_are_disabled() -> void:
 	var buttons: Array[Button] = _buttons()
 	check(buttons[0].disabled, "miner (20) too expensive with 15")
 	check(buttons[3].disabled == false, "conveyor (2) still affordable")
-	check_eq((_page.get_node("%MoneyLabel") as Label).text, "Money: 15", "money label follows money_changed")
+	check_eq((_page.get_node("%MoneyLabel") as Label).text, "15", "money label follows money_changed")
 
 
 func test_selecting_does_not_charge_and_toggles() -> void:
@@ -182,7 +198,8 @@ func test_action_text_per_machine() -> void:
 	check(miner.get_action_text().contains("every %d ticks" % miner.mine_ticks), "miner rate")
 	var smelter: Smelter = _placement.place("smelter", Vector2i(8, 8))
 	var text: String = smelter.get_action_text()
-	check(text.contains("idle") and text.contains("Temperature") and text.contains("cooling off"), "smelter state, temperature, cooling")
+	check(text.contains("idle"), "smelter state")
+	check(not text.contains("Temperature") and not text.contains("cooling"), "heat is no longer text in the operation line")
 	smelter.receive("ore")
 	check(smelter.get_action_text().contains("1 ore"), "smelter stock")
 

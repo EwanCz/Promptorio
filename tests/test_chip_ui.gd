@@ -342,8 +342,37 @@ func test_details_panel_is_compact_and_icon_driven() -> void:
 	for gone: String in ["Type: smelter", "Chips", "Ask when", "Add chip", "Ask now", "Log", "Rotate", "Destroy", "X", "State: normal"]:
 		check(not gone in texts, "no '%s' text" % gone)
 	check(texts.has("ui_compact"), "names stay as text")
-	check(texts.any(func(t: String) -> bool: return t.contains("Temperature")), "values stay as text")
+	check(texts.has("20°"), "the temperature value stays as text, without a caption")
 	check(tooltip.get_combined_minimum_size().x <= 260.0, "narrow enough for the Bar at small window sizes (%d)" % int(tooltip.get_combined_minimum_size().x))
+
+
+func _same_raw(a: Texture2D, b: Texture2D) -> bool:
+	return a.get_image().get_data() == b.get_image().get_data()
+
+
+func test_smelter_heat_is_a_thermometer_and_a_cooling_icon() -> void:
+	var tooltip: MachineTooltip = _spawn("res://scenes/ui/popups/machine_tooltip.tscn")
+	var smelter: Smelter = _spawn("res://scenes/machines/smelter.tscn") as Smelter
+	var heat: Control = tooltip.get_node("%HeatRow") as Control
+	var thermo: TextureRect = tooltip.get_node("%ThermoIcon") as TextureRect
+	var cool: TextureRect = tooltip.get_node("%CoolIcon") as TextureRect
+	autoload("EventBus").machine_selected.emit(smelter)
+	check(heat.visible, "a smelter shows its heat row")
+	check_eq((tooltip.get_node("%TempLabel") as Label).text, "20°", "current value as a number")
+	check(_same_raw(cool.texture, Icons.icon("cooling_off")) and cool.tooltip_text == "Cooling off", "cooling off: the dim snowflake")
+	var cool_off_look: Texture2D = thermo.texture
+	smelter.apply_tool_call("set_cooling", {"on": true})
+	smelter.temperature = 120.0
+	autoload("EventBus").machine_selected.emit(null)
+	autoload("EventBus").machine_selected.emit(smelter)
+	check_eq((tooltip.get_node("%TempLabel") as Label).text, "120°", "the number follows the temperature")
+	check(_same_raw(cool.texture, Icons.icon("cooling_on")) and cool.tooltip_text == "Cooling on", "cooling on: the lit snowflake")
+	check(not _same_raw(cool.texture, Icons.icon("cooling_off")), "the two states differ")
+	check(not _same_raw(thermo.texture, cool_off_look), "the thermometer fills as it heats up")
+	check(thermo.tooltip_text.begins_with("Temperature"), "and explains itself on hover")
+	var miner: Machine = _spawn("res://scenes/machines/miner.tscn")
+	autoload("EventBus").machine_selected.emit(miner)
+	check(not heat.visible, "other machines have no heat row")
 
 
 func test_collector_panel_hides_rotate_and_destroy_icons() -> void:

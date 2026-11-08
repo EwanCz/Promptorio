@@ -49,10 +49,6 @@ func get_state() -> Dictionary:
 	return super.get_state().merged({"temperature": roundi(temperature), "cooling": cooling, "emergency_stop": emergency_stop})
 
 
-func get_action_text() -> String:
-	return "%s\nTemperature: %d°, cooling %s" % [super.get_action_text(), roundi(temperature), "on" if cooling else "off"]
-
-
 func _apply(tool_name: String, args: Dictionary) -> void:
 	if tool_name == "set_cooling":
 		cooling = args["on"]

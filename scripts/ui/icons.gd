@@ -35,6 +35,9 @@ const BADGES: Dictionary = {
 	"remove": ["warn", "dash"],
 	"timer": ["info", "clock"],
 	"watch": ["info", "up"],
+	"money": ["ok", "coin"],
+	"cooling_on": ["info", "snow"],
+	"cooling_off": ["off", "snow"],
 }
 const GLYPHS: Dictionary = {
 	"check": ["........", "......#.", ".....##.", "#...##..", "##.##...", ".###....", "..#.....", "........"],
@@ -53,6 +56,7 @@ const GLYPHS: Dictionary = {
 	"list": ["........", "##.#####", "........", "##.#####", "........", "##.#####", "........", "........"],
 	"clock": ["..####..", ".#.##.#.", "#..##..#", "#..###.#", "#......#", "#......#", ".#....#.", "..####.."],
 	"up": ["...##...", "..####..", ".######.", "...##...", "...##...", "...##...", "...##...", "........"],
+	"snow": ["...##...", "#.#..#.#", ".######.", "..####..", "..####..", ".######.", "#.#..#.#", "...##..."],
 	"coin": ["..####..", ".##..##.", ".##.....", "..####..", ".....##.", ".##..##.", "..####..", "........"],
 }
 ## The key drawn on its own, 12x12, in the coin color.
@@ -96,6 +100,22 @@ static func rect(icon_name: String, description: String = "") -> TextureRect:
 	var rect_node: TextureRect = TextureRect.new()
 	apply(rect_node, icon_name, description)
 	return rect_node
+
+
+## A thermometer for `fraction` (0..1) of its scale: the glass with a fill from the bulb up, green when
+## cool, orange when hot, red when close to the top. Not cached (the fill changes).
+static func thermometer(fraction: float) -> Texture2D:
+	var image: Image = _blank()
+	var level: int = roundi(clampf(fraction, 0.0, 1.0) * 7.0)
+	var fill: Color = FILLS["ok"] if fraction < 0.4 else (FILLS["warn"] if fraction < 0.75 else FILLS["bad"])
+	for y: int in range(1, 9):
+		for x: int in range(4, 8):
+			image.set_pixel(x, y, OUTLINE if x == 4 or x == 7 or y == 1 else (fill if 9 - y <= level else Color(0.2, 0.22, 0.26)))
+	for y: int in range(9, 12):
+		for x: int in range(3, 9):
+			if not ((y == 9 or y == 11) and (x == 3 or x == 8)):
+				image.set_pixel(x, y, fill if y > 9 or level > 0 else OUTLINE)
+	return ImageTexture.create_from_image(image)
 
 
 ## A flat-looking icon-only Button (names are in the hover text). The icon is pre-scaled with the nearest

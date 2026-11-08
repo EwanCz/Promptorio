@@ -62,6 +62,23 @@ unique_name_in_owner = true
 layout_mode = 2
 autowrap_mode = 3
 
+[node name="HeatRow" type="HBoxContainer" parent="Margin/Scroll/VBox"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+
+[node name="ThermoIcon" type="TextureRect" parent="Margin/Scroll/VBox/HeatRow"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="TempLabel" type="Label" parent="Margin/Scroll/VBox/HeatRow"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="CoolIcon" type="TextureRect" parent="Margin/Scroll/VBox/HeatRow"]
+unique_name_in_owner = true
+layout_mode = 2
+
 [node name="ChipsList" type="VBoxContainer" parent="Margin/Scroll/VBox"]
 unique_name_in_owner = true
 layout_mode = 2
