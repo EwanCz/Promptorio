@@ -93,7 +93,7 @@ func test_speed_button_cycles_and_drives_game_state() -> void:
 	check_eq([button.text, game_state.time_scale], ["4x", 4.0], "second click goes to 4x")
 	button.pressed.emit()
 	check_eq([button.text, game_state.time_scale], ["1x", 1.0], "wraps back around to 1x")
-	check(button.tooltip_text.contains("1x") and button.tooltip_text.contains("latency"), "hover explains it and that latency is unaffected")
+	check(button.tooltip_text.contains("1x") and button.tooltip_text.contains("timers speed up") and button.tooltip_text.contains("cooldowns") and button.tooltip_text.contains("latency"), "hover distinguishes tick timers from real-time cooldown and latency")
 	main.free()
 	game_state.set_time_scale(game_state.MIN_TIME_SCALE)
 

@@ -143,7 +143,7 @@ func _on_speed_pressed() -> void:
 func _refresh_speed_button() -> void:
 	var label: String = "%dx" % int(GameState.time_scale)
 	_speed_button.text = label
-	_speed_button.tooltip_text = "Simulation speed: %s. Click to cycle 1x / 2x / 4x. Chip timers and request latency keep real time." % label
+	_speed_button.tooltip_text = "Simulation speed: %s. Click to cycle 1x / 2x / 4x. Chip timers speed up; cooldowns and request latency stay in real time." % label
 
 
 ## Compact, icon-first order display: the ordered resource's own art, "progress/quantity", and the
