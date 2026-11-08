@@ -21,11 +21,21 @@ const ARROWS: Dictionary = {
 @export var up_texture: Texture2D
 @export var side_texture: Texture2D
 
-var held: String = ""
+## The item on the belt ("" for none). Its icon is drawn over the conveyor.
+var held: String = "":
+	set(value):
+		held = value
+		_update_item_icon()
 
 var _wait: int = 0
 
 @onready var _belt: Sprite2D = get_node_or_null("Belt") as Sprite2D
+@onready var _item_icon: Sprite2D = get_node_or_null("ItemIcon") as Sprite2D
+
+
+func _ready() -> void:
+	super._ready()
+	_update_item_icon()
 
 
 func get_state() -> Dictionary:
@@ -112,5 +122,10 @@ func _apply(tool_name: String, args: Dictionary) -> bool:
 	return super._apply(tool_name, args)
 
 
-func _status_text() -> String:
-	return "•" if held != "" else ""
+## Shows the held item's icon, or nothing when the belt is empty (or the item has no icon).
+func _update_item_icon() -> void:
+	if _item_icon == null:
+		return
+	var data: ItemData = ItemCatalog.shared().get_item(held)
+	_item_icon.texture = null if data == null else data.icon
+	_item_icon.visible = _item_icon.texture != null

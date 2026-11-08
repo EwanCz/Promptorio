@@ -154,7 +154,7 @@ func test_conveyor_label_shows_no_direction_arrow() -> void:
 	check_eq(label.text, "", "an empty conveyor shows no label")
 	conveyor.receive("coal")
 	_tick(2)
-	check_eq(label.text, "•", "a held item shows as a dot")
+	check_eq(label.text, "", "a held item shows no dot: its icon is drawn instead")
 
 
 func test_set_direction_tool_redraws_the_belt() -> void:
@@ -229,3 +229,41 @@ func test_belt_textures_repeat_every_scroll_period() -> void:
 			side_ok = side_ok and side.get_pixel(column, row) == side.get_pixel((column + period) % 16, row)
 	check(up_ok, "the vertical belt art repeats every %d rows" % period)
 	check(side_ok, "the horizontal belt surface repeats every %d columns" % period)
+
+
+func _icon(conveyor: Conveyor) -> Sprite2D:
+	return conveyor.get_node("ItemIcon") as Sprite2D
+
+
+func test_conveyor_shows_the_icon_of_the_item_it_holds() -> void:
+	var conveyor: Conveyor = _spawn("conveyor") as Conveyor
+	check(not _icon(conveyor).visible, "an empty conveyor shows no icon")
+	for id: String in ItemCatalog.shared().get_ids():
+		conveyor.held = ""
+		check(conveyor.receive(id), "%s is accepted" % id)
+		check(_icon(conveyor).visible, "%s shows an icon" % id)
+		check(_icon(conveyor).texture == ItemCatalog.shared().get_item(id).icon, "%s shows its own icon" % id)
+	conveyor.clear_contents()
+	check(not _icon(conveyor).visible, "the icon goes when the belt is emptied")
+
+
+func test_icon_goes_when_the_item_moves_on() -> void:
+	var conveyor: Conveyor = _spawn("conveyor") as Conveyor
+	var collector: Machine = _spawn("collector")
+	var game: Node = autoload("GameState")
+	conveyor.cell = Vector2i(2, 2)
+	collector.cell = Vector2i(3, 2)
+	game.register_machine(conveyor, conveyor.cell)
+	game.register_machine(collector, collector.cell)
+	conveyor.receive("coal")
+	for number: int in Conveyor.MOVE_TICKS + 1:
+		_tick(number)
+	check_eq(conveyor.held, "", "the item was handed on")
+	check(not _icon(conveyor).visible, "so the icon is gone")
+
+
+func test_icon_is_back_after_loading_a_held_item() -> void:
+	var conveyor: Conveyor = _spawn("conveyor") as Conveyor
+	conveyor.load_dict({"data": {"held": "robot", "wait": 0}})
+	check_eq(conveyor.held, "robot", "the item is loaded")
+	check(_icon(conveyor).visible, "and drawn")
