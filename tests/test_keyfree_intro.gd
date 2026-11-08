@@ -14,6 +14,9 @@ var _bus: Node
 var _llm: Node
 var _saved_money: int = 0
 var _saved_ticks: int = 0
+var _saved_order: Dictionary = {}
+var _saved_registry_path: String = ""
+var _saved_creators: Dictionary = {}
 var _saved_provider: String = ""
 var _saved_api_key: String = ""
 var _saved_env: Dictionary = {}
@@ -26,6 +29,12 @@ func before_each() -> void:
 	_game = autoload("GameState")
 	_bus = autoload("EventBus")
 	_llm = autoload("LLMManager")
+	var registry: Node = autoload("ChipRegistry")
+	_saved_registry_path = registry.user_path
+	registry.user_path = ""
+	_saved_creators.clear()
+	for chip: ChipRessource in registry.get_all():
+		_saved_creators[chip] = chip.created_by
 	var settings: Node = autoload("Settings")
 	_saved_provider = settings.provider
 	_saved_api_key = settings.api_key
@@ -35,6 +44,7 @@ func before_each() -> void:
 	settings._env.clear()
 	_saved_money = _game.money
 	_saved_ticks = _game.tick_count
+	_saved_order = {"product": _game.order_product, "quantity": _game.order_quantity, "progress": _game.order_progress, "reward": _game.order_reward}
 	_decisions.clear()
 	_failures.clear()
 	_completed_orders.clear()
@@ -53,6 +63,11 @@ func after_each() -> void:
 	_main.free()
 	_game.money = _saved_money
 	_game.tick_count = _saved_ticks
+	_game.restore_order(_saved_order.product, _saved_order.quantity, _saved_order.progress, _saved_order.reward)
+	var registry: Node = autoload("ChipRegistry")
+	for chip: ChipRessource in _saved_creators:
+		chip.created_by = _saved_creators[chip]
+	registry.user_path = _saved_registry_path
 	var settings: Node = autoload("Settings")
 	settings.provider = _saved_provider
 	settings.api_key = _saved_api_key
