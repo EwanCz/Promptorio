@@ -7,11 +7,14 @@ var sent: int = 0
 ## Every request handed to _send(), in order.
 var requests: Array[Dictionary] = []
 var delays: Array[float] = []
+var on_send: Callable
 
 
 func _send(_request: Dictionary) -> Dictionary:
 	sent += 1
 	requests.append(_request)
+	if on_send.is_valid():
+		on_send.call()
 	return responses.pop_front() if responses.size() > 1 else responses[0]
 
 
