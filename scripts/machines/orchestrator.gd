@@ -164,7 +164,7 @@ func assign_chip(target_id: int, chip_id: int) -> bool:
 		return false
 	if existing != null:
 		target.detach_chip(existing.chip.id)
-	if target.attach_chip(chip_id, ChipComponent.DEFAULT_TIMEOUT, machine_id) == null:
+	if target.attach_chip(chip_id, -1, machine_id) == null:
 		refusal = "machine #%d already runs that chip" % target_id
 		return false
 	target.indicator.show_management("assigned")

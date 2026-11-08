@@ -68,6 +68,52 @@ text = "Model"
 unique_name_in_owner = true
 layout_mode = 2
 
+[node name="Audio" type="VBoxContainer" parent="Margin/VBox"]
+layout_mode = 2
+
+[node name="SoundLabel" type="Label" parent="Margin/VBox/Audio"]
+layout_mode = 2
+text = "Sound"
+
+[node name="MasterRow" type="HBoxContainer" parent="Margin/VBox/Audio"]
+layout_mode = 2
+
+[node name="MasterLabel" type="Label" parent="Margin/VBox/Audio/MasterRow"]
+custom_minimum_size = Vector2(64, 0)
+layout_mode = 2
+text = "Master"
+
+[node name="MasterSlider" type="HSlider" parent="Margin/VBox/Audio/MasterRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+max_value = 1.0
+step = 0.01
+value = 0.8
+
+[node name="SfxRow" type="HBoxContainer" parent="Margin/VBox/Audio"]
+layout_mode = 2
+
+[node name="SfxLabel" type="Label" parent="Margin/VBox/Audio/SfxRow"]
+custom_minimum_size = Vector2(64, 0)
+layout_mode = 2
+text = "Effects"
+
+[node name="SfxSlider" type="HSlider" parent="Margin/VBox/Audio/SfxRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+max_value = 1.0
+step = 0.01
+value = 1.0
+
+[node name="MuteCheck" type="CheckButton" parent="Margin/VBox/Audio"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Mute all sound"
+
 [node name="Buttons" type="HBoxContainer" parent="Margin/VBox"]
 layout_mode = 2
 

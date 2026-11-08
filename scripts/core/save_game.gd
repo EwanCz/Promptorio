@@ -62,7 +62,7 @@ static func snapshot(placement: Placement) -> Dictionary:
 	for chip_id: int in chip_ids:
 		var chip: ChipRessource = ChipRegistry.get_from_id(chip_id)
 		if chip != null:
-			chips.append({"id": chip.id, "name": chip.name, "description": chip.description, "prompt": chip.prompt, "created_by": chip.created_by})
+			chips.append({"id": chip.id, "name": chip.name, "description": chip.description, "prompt": chip.prompt, "created_by": chip.created_by, "default_timeout": chip.default_timeout})
 	return {
 		"version": VERSION,
 		"tick_count": GameState.tick_count,
@@ -94,7 +94,7 @@ static func restore(placement: Placement, data: Variant) -> String:
 	if save.has("minesites"):
 		placement.grid.set_minesites(_to_cells(save["minesites"]))
 	for entry: Dictionary in save["chips"]:
-		ChipRegistry.import_chip(int(entry["id"]), entry["name"], entry.get("description", ""), entry.get("prompt", ""), int(entry.get("created_by", 0)))
+		ChipRegistry.import_chip(int(entry["id"]), entry["name"], entry.get("description", ""), entry.get("prompt", ""), int(entry.get("created_by", 0)), int(entry.get("default_timeout", -1)))
 	var highest_id: int = 0
 	for entry: Dictionary in save["machines"]:
 		var cell: Vector2i = _to_cell(entry["cell"])
@@ -221,6 +221,8 @@ static func _validate_chips(chips: Variant) -> String:
 		for key: String in ["name", "description", "prompt"]:
 			if chip.has(key) and (typeof(chip[key]) != TYPE_STRING or str(chip[key]).length() > MAX_CHIP_TEXT):
 				return "The save has a chip with an invalid %s." % key
+		if chip.has("default_timeout") and (not _is_whole(chip["default_timeout"]) or int(chip["default_timeout"]) < 0 or int(chip["default_timeout"]) > 100000):
+			return "The save has a chip with an invalid default timeout."
 		seen[int(chip["id"])] = true
 	return ""
 

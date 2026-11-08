@@ -10,6 +10,8 @@ signal menu_requested
 
 ## Order art is the same 32 px resource icons shown elsewhere in the Bar.
 const ORDER_ICON_PX: int = 32
+## Cycled by the speed button, in order: GameState.MAX_TIME_SCALE must be the last one.
+const SPEEDS: Array[float] = [1.0, 2.0, 4.0]
 
 var _verdict: String = ""
 var _spin_time: float = 0.0
@@ -31,6 +33,7 @@ var _detail: String = ""
 @onready var _saves_button: Button = %SavesButton
 @onready var _settings_button: Button = %SettingsButton
 @onready var _menu_button: Button = %MenuButton
+@onready var _speed_button: Button = %SpeedButton
 
 
 func _ready() -> void:
@@ -52,6 +55,8 @@ func _ready() -> void:
 	_settings_button.pressed.connect(settings_requested.emit)
 	Icons.apply_button(_menu_button, "menu", "Menu")
 	_menu_button.pressed.connect(menu_requested.emit)
+	_speed_button.pressed.connect(_on_speed_pressed)
+	_refresh_speed_button()
 	EventBus.settings_changed.connect(_on_settings_changed)
 	EventBus.key_checked.connect(_on_key_checked)
 	EventBus.order_progress_changed.connect(_on_order_progress_changed)
@@ -86,11 +91,20 @@ func _process(delta: float) -> void:
 	_key_badge.texture = _frames[int(_spin_time / ChipIndicator.FRAME_SECONDS) % _frames.size()]
 
 
-## Hidden for providers without a key. Otherwise a key icon with a badge: "!" missing, spinner being checked,
-## check accepted, cross rejected, "?" could not be verified. Hover for the explanation.
+## Always visible, so a player is never left thinking an unseen AI is reading their prompt. For `mock` it
+## is a fixed grey dot saying chip decisions are canned, not a real answer. Otherwise a key icon with a
+## badge: "!" missing, spinner being checked, check accepted, cross rejected, "?" could not be verified.
+## Hover for the explanation.
 func _refresh_key_status() -> void:
-	_key_status.visible = Settings.ENV_VARS.has(Settings.provider)
 	set_process(false)
+	if Settings.provider == "mock":
+		_key_status.visible = true
+		var mock_text: String = "Mock provider: chip decisions are canned and ignore the prompt, not answered by a real AI. Pick Anthropic or OpenAI in Settings to use one."
+		Icons.apply(_key_icon, "key", mock_text)
+		Icons.apply(_key_badge, "mock", mock_text)
+		_key_status.tooltip_text = mock_text
+		return
+	_key_status.visible = Settings.ENV_VARS.has(Settings.provider)
 	if not _key_status.visible:
 		return
 	var badge: String = "checking"
@@ -116,6 +130,20 @@ func _refresh_key_status() -> void:
 
 func _on_order_progress_changed(_product: String, _progress: int, _quantity: int, _reward: int) -> void:
 	_refresh_order()
+
+
+## Cycles 1x -> 2x -> 4x -> 1x. Only the simulation tick clock speeds up (GameState.set_time_scale); real
+## time, so chip cooldowns and request latency, is unaffected, which the hover says plainly.
+func _on_speed_pressed() -> void:
+	var index: int = SPEEDS.find(GameState.time_scale)
+	GameState.set_time_scale(SPEEDS[(maxi(index, 0) + 1) % SPEEDS.size()])
+	_refresh_speed_button()
+
+
+func _refresh_speed_button() -> void:
+	var label: String = "%dx" % int(GameState.time_scale)
+	_speed_button.text = label
+	_speed_button.tooltip_text = "Simulation speed: %s. Click to cycle 1x / 2x / 4x. Chip timers speed up; cooldowns and request latency stay in real time." % label
 
 
 ## Compact, icon-first order display: the ordered resource's own art, "progress/quantity", and the
