@@ -43,7 +43,7 @@ The Collector at the map center is provided for free and cannot be built or remo
 ### Machine actions
 The machine tooltip panel provides the actions that apply to an existing machine:
 - Rotate output: rotate `facing` clockwise (right, down, left, up) for Miner, Smelter, Assembler, and Conveyor. The Collector has no facing and shows no rotate action. Rotation changes where future output is sent; it does not alter stored items. The `rotate_placement` action (default R) rotates the next machine during placement; it also rotates the machine whose tooltip is open, so one press turns both the selected machine and the next placement (same as the Rotate button, nothing happens for the Collector).
-- Remove: immediately free the machine's grid cell and remove it from the scene. Discard its stock, held item, and attached chips; do not refund its purchase price. Do not offer removal for the fixed Collector. The freed cell can be rebuilt using normal placement checks and cost.
+- Remove: immediately free the machine's grid cell and remove it from the scene. Discard its stock, held item, and attached chips; refund half of its purchase price (`Placement.refund_for()`, rounded down: Miner 10, Smelter 15, Assembler 20, Conveyor 1), only when the player destroys it from the tooltip; a Smelter that explodes gives nothing. Do not offer removal for the fixed Collector. The freed cell can be rebuilt using normal placement checks and cost.
 
 Tooltip current-action content:
 - Miner: production rate (one ore per `mine_ticks`) and whether its output is blocked.
