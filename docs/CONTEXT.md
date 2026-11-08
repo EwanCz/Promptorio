@@ -54,6 +54,7 @@ Main (Node)
    ├─ ChipPage        (popup, centered; name, description, message; edit/save/remove)
    ├─ ChipLog         (icon timeline opened from the machine panel)
    ├─ ResourcesPage   (popup, every resource: machine, needs, ticks, price)
+   ├─ ToolsPage       (popup, every tool of every machine type)
    ├─ SaveDialog      (save slots, import/export a save file; pauses the game)
    ├─ PauseMenu       (Resume / Restart / Main Menu; pauses the game; Bar "Menu" button or Escape)
    └─ SettingsDialog

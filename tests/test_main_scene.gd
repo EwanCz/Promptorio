@@ -10,7 +10,7 @@ func test_main_scene_layout() -> void:
 	check(main.get_node_or_null("UI") is CanvasLayer, "UI layer exists")
 	check(main.get_node_or_null("Game/Bar/VBoxContainer/TopHalf/PageScroll/Pages/BuildPage") != null, "bar has the build page")
 	check(main.get_node_or_null("Game/Bar/VBoxContainer/TopHalf/PageScroll/Pages/ChipRegistryPage") != null, "bar has the chip registry page")
-	for popup_name: String in ["ChipPage", "ChipLog", "ResourcesPage", "SettingsDialog", "SaveDialog"]:
+	for popup_name: String in ["ChipPage", "ChipLog", "ResourcesPage", "ToolsPage", "SettingsDialog", "SaveDialog"]:
 		check(main.get_node_or_null("UI/" + popup_name) != null, "UI has " + popup_name)
 	var factory: Control = main.get_node("Game/FactoryView")
 	var bar: Control = main.get_node("Game/Bar")
@@ -66,7 +66,7 @@ func test_menu_resources_and_save_buttons_look_like_settings() -> void:
 	var main: Node = load("res://scenes/main.tscn").instantiate()
 	tree.root.add_child(main)
 	var settings: Button = main.get_node("%SettingsButton") as Button
-	var hovers: Dictionary = {"%MenuButton": "Menu", "%ResourcesButton": "Resources", "%SavesButton": "Save / Load"}
+	var hovers: Dictionary = {"%MenuButton": "Menu", "%ResourcesButton": "Resources", "%ToolsButton": "Machine tools", "%SavesButton": "Save / Load"}
 	var seen: Dictionary = {}
 	for path: String in hovers:
 		var button: Button = main.get_node(path) as Button
@@ -80,12 +80,12 @@ func test_menu_resources_and_save_buttons_look_like_settings() -> void:
 	main.free()
 
 
-func test_the_four_bar_buttons_share_one_row() -> void:
+func test_the_bar_buttons_share_one_row() -> void:
 	var main: Node = load("res://scenes/main.tscn").instantiate()
 	var row: Control = main.get_node("%BarButtons")
 	var names: Array[String] = []
 	for child: Node in row.get_children():
 		names.append(str(child.name))
-	check_eq(names, ["MenuButton", "ResourcesButton", "SavesButton", "SettingsButton"] as Array[String], "Menu, Resources, Save / Load, Settings, left to right")
+	check_eq(names, ["MenuButton", "ResourcesButton", "ToolsButton", "SavesButton", "SettingsButton"] as Array[String], "Menu, Resources, Tools, Save / Load, Settings, left to right")
 	check_eq((row as BoxContainer).alignment, BoxContainer.ALIGNMENT_END, "pushed to the right, where Settings used to sit")
 	main.free()

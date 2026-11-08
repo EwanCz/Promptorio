@@ -3,6 +3,7 @@ extends PanelContainer
 ## Right-hand Bar: one named button per page, plus resource, save, menu and settings controls.
 
 signal resources_requested
+signal tools_requested
 signal settings_requested
 signal saves_requested
 signal menu_requested
@@ -18,6 +19,7 @@ var _detail: String = ""
 @onready var _tabs: HFlowContainer = %PageTabs
 @onready var _pages: Control = %Pages
 @onready var _resources_button: Button = %ResourcesButton
+@onready var _tools_button: Button = %ToolsButton
 @onready var _saves_button: Button = %SavesButton
 @onready var _settings_button: Button = %SettingsButton
 @onready var _menu_button: Button = %MenuButton
@@ -34,6 +36,8 @@ func _ready() -> void:
 		_tabs.add_child(button)
 	Icons.apply_button(_resources_button, "resources", "Resources")
 	_resources_button.pressed.connect(resources_requested.emit)
+	Icons.apply_button(_tools_button, "tools", "Machine tools")
+	_tools_button.pressed.connect(tools_requested.emit)
 	Icons.apply_button(_saves_button, "save", "Save / Load")
 	_saves_button.pressed.connect(saves_requested.emit)
 	Icons.apply_button(_settings_button, "settings", "Settings")

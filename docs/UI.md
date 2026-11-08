@@ -34,7 +34,7 @@ Runtime status is shown with icons, not persistent text. Keep text where it carr
 Besides the red tint, the Smelter art trembles as it approaches the 150° explosion: nothing below 100° (the overheating line), almost imperceptible until about 120°, a clear one near the end (at most 4 px on a 64 px cell, at 150°). It eases off as the Smelter cools and stops when it explodes. It moves the art only, never the machine or its cell. See `docs/PLAN.md`, "Smelter temperature".
 
 ## Machine tooltip
-The Bar is split in two halves of equal height, with one row of icon buttons below them (Menu, Resources, Save / Load, Settings):
+The Bar is split in two halves of equal height, with one row of icon buttons below them (Menu, Resources, Machine tools, Save / Load, Settings):
 - Top half: the page tabs (Build / Chip Registry) and the current page inside a scroll container, so a long list scrolls instead of growing the Bar.
 - Bottom half: the machine details panel (`MachineTooltip`), a panel of the Bar (not a popup over the map). It shows "Select a machine" until a machine is clicked. Clicking the same machine or an empty cell goes back to that hint. The details scroll when they do not fit. Layout, top to bottom, with no section titles or explanatory text:
   - Header: the state icon (see "Visual feedback rule"), the title "<Type> #<id>", then icon buttons: log, rotate and destroy (rotate and destroy are hidden for machines that cannot use them, e.g. the Collector).
@@ -42,7 +42,7 @@ The Bar is split in two halves of equal height, with one row of icon buttons bel
   - One block per attached chip: its name (hover shows the prompt), a clock icon with the timer in ticks, an "ask now" bolt button and a "remove" button. There are no state or event triggers: a chip is asked only by its timer or by "ask now".
   - Last, the chip picker with a plus button that attaches the picked chip.
   - Every icon button has a hover description: "Chip log", "Rotate", "Destroy this machine", "Ask the chip now", "Remove this chip", "Add the chosen chip", and the clock explains the timer. The panel stays narrow enough for the Bar: rows wrap, and long chip names are trimmed with an ellipsis (hover shows the prompt).
-  - The four buttons at the bottom of the Bar (Menu, Resources, Save / Load, Settings) all have the same format: a pixel icon only (house, gem, arrow into a tray, gear), no text, with the name as hover text ("Menu", "Resources", "Save / Load", "Settings"). They sit side by side in one row (`BarButtons`), right-aligned, in that order, so Settings stays at the right end.
+  - The buttons at the bottom of the Bar (Menu, Resources, Machine tools, Save / Load, Settings) all have the same format: a pixel icon only (house, gem, hammer, arrow into a tray, gear), no text, with the name as hover text ("Menu", "Resources", "Save / Load", "Settings"). They sit side by side in one row (`BarButtons`), right-aligned, in that order, so Settings stays at the right end.
 
 The tooltip hides with the rest of the Bar (`E`).
 
@@ -81,6 +81,9 @@ Show machine state independently from current action: normal, down, or overheati
 
 ### Resources page
 The Resources button of the Bar opens a popup at the center of the screen (it does not pause the game). It lists every resource of the catalog (`data/items.tres`) in a scrollable table: name, the machine that builds it, what it needs (`Mined` for a raw resource, else e.g. `1 Silver Bar + 2 Redstone`), the mining or build time in ticks and the price the Collector pays. Close hides it. The table is read from `ItemCatalog` when the popup is created, so a new resource appears without touching the UI. Example chains: 2 coal make power in a Smelter, a silver bar (smelted silver) + 2 redstone make a circuit in an Assembler, and a steel + a circuit + power make a gun.
+
+### Machine tools page
+The hammer button of the Bar opens a popup (`ToolsPage`, it does not pause the game) that lists, for each type of machine in build order (Miner, Smelter, Assembler, Collector, Conveyor), every tool a chip may call on it: the signature with the argument types and ranges (`set_mine_ticks(ticks: integer 20..100)`, `discard_stock(item: string (one of 16), count: integer 1..10)`) and its description. It is read from each machine's own `get_tool_schemas()` when the popup is created, so a new tool appears without touching the UI. The shared `set_enabled` is listed under every type.
 
 ### Settings dialog
 Open Settings from the Bar. Offer `mock`, `anthropic`, and `openai` providers. For providers that use credentials, show that provider's API key field and model picker; mask the key while editing. The `mock` provider needs neither. Save writes through `Settings.save_settings()` and closes the dialog; Close dismisses without saving pending edits. If the provider's key comes from `.env` (`Settings.get_key_source()`), the key field stays empty and its placeholder says so; saving never copies the `.env` key to disk, and saving an empty field falls back to it. Never print or log the key.
