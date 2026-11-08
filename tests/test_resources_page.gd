@@ -17,10 +17,15 @@ func _page() -> ResourcesPage:
 	return page
 
 
+## Each cell's text. The "Resource" column wraps its icon and name in an HBoxContainer, so a plain
+## Label cast would fail there; read the last child instead, which is always the name Label.
 func _cells(page: ResourcesPage) -> Array[String]:
 	var texts: Array[String] = []
-	for label: Node in page.get_node("%Grid").get_children():
-		texts.append((label as Label).text)
+	for cell: Node in page.get_node("%Grid").get_children():
+		var label: Label = cell as Label
+		if label == null:
+			label = cell.get_child(cell.get_child_count() - 1) as Label
+		texts.append(label.text)
 	return texts
 
 
@@ -49,6 +54,22 @@ func test_lists_every_resource_with_its_build() -> void:
 		check_eq(row[2], page.needs_text(item), "%s: needs" % item.id)
 		check_eq(row[3], str(item.ticks), "%s: ticks (mined ones too)" % item.id)
 		check_eq(row[4], str(item.price), "%s: price" % item.id)
+
+
+func test_resource_cell_shows_its_icon_before_the_name() -> void:
+	var page: ResourcesPage = _page()
+	var grid: GridContainer = page.get_node("%Grid")
+	var columns: int = grid.columns
+	var catalog: ItemCatalog = ItemCatalog.shared()
+	for i: int in catalog.items.size():
+		var item: ItemData = catalog.items[i]
+		var cell: Node = grid.get_child(columns * (i + 1))
+		check(cell is HBoxContainer, "%s: name cell wraps icon and label" % item.id)
+		if item.icon == null:
+			continue
+		var icon_rect: TextureRect = cell.get_child(0) as TextureRect
+		check(icon_rect != null, "%s: icon comes before the name" % item.id)
+		check_eq(icon_rect.texture, item.icon, "%s: icon matches the catalog" % item.id)
 
 
 func test_needs_text() -> void:
