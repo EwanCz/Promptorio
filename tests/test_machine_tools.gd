@@ -9,9 +9,9 @@ const SCENES: Dictionary = {
 	"conveyor": "res://scenes/machines/conveyor.tscn",
 }
 const EXPECTED_OWN: Dictionary = {
-	"miner": ["set_mine_ticks"],
-	"smelter": ["set_cooling", "set_emergency_stop"],
-	"assembler": ["set_stock_limit"],
+	"miner": ["set_mine_ticks", "set_mined_item"],
+	"smelter": ["set_cooling", "set_emergency_stop", "set_product", "discard_stock"],
+	"assembler": ["set_stock_limit", "set_product", "discard_stock"],
 	"collector": ["set_accepting"],
 	"conveyor": ["set_direction"],
 }
@@ -48,17 +48,15 @@ func test_every_type_has_the_shared_tool_and_its_own() -> void:
 	for type: String in SCENES:
 		var names: Array[String] = _names(_make(type))
 		check_eq(names[0], "set_enabled", "%s starts with the shared tool" % type)
-		check_eq(names.size(), 1 + EXPECTED_OWN[type].size(), "%s has the shared tool and its own" % type)
-		for own: String in EXPECTED_OWN[type]:
-			check(own in names, "%s has %s" % [type, own])
+		check_eq(names.slice(1), EXPECTED_OWN[type], "%s has exactly its own tools after the shared one" % type)
 
 
 func test_own_tools_are_unique_to_their_type() -> void:
 	for type: String in SCENES:
-		for other: String in SCENES:
-			if other != type:
-				for own: String in EXPECTED_OWN[type]:
-					check(not own in _names(_make(other)), "%s is not offered on a %s" % [own, other])
+		for tool: String in EXPECTED_OWN[type]:
+			for other: String in SCENES:
+				if not tool in EXPECTED_OWN[other]:
+					check(not tool in _names(_make(other)), "%s is not offered on a %s" % [tool, other])
 
 
 func test_own_tool_of_another_type_is_refused() -> void:
@@ -73,7 +71,7 @@ func test_miner_mine_ticks_clamped() -> void:
 	check_eq(miner.mine_ticks, 40, "mine_ticks set")
 	check_eq(miner.get_state()["mine_ticks"], 40, "state shows it")
 	miner.apply_tool_call("set_mine_ticks", {"ticks": 1})
-	check_eq(miner.mine_ticks, Miner.MIN_MINE_TICKS, "clamped to the minimum")
+	check_eq(miner.mine_ticks, miner.get_min_mine_ticks(), "clamped to the mining time of the resource")
 	miner.apply_tool_call("set_mine_ticks", {"ticks": 9999})
 	check_eq(miner.mine_ticks, Miner.MAX_MINE_TICKS, "clamped to the maximum")
 	check(not miner.apply_tool_call("set_mine_ticks", {"ticks": "fast"}), "text rejected")

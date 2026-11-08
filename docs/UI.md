@@ -3,7 +3,7 @@
 The UI will split the screen in 2.
 ## Factory View
 It display the factory as a up view on the left on the screen taking 80% on the screen.
-The factory will be a tile map with some of them being minesite. On those site can be place miner which will extract the ressource.
+The factory will be a tile map with some of them being minesite. On those site can be place miner which will extract the ressource. The minesites are random: 4 groups of 3 touching tiles drawn at every game start, one of them always within 10 tiles of the Collector, and none closer than 5 tiles to it.
 In the center of the map is placed a collector it is where our ressource are sold.
 The camera can be zoomed in/out and move in x/y axis. At startup it is zoomed out so the whole grid is visible (centered on an axis where the view is larger than the grid). While the player has not zoomed or panned, resizing the window keeps the whole grid in view. If the view is too small for the usual minimum zoom (0.4), the fit goes lower and that becomes the floor.
 
@@ -22,7 +22,7 @@ The different page are:
 When a chip is clicked in the chip registry page. The game is paused and a popup happear at the center of the screen. It will contain the name of the selected chip, its description and its prompt. The prompt is what the llm receive. From this page we can edit/save/remove a chip.
 
 ## Machine tooltip
-The Bar is split in two halves of equal height, with the Settings button below them at the very bottom:
+The Bar is split in two halves of equal height, with the Resources and Settings buttons below them (Settings at the very bottom):
 - Top half: the page tabs (Build / Chip Registry) and the current page inside a scroll container, so a long list scrolls instead of growing the Bar.
 - Bottom half: the machine tooltip, a panel of the Bar (not a popup over the map). It shows "Click a machine to see its details." until a machine is clicked. Clicking the same machine or an empty cell goes back to that hint. The details scroll when they do not fit. Show machine id, type, state, current action, connected chips with prompt preview and timeout (chip rows wrap to the narrow Bar), an add-chip picker from the registry, a log button, and the Rotate and Destroy actions.
 
@@ -46,7 +46,7 @@ The machine tooltip panel provides the actions that apply to an existing machine
 - Remove: immediately free the machine's grid cell and remove it from the scene. Discard its stock, held item, and attached chips; do not refund its purchase price. Do not offer removal for the fixed Collector. The freed cell can be rebuilt using normal placement checks and cost.
 
 Tooltip current-action content:
-- Miner: production rate (one ore per `mine_ticks`) and whether its output is blocked.
+- Miner: production rate (one unit of its resource per `mine_ticks`, which depends on the resource) and whether its output is blocked.
 - Smelter / Assembler: recipe inputs and output, stock, idle/working/output-blocked state, and remaining craft time while working.
 - Smelter additionally shows temperature and whether cooling is enabled.
 - Conveyor: facing direction and whether it holds an item (and the item type when occupied).
@@ -61,13 +61,16 @@ Show machine state independently from current action: normal, down, or overheati
 - The tooltip shows the current-action fields above and closes on same-machine/empty-cell selection.
 - Page, popup, and tooltip controls consume their mouse input so clicks do not also place or select machines in the world.
 
+### Resources page
+The Resources button of the Bar opens a popup at the center of the screen (it does not pause the game). It lists every resource of the catalog (`data/items.tres`) in a scrollable table: name, the machine that builds it, what it needs (`Mined` for a raw resource, else e.g. `1 Silver Bar + 2 Redstone`), the mining or build time in ticks and the price the Collector pays. Close hides it. The table is read from `ItemCatalog` when the popup is created, so a new resource appears without touching the UI. Example chains: 2 coal make power in a Smelter, a silver bar (smelted silver) + 2 redstone make a circuit in an Assembler, and a steel + a circuit + power make a gun.
+
 ### Settings dialog
 Open Settings from the Bar. Offer `mock`, `anthropic`, and `openai` providers. For providers that use credentials, show that provider's API key field and model picker; mask the key while editing. The `mock` provider needs neither. Save writes through `Settings.save_settings()` and closes the dialog; Close dismisses without saving pending edits. If the provider's key comes from `.env` (`Settings.get_key_source()`), the key field stays empty and its placeholder says so; saving never copies the `.env` key to disk, and saving an empty field falls back to it. Never print or log the key.
 
 For `anthropic` and `openai`, an optional "Base URL" field (blank by default, saved per provider) lets the player use a compatible relay; it takes precedence over the editor-only `ANTHROPIC_BASE_URL` / `OPENAI_BASE_URL` environment and .env overrides (see "Provider base URL" in `CLAUDE.md`). A malformed value is not blocked in the dialog: the Bar's key status reports that the base URL is invalid and nothing is sent.
 
 ### Save / Load dialog
-The "Save / Load" button (Bar, above Settings) opens `SaveDialog`, a popup that pauses the game like `ChipPage`. A name field and "Save" write a slot to `saves/<name>.json` (in the project folder in an editor run, `user://saves/` in an exported build); the list below shows each slot with its date, a "Load" and a "Delete" button. "Import a file..." and "Export to a file..." use the system file dialog to read or write a save anywhere on the disk. A successful load or import replaces the whole game and closes the dialog. Messages never show a path or the file content.
+The "Save / Load" button (Bar, above Settings) opens `SaveDialog`, a popup that pauses the game like `ChipPage`. A name field and "Save" write a slot to `saves/<name>.json` (in the project folder in an editor run, `user://saves/` in an exported build); the list below shows each slot with its date, a "Load" and a "Delete" button. "Import a file..." and "Export to a file..." use the system file dialog to read or write a save anywhere on the disk. A successful load or import replaces the whole game (machines, money, and the minesites of the map) and closes the dialog. Messages never show a path or the file content.
 - Slot names: 40 characters at most, a valid file name, not starting with a dot.
 - A refused file (bad JSON, wrong version, unknown machine type, cell outside the grid or taken, miner off a minesite, no Collector, ...) leaves the current game untouched and says why.
 - The save embeds the chips its machines use. Loading overwrites a registry chip that has the same id (the save wins); a name already used by another chip gets a number appended.

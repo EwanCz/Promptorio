@@ -43,8 +43,8 @@ func test_occupied_and_out_of_bounds_are_refused() -> void:
 
 func test_miners_only_on_minesites() -> void:
 	check(_placement.place("miner", Vector2i(8, 8)) == null, "miner refused on plain ground")
-	check(_placement.place("miner", GridMap2D.MINESITES[0]) is Miner, "miner accepted on a minesite")
-	check(_placement.place("smelter", GridMap2D.MINESITES[1]) is Smelter, "other machines may use minesites")
+	check(_placement.place("miner", _grid.minesites[0]) is Miner, "miner accepted on a minesite")
+	check(_placement.place("smelter", _grid.minesites[1]) is Smelter, "other machines may use minesites")
 
 
 func test_click_places_the_selected_type() -> void:

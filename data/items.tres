@@ -1,0 +1,177 @@
+[gd_resource type="Resource" script_class="ItemCatalog" format=3]
+
+[ext_resource type="Script" path="res://scripts/items/item_data.gd" id="1_item"]
+[ext_resource type="Script" path="res://scripts/items/item_catalog.gd" id="2_catalog"]
+
+[sub_resource type="Resource" id="Item_ore"]
+script = ExtResource("1_item")
+id = "ore"
+display_name = "Ore"
+price = 1
+machine = "miner"
+ticks = 20
+
+[sub_resource type="Resource" id="Item_coal"]
+script = ExtResource("1_item")
+id = "coal"
+display_name = "Coal"
+price = 2
+machine = "miner"
+ticks = 25
+
+[sub_resource type="Resource" id="Item_silver"]
+script = ExtResource("1_item")
+id = "silver"
+display_name = "Silver"
+price = 4
+machine = "miner"
+ticks = 35
+
+[sub_resource type="Resource" id="Item_redstone"]
+script = ExtResource("1_item")
+id = "redstone"
+display_name = "Redstone"
+price = 5
+machine = "miner"
+ticks = 40
+
+[sub_resource type="Resource" id="Item_diamond"]
+script = ExtResource("1_item")
+id = "diamond"
+display_name = "Diamond"
+price = 15
+machine = "miner"
+ticks = 80
+
+[sub_resource type="Resource" id="Item_ingot"]
+script = ExtResource("1_item")
+id = "ingot"
+display_name = "Ingot"
+price = 3
+machine = "smelter"
+inputs = {
+"ore": 1
+}
+ticks = 20
+
+[sub_resource type="Resource" id="Item_power"]
+script = ExtResource("1_item")
+id = "power"
+display_name = "Power"
+price = 8
+machine = "smelter"
+inputs = {
+"coal": 2
+}
+ticks = 30
+
+[sub_resource type="Resource" id="Item_silver_bar"]
+script = ExtResource("1_item")
+id = "silver_bar"
+display_name = "Silver Bar"
+price = 9
+machine = "smelter"
+inputs = {
+"silver": 1
+}
+ticks = 25
+
+[sub_resource type="Resource" id="Item_steel"]
+script = ExtResource("1_item")
+id = "steel"
+display_name = "Steel"
+price = 14
+machine = "smelter"
+inputs = {
+"ingot": 2,
+"coal": 1
+}
+ticks = 40
+
+[sub_resource type="Resource" id="Item_gem"]
+script = ExtResource("1_item")
+id = "gem"
+display_name = "Gem"
+price = 30
+machine = "smelter"
+inputs = {
+"diamond": 1
+}
+ticks = 40
+
+[sub_resource type="Resource" id="Item_part"]
+script = ExtResource("1_item")
+id = "part"
+display_name = "Part"
+price = 10
+machine = "assembler"
+inputs = {
+"ingot": 2
+}
+ticks = 30
+
+[sub_resource type="Resource" id="Item_circuit"]
+script = ExtResource("1_item")
+id = "circuit"
+display_name = "Circuit"
+price = 30
+machine = "assembler"
+inputs = {
+"silver_bar": 1,
+"redstone": 2
+}
+ticks = 40
+
+[sub_resource type="Resource" id="Item_battery"]
+script = ExtResource("1_item")
+id = "battery"
+display_name = "Battery"
+price = 28
+machine = "assembler"
+inputs = {
+"power": 1,
+"redstone": 2
+}
+ticks = 50
+
+[sub_resource type="Resource" id="Item_gun"]
+script = ExtResource("1_item")
+id = "gun"
+display_name = "Gun"
+price = 80
+machine = "assembler"
+inputs = {
+"steel": 1,
+"circuit": 1,
+"power": 1
+}
+ticks = 60
+
+[sub_resource type="Resource" id="Item_drill"]
+script = ExtResource("1_item")
+id = "drill"
+display_name = "Drill"
+price = 90
+machine = "assembler"
+inputs = {
+"steel": 2,
+"gem": 1
+}
+ticks = 60
+
+[sub_resource type="Resource" id="Item_robot"]
+script = ExtResource("1_item")
+id = "robot"
+display_name = "Robot"
+price = 200
+machine = "assembler"
+inputs = {
+"circuit": 2,
+"battery": 1,
+"part": 2
+}
+ticks = 80
+
+[resource]
+script = ExtResource("2_catalog")
+items = Array[ExtResource("1_item")]([SubResource("Item_ore"), SubResource("Item_coal"), SubResource("Item_silver"), SubResource("Item_redstone"), SubResource("Item_diamond"), SubResource("Item_ingot"), SubResource("Item_power"), SubResource("Item_silver_bar"), SubResource("Item_steel"), SubResource("Item_gem"), SubResource("Item_part"), SubResource("Item_circuit"), SubResource("Item_battery"), SubResource("Item_gun"), SubResource("Item_drill"), SubResource("Item_robot")])

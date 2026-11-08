@@ -64,7 +64,7 @@ func _save_data() -> Dictionary:
 
 
 func _load_data(data: Dictionary) -> void:
-	held = _read_item(data, "held", Collector.PRICES.keys())
+	held = _read_item(data, "held", ItemCatalog.shared().get_ids())
 	_wait = _read_int(data, "wait", 0, 0, MOVE_TICKS)
 
 
@@ -105,11 +105,11 @@ func _tick() -> void:
 		held = ""
 
 
-func _apply(tool_name: String, args: Dictionary) -> void:
+func _apply(tool_name: String, args: Dictionary) -> bool:
 	if tool_name == "set_direction":
 		facing = ARROWS.keys()[args["direction"]]
-		return
-	super._apply(tool_name, args)
+		return true
+	return super._apply(tool_name, args)
 
 
 func _status_text() -> String:

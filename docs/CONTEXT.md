@@ -8,9 +8,9 @@ Roadmap, phases, decisions and risks: see `docs/PLAN.md`. Read it before startin
 
 ## Scope (MVP)
 - Machines: Miner -> Smelter -> Assembler -> Collector. Conveyors are plain, hardcoded logic (AI on conveyors is post-MVP). In the current prototype, select a conveyor with the `select_conveyor` action (default `5`), rotate its direction with `rotate_placement` (default `R`), and place it with a left click on an empty grid cell. It holds one item and attempts to deliver it to the adjacent machine in its facing direction every five 10 Hz ticks; a blocked delivery stays on the conveyor. Adjacent machines can also pass items directly, without a conveyor.
-- Items: (Coal/Silver/Redstone/etc...).
+- Items: (Coal/Silver/Redstone/etc...). They are the resource catalog (`ItemCatalog`, `data/items.tres`, table in `docs/PLAN.md` "Resources"): each has a price, one machine type that builds it and its inputs; the Resources popup (Bar button) lists them all.
   - Fuze them in a Assembler which take one or more different ressources.
-  - Each assembler take any ressources with a max stock size in each assembler.
+  - Each assembler take any ressources with a max stock size in each assembler. Any resource can be stored in any smelter/assembler, needed or not; only the `discard_stock` tool removes it.
   - The IA will be prompted the ressource to build then will by itself check in the stockage if can be built. If the ressource can be made. Consume them then start a assemble event on for the ressource be build.
   - Ressources are spawned from a miner on the map it will then be transfer via the conveyor to tranform them in smelter/assembler or directly to a collector to sell them.
 - AI-controllable loop in each machine.
@@ -52,6 +52,7 @@ Main (Node)
 └─ UI (CanvasLayer, popups over everything)
    ├─ ChipPage        (popup, centered; name, description, message; edit/save/remove)
    ├─ ChipLog         (log page opened from the machine panel)
+   ├─ ResourcesPage   (popup, every resource: machine, needs, ticks, price)
    ├─ SaveDialog      (save slots, import/export a save file; pauses the game)
    └─ SettingsDialog
 ```
@@ -78,7 +79,7 @@ Machine (Node2D, machine.gd)
   - `parse_response(body: Dictionary) -> Array[Dictionary]` returns a normalized list of `{name, args}` tool calls
   - `build_check_request()` returns the free key-check GET (list models), and `config_error()` returns a message when the provider's relay base URL is unusable (see "Provider base URL")
 - Implementations: `AnthropicProvider` (Messages API), `OpenAIProvider` (Responses API) and `MockProvider` (offline, deterministic). `Settings.provider` is `mock`, `anthropic` or `openai`. Nothing outside `scripts/llm/providers/` knows provider formats. Neither real provider has been run against its live API: tests use scripted responses.
-- Machines expose their tool schemas via `get_tool_schemas()` (the shared `set_enabled(on: bool)` plus one tool per machine type, e.g. `set_mine_ticks(ticks: 5..100)` on the Miner and `set_cooling(on: bool)` on the Smelter; the full list is in `docs/PLAN.md`, "AI tool inventory"). `apply_tool_call(name, args)` is the only way LLM output touches a machine.
+- Machines expose their tool schemas via `get_tool_schemas()` (the shared `set_enabled(on: bool)` plus one tool per machine type, e.g. `set_mine_ticks(ticks: mining time of the resource..100)` on the Miner and `set_cooling(on: bool)` on the Smelter; the full list is in `docs/PLAN.md`, "AI tool inventory"). `apply_tool_call(name, args)` is the only way LLM output touches a machine.
 
 ### Chip triggers
 Each `ChipComponent` (one chip, one prompt) requests a decision on: fixed timer, state threshold (temp > X), events (input empty / output full / error), manual "Ask chip now" button. All go through one method, `request_decision(reason: String)`, which enforces the per-chip cooldown and the "one request in flight per chip" rule.
@@ -154,6 +155,7 @@ Env: `GODOT` (godot binary, default `godot`), `TEST_TIMEOUT` (seconds, default 1
 - Leave no global state behind. Disconnect any signals you connect, restore any `Settings` / `GameState` value you change, and free any node you create (`after_each()`). `test_settings.gd` shows how to back up and restore `user://settings.cfg`.
 - Never store a lambda in a member variable of a test (it captures `self`, creating a reference cycle that leaks and prints "ObjectDB instances were leaked" at exit). Use a method for signal handlers, or a local lambda inside the test. A clean run prints no leak warnings.
 - Test through public methods and signals, not private `_members`, unless there is no other way (the LLM queue tests read `_in_flight` / `_queue`).
+- The map draws random minesites at every start. The runner forces a fixed layout (`GridMap2D.layout_override`, set in `tests/run_tests.gd`), so tests may rely on those cells; a test about the random draw clears it and puts it back.
 - New `class_name` scripts need a class-cache refresh; `tests/run.sh` does it, a bare `godot --headless -s` does not.
 - The real HTTP path is tested offline by replaying scripted responses through `LLMManager._send()` (`tests/test_llm_http.gd`, `tests/support/scripted_llm_manager.gd`). A real network round-trip is still untested.
 

@@ -38,7 +38,7 @@ func _own_tool_schemas() -> Array:
 		"name": "set_emergency_stop",
 		"description": "on=true: stop this smelter and mark it as an emergency stop (emergency_stop in the state). on=false: resume it only if it is still in that emergency stop; a pause set by anything else (set_enabled) stays in effect.",
 		"input_schema": {"type": "object", "properties": {"on": {"type": "boolean"}}},
-	}]
+	}] + super._own_tool_schemas()
 
 
 func get_state() -> Dictionary:
@@ -65,10 +65,10 @@ func _load_data(data: Dictionary) -> void:
 	_update_heat_tint()
 
 
-func _apply(tool_name: String, args: Dictionary) -> void:
+func _apply(tool_name: String, args: Dictionary) -> bool:
 	if tool_name == "set_cooling":
 		cooling = args["on"]
-		return
+		return true
 	if tool_name == "set_emergency_stop":
 		if args["on"]:
 			enabled = false
@@ -76,10 +76,10 @@ func _apply(tool_name: String, args: Dictionary) -> void:
 		elif emergency_stop:
 			enabled = true
 			emergency_stop = false
-		return
+		return true
 	if tool_name == "set_enabled":
 		emergency_stop = false
-	super._apply(tool_name, args)
+	return super._apply(tool_name, args)
 
 
 func _tick() -> void:

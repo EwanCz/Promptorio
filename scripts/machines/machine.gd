@@ -20,6 +20,8 @@ const MAX_KEY_LENGTH: int = 40
 @export var turn_front_sideways: bool = false
 
 var machine_id: int = 0
+## Why the last tool call was refused by _apply(): the sentence written to the log. Set by the machine before it returns false.
+var refusal: String = ""
 var cell: Vector2i = Vector2i.ZERO
 var status: Status = Status.NORMAL
 var enabled: bool = true
@@ -207,7 +209,10 @@ func apply_tool_call(tool_name: String, args: Dictionary) -> bool:
 			log_chip("ignored %s: bad value for '%s'" % [tool_name, key])
 			return false
 		clean[key] = value
-	_apply(tool_name, clean)
+	refusal = ""
+	if not _apply(tool_name, clean):
+		log_chip("ignored %s(%s): %s" % [tool_name, JSON.stringify(clean), refusal if refusal != "" else "the machine refused it"])
+		return false
 	log_chip("%s(%s)" % [tool_name, JSON.stringify(clean)])
 	tool_applied.emit(tool_name, clean)
 	return true
@@ -316,9 +321,12 @@ func _own_tool_schemas() -> Array:
 	return []
 
 
-func _apply(tool_name: String, args: Dictionary) -> void:
+## Applies a validated tool call. Returns false when the machine refuses it (nothing changed).
+func _apply(tool_name: String, args: Dictionary) -> bool:
 	if tool_name == "set_enabled":
 		enabled = args["on"]
+		return true
+	return false
 
 
 func _find_schema(tool_name: String) -> Dictionary:
@@ -328,11 +336,16 @@ func _find_schema(tool_name: String) -> Dictionary:
 	return {}
 
 
-## Returns the clamped value, or null if the type is wrong.
+## Returns the clamped value, or null if the type is wrong (or a string is not one of the schema's "enum" list, when it has one).
 func _sanitize(prop: Dictionary, value: Variant) -> Variant:
 	match prop.get("type", ""):
 		"boolean":
 			return value if typeof(value) == TYPE_BOOL else null
+		"string":
+			if typeof(value) != TYPE_STRING:
+				return null
+			var allowed: Array = prop.get("enum", [])
+			return value if allowed.is_empty() or allowed.has(value) else null
 		"integer":
 			if typeof(value) != TYPE_INT and typeof(value) != TYPE_FLOAT:
 				return null

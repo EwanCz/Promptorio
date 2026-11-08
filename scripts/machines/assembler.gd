@@ -1,6 +1,6 @@
 class_name Assembler
 extends CraftMachine
-## Crafts parts from ingots (recipe set in the scene).
+## Assembles resources from other resources (a part from ingots by default).
 
 
 func get_state() -> Dictionary:
@@ -14,11 +14,11 @@ func _own_tool_schemas() -> Array:
 		"input_schema": {"type": "object", "properties": {
 			"limit": {"type": "integer", "minimum": 1, "maximum": MAX_STOCK},
 		}},
-	}]
+	}] + super._own_tool_schemas()
 
 
-func _apply(tool_name: String, args: Dictionary) -> void:
+func _apply(tool_name: String, args: Dictionary) -> bool:
 	if tool_name == "set_stock_limit":
 		stock_limit = args["limit"]
-		return
-	super._apply(tool_name, args)
+		return true
+	return super._apply(tool_name, args)

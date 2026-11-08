@@ -16,9 +16,9 @@ func _own_tool_schemas() -> Array:
 	}]
 
 
-func _apply(tool_name: String, args: Dictionary) -> void:
+func _apply(tool_name: String, args: Dictionary) -> bool:
 	if tool_name == "set_speed":
 		speed = args["value"]
 		level = args["level"]
-		return
-	super._apply(tool_name, args)
+		return true
+	return super._apply(tool_name, args)
