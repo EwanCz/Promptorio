@@ -176,8 +176,10 @@ func _on_rotate_pressed() -> void:
 
 func _on_destroy_pressed() -> void:
 	var machine: Machine = _machine
+	var refund: int = Placement.refund_for(machine.machine_type)
 	close()
-	machine.destroy()
+	if machine.destroy():
+		GameState.add_money(refund)
 
 
 func _on_registry_changed(_chip: Resource) -> void:

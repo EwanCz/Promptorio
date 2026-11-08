@@ -43,7 +43,7 @@ The Collector at the map center is provided for free and cannot be built or remo
 ### Machine actions
 The machine tooltip panel provides the actions that apply to an existing machine:
 - Rotate output: rotate `facing` clockwise (right, down, left, up) for Miner, Smelter, Assembler, and Conveyor. The Collector has no facing and shows no rotate action. Rotation changes where future output is sent; it does not alter stored items. The `rotate_placement` action (default R) rotates the next machine during placement; it also rotates the machine whose tooltip is open, so one press turns both the selected machine and the next placement (same as the Rotate button, nothing happens for the Collector).
-- Remove: immediately free the machine's grid cell and remove it from the scene. Discard its stock, held item, and attached chips; do not refund its purchase price. Do not offer removal for the fixed Collector. The freed cell can be rebuilt using normal placement checks and cost.
+- Remove: immediately free the machine's grid cell and remove it from the scene. Discard its stock, held item, and attached chips; refund half of its purchase price (`Placement.refund_for()`, rounded down: Miner 10, Smelter 15, Assembler 20, Conveyor 1), only when the player destroys it from the tooltip; a Smelter that explodes gives nothing. Do not offer removal for the fixed Collector. The freed cell can be rebuilt using normal placement checks and cost.
 
 Tooltip current-action content:
 - Miner: production rate (one unit of its resource per `mine_ticks`, which depends on the resource) and whether its output is blocked.
@@ -69,8 +69,19 @@ Open Settings from the Bar. Offer `mock`, `anthropic`, and `openai` providers. F
 
 For `anthropic` and `openai`, an optional "Base URL" field (blank by default, saved per provider) lets the player use a compatible relay; it takes precedence over the editor-only `ANTHROPIC_BASE_URL` / `OPENAI_BASE_URL` environment and .env overrides (see "Provider base URL" in `CLAUDE.md`). A malformed value is not blocked in the dialog: the Bar's key status reports that the base URL is invalid and nothing is sent.
 
+### Main menu
+The game starts on `scenes/menu/main_menu.tscn` (`run/main_scene`), not on the factory. Buttons, top to bottom: Play, Load Game, Chips, Options, Exit (no Credits). Each is a `PixelButton` (`scripts/ui/pixel_button.gd`) drawn with the pack art (`assets/pixel_art_buttons_pack/btn_<name>_{normal,hover,pressed}@8x.png`, 64x16 art shown 4x bigger, label included in the image).
+- Play: `GameState.reset()` (starting money, clock at 0) then the game scene.
+- Load Game: the `SaveDialog` in menu mode (`use_as_menu()`): slots of `saves/` with Load / Delete, plus "Import a file...", no Save row and no Export, no pause. A picked save is fully validated (`SaveGame.validate(null, data)`), stored in `SaveGame.pending`, and the game scene restores it when it starts. A refused file keeps the player in the menu with the reason.
+- Chips: `ChipManager` popup (the Chip Registry list with "New chip") and the same `ChipPage` popup as in game, to prepare chips before playing. They are saved to `user://chip_registry.tres` like in game.
+- Options: the `SettingsDialog`. Exit quits.
+- Art still missing: the Chips button has no image in the pack yet, so it shows a text label in the pack's colors. Dropping `btn_chips_normal@8x.png`, `btn_chips_hover@8x.png` and `btn_chips_pressed@8x.png` in `assets/pixel_art_buttons_pack/` makes it use them with no code change.
+
+### Pause menu
+The "Menu" button of the Bar, or `cancel_placement` (Escape) when no machine type is selected, opens `PauseMenu` (a popup that pauses the game like `ChipPage`; Escape closes it). Resume closes it, Restart starts a new game (`GameState.reset()`, scene reloaded), Main Menu goes back to the start screen. Nothing is saved automatically: the menu says unsaved progress is lost. Art: `assets/pixel_ui_pack/pause_{resume,restart,main_menu}_*@8x.png`.
+
 ### Save / Load dialog
-The "Save / Load" button (Bar, above Settings) opens `SaveDialog`, a popup that pauses the game like `ChipPage`. A name field and "Save" write a slot to `saves/<name>.json` (in the project folder in an editor run, `user://saves/` in an exported build); the list below shows each slot with its date, a "Load" and a "Delete" button. "Import a file..." and "Export to a file..." use the system file dialog to read or write a save anywhere on the disk. A successful load or import replaces the whole game (machines, money, and the minesites of the map) and closes the dialog. Messages never show a path or the file content.
+The "Save / Load" button (Bar, below the Menu button and above Settings) opens `SaveDialog`, a popup that pauses the game like `ChipPage`. A name field and "Save" write a slot to `saves/<name>.json` (in the project folder in an editor run, `user://saves/` in an exported build); the list below shows each slot with its date, a "Load" and a "Delete" button. "Import a file..." and "Export to a file..." use the system file dialog to read or write a save anywhere on the disk. A successful load or import replaces the whole game (machines, money, and the minesites of the map) and closes the dialog. Messages never show a path or the file content.
 - Slot names: 40 characters at most, a valid file name, not starting with a dot.
 - A refused file (bad JSON, wrong version, unknown machine type, cell outside the grid or taken, miner off a minesite, no Collector, ...) leaves the current game untouched and says why.
 - The save embeds the chips its machines use. Loading overwrites a registry chip that has the same id (the save wins); a name already used by another chip gets a number appended.

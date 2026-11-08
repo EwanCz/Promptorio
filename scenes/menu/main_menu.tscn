@@ -1,0 +1,107 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/main_menu.gd" id="1_script"]
+[ext_resource type="Theme" path="res://data/ui/theme.tres" id="2_theme"]
+[ext_resource type="Script" path="res://scripts/ui/pixel_button.gd" id="3_pixel"]
+[ext_resource type="PackedScene" path="res://scenes/ui/popups/chip_manager.tscn" id="4_chips"]
+[ext_resource type="PackedScene" path="res://scenes/ui/popups/chip_page.tscn" id="5_chip_page"]
+[ext_resource type="PackedScene" path="res://scenes/ui/popups/save_dialog.tscn" id="6_save"]
+[ext_resource type="PackedScene" path="res://scenes/ui/popups/settings_dialog.tscn" id="7_settings"]
+
+[node name="MainMenu" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("2_theme")
+script = ExtResource("1_script")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.039, 0.043, 0.078, 1)
+
+[node name="Center" type="CenterContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Column" type="VBoxContainer" parent="Center"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="Title" type="Label" parent="Center/Column"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.5, 0.56, 0.88, 1)
+theme_override_font_sizes/font_size = 72
+text = "PROMPTORIO"
+horizontal_alignment = 1
+
+[node name="Spacer" type="Control" parent="Center/Column"]
+custom_minimum_size = Vector2(0, 24)
+layout_mode = 2
+
+[node name="PlayButton" type="Button" parent="Center/Column"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 4
+script = ExtResource("3_pixel")
+texture_base = "res://assets/pixel_art_buttons_pack/btn_play"
+fallback_text = "PLAY"
+
+[node name="LoadButton" type="Button" parent="Center/Column"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 4
+script = ExtResource("3_pixel")
+texture_base = "res://assets/pixel_art_buttons_pack/btn_load"
+fallback_text = "LOAD GAME"
+
+[node name="ChipsButton" type="Button" parent="Center/Column"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 4
+script = ExtResource("3_pixel")
+texture_base = "res://assets/pixel_art_buttons_pack/btn_chips"
+fallback_text = "CHIPS"
+
+[node name="OptionsButton" type="Button" parent="Center/Column"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 4
+script = ExtResource("3_pixel")
+texture_base = "res://assets/pixel_art_buttons_pack/btn_options"
+fallback_text = "OPTIONS"
+
+[node name="ExitButton" type="Button" parent="Center/Column"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 4
+script = ExtResource("3_pixel")
+texture_base = "res://assets/pixel_art_buttons_pack/btn_exit"
+fallback_text = "EXIT"
+
+[node name="ChipManager" parent="." instance=ExtResource("4_chips")]
+unique_name_in_owner = true
+layout_mode = 1
+
+[node name="SaveDialog" parent="." instance=ExtResource("6_save")]
+unique_name_in_owner = true
+layout_mode = 1
+
+[node name="SettingsDialog" parent="." instance=ExtResource("7_settings")]
+unique_name_in_owner = true
+layout_mode = 1
+
+[node name="ChipPage" parent="." instance=ExtResource("5_chip_page")]
+unique_name_in_owner = true
+layout_mode = 1

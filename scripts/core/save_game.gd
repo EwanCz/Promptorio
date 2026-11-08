@@ -25,6 +25,8 @@ const DIRECTIONS: Array[Vector2i] = [Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEF
 
 ## Where slots are written. Tests point it elsewhere.
 static var save_dir: String = default_save_dir()
+## A save the main menu picked, waiting for the game scene to restore it. Empty when there is none.
+static var pending: Dictionary = {}
 
 
 ## `saves/` next to project.godot in an editor run, `user://saves` in an exported build.
@@ -32,6 +34,13 @@ static func default_save_dir() -> String:
 	if OS.has_feature("editor"):
 		return ProjectSettings.globalize_path(PROJECT_SLOT_DIR)
 	return USER_SLOT_DIR
+
+
+## The pending save, which is then cleared.
+static func take_pending() -> Dictionary:
+	var data: Dictionary = pending
+	pending = {}
+	return data
 
 
 ## The current game as a JSON-ready Dictionary.
@@ -91,7 +100,8 @@ static func restore(placement: Placement, data: Variant) -> String:
 
 
 ## "" if the document can be restored, else a one-line reason. Checks the structure only: the values
-## inside a machine's data are clamped when it loads.
+## inside a machine's data are clamped when it loads. The placement may be null (main menu: no map yet): a save that carries no
+## minesites then skips the miner check, which restore() does again against the real map.
 static func validate(placement: Placement, data: Variant) -> String:
 	if typeof(data) != TYPE_DICTIONARY:
 		return "This file is not a Promptorio save."
@@ -107,7 +117,7 @@ static func validate(placement: Placement, data: Variant) -> String:
 	var chip_error: String = _validate_chips(save.get("chips"))
 	if chip_error != "":
 		return chip_error
-	var sites: Array[Vector2i] = placement.grid.minesites
+	var sites: Variant = placement.grid.minesites if placement != null else null
 	if save.has("minesites"):
 		if not _minesites_valid(save["minesites"]):
 			return "The save has an invalid list of minesites."
@@ -217,7 +227,8 @@ static func _minesites_valid(sites: Variant) -> bool:
 	return true
 
 
-static func _validate_machines(machines: Variant, chip_ids: Dictionary, sites: Array[Vector2i]) -> String:
+## `sites` is null when there is nothing to check miners against (see validate()).
+static func _validate_machines(machines: Variant, chip_ids: Dictionary, sites: Variant) -> String:
 	if typeof(machines) != TYPE_ARRAY or (machines as Array).size() > GameState.GRID_SIZE.x * GameState.GRID_SIZE.y:
 		return "The save has an invalid machine list."
 	var cells: Dictionary = {}
@@ -236,7 +247,7 @@ static func _validate_machines(machines: Variant, chip_ids: Dictionary, sites: A
 		var cell: Vector2i = _to_cell(machine["cell"])
 		if not GameState.is_in_grid(cell) or cells.has(cell):
 			return "The save has a machine outside the grid or on a taken cell."
-		if machine["type"] == "miner" and not sites.has(cell):
+		if machine["type"] == "miner" and sites != null and not (sites as Array).has(cell):
 			return "The save has a miner outside a minesite."
 		if not DIRECTIONS.has(_to_cell(machine["facing"])):
 			return "The save has a machine with an invalid direction."

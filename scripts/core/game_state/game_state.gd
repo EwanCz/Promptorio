@@ -39,6 +39,16 @@ func tick_fraction() -> float:
 	return clampf((_tick_accumulator + elapsed) * TICK_RATE, 0.0, 1.0)
 
 
+## Back to the start of a new game: starting money and a stopped clock. Machines unregister themselves
+## when their scene leaves the tree.
+func reset() -> void:
+	tick_count = 0
+	_tick_accumulator = 0.0
+	_last_tick_time_usec = Time.get_ticks_usec()
+	money = START_MONEY
+	EventBus.money_changed.emit(money)
+
+
 func is_in_grid(cell: Vector2i) -> bool:
 	return cell.x >= 0 and cell.y >= 0 and cell.x < GRID_SIZE.x and cell.y < GRID_SIZE.y
 

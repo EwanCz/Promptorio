@@ -143,3 +143,39 @@ func test_importing_junk_changes_nothing() -> void:
 	check(_game.get_machine_at(Vector2i(9, 9)) is Assembler, "the game is untouched")
 	check(_dialog.visible, "the dialog stays open")
 	check(_status() != "" and not _status().contains("user:"), "a message without a path")
+
+
+func test_menu_mode_hands_a_valid_save_over_without_pausing() -> void:
+	_placement.place("assembler", Vector2i(9, 9))
+	_dialog.open()
+	_dialog.save_slot("menu")
+	_dialog.close()
+	_dialog.use_as_menu()
+	check(not (_dialog.get_node("%NameRow") as Control).visible and not (_dialog.get_node("%ExportButton") as Control).visible, "no Save row and no Export in the menu")
+	var picked: Array[Dictionary] = []
+	var on_picked: Callable = func(data: Dictionary) -> void: picked.append(data)
+	_dialog.save_picked.connect(on_picked)
+	_dialog.open()
+	check(not tree.paused, "opening it in the menu does not pause")
+	_game.get_machine_at(Vector2i(9, 9)).destroy()
+	check(_dialog.load_slot("menu"), "loading a slot works")
+	_dialog.save_picked.disconnect(on_picked)
+	check_eq(picked.size(), 1, "the save is handed over")
+	check(_game.get_machine_at(Vector2i(9, 9)) == null, "the running game is not touched")
+	check(not _dialog.visible, "the dialog closes")
+
+
+func test_menu_mode_refuses_a_bad_file() -> void:
+	DirAccess.make_dir_recursive_absolute(TEST_DIR)
+	var file: FileAccess = FileAccess.open(EXPORT_PATH, FileAccess.WRITE)
+	file.store_string("{\"version\": 1}")
+	file.close()
+	_dialog.use_as_menu()
+	var picked: Array[int] = [0]
+	var on_picked: Callable = func(_data: Dictionary) -> void: picked[0] += 1
+	_dialog.save_picked.connect(on_picked)
+	_dialog.open()
+	check(not _dialog.import_from(EXPORT_PATH), "an incomplete save is refused")
+	_dialog.save_picked.disconnect(on_picked)
+	check_eq(picked[0], 0, "nothing is handed over")
+	check(_dialog.visible and _status() != "", "the dialog stays open with a message")

@@ -302,6 +302,39 @@ func test_chip_name_clash_gets_a_suffix() -> void:
 	check(next.id > imported.id, "new chips never reuse an imported id")
 
 
+func test_validate_without_a_placement_is_a_full_check() -> void:
+	_build_world()
+	var save: Dictionary = SaveGame.snapshot(_placement)
+	check_eq(SaveGame.validate(null, save), "", "a good save passes without a placement (main menu)")
+	var bad: Dictionary = JSON.parse_string(JSON.stringify(save))
+	for entry: Dictionary in bad["machines"]:
+		if entry["type"] == "miner":
+			entry["cell"] = [0, 0]
+	check(SaveGame.validate(null, bad) != "", "a miner off a minesite is refused without a placement too")
+	bad["machines"] = []
+	check(SaveGame.validate(null, bad) != "", "a save without a Collector is refused")
+
+
+func test_pending_save_is_taken_once() -> void:
+	SaveGame.pending = {"version": 1}
+	check_eq(SaveGame.take_pending(), {"version": 1}, "the pending save is returned")
+	check(SaveGame.pending.is_empty() and SaveGame.take_pending().is_empty(), "and is gone afterwards")
+
+
+func test_main_scene_restores_the_pending_save() -> void:
+	_build_world()
+	var save: Dictionary = JSON.parse_string(JSON.stringify(SaveGame.snapshot(_placement)))
+	_main.free()
+	check(_game.get_machine_at(Vector2i(8, 8)) == null, "the old game is gone")
+	SaveGame.pending = save
+	_main = load("res://scenes/main.tscn").instantiate()
+	tree.root.add_child(_main)
+	check(_game.get_machine_at(Vector2i(8, 8)) is Smelter, "the saved machine is back")
+	check_eq(_game.money, 77, "money is back")
+	check_eq(_count("collector"), 1, "the Collector is not duplicated")
+	check(SaveGame.pending.is_empty(), "nothing is left pending")
+
+
 func test_slot_names_are_checked() -> void:
 	check_eq(SaveGame.slot_path("my save"), TEST_DIR + "/my save.json", "a plain name works")
 	for bad: String in ["", "   ", "../escape", "a/b", "a\\b", ".hidden", "x".repeat(SaveGame.MAX_SLOT_NAME_LENGTH + 1), "a:b"]:

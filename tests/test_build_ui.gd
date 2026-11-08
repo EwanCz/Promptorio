@@ -118,7 +118,7 @@ func test_destroy_discards_contents_and_frees_the_cell() -> void:
 	check(smelter.stock.is_empty(), "stock discarded")
 	check(smelter.chips.is_empty(), "chips detached")
 	check(smelter.get_parent() == null, "removed from the scene")
-	check_eq(_game.money, 100, "no refund")
+	check_eq(_game.money, 100, "destroy() itself gives no money (the tooltip button does)")
 	check(_placement.place("smelter", Vector2i(8, 8)) != null, "the cell can be rebuilt")
 
 
@@ -161,6 +161,39 @@ func test_tooltip_destroy_and_rotate_buttons() -> void:
 	_tooltip.get_node("%DestroyButton").pressed.emit()
 	check(not _tooltip.is_open(), "tooltip closes")
 	check(_game.get_machine_at(Vector2i(8, 8)) == null, "machine destroyed")
+	check_eq(_game.money, 101, "half of the conveyor's price (2) came back")
+
+
+func test_refund_is_half_the_price_rounded_down() -> void:
+	check_eq(Placement.refund_for("miner"), 10, "miner")
+	check_eq(Placement.refund_for("smelter"), 15, "smelter")
+	check_eq(Placement.refund_for("assembler"), 20, "assembler")
+	check_eq(Placement.refund_for("conveyor"), 1, "conveyor")
+	check_eq(Placement.refund_for("collector"), 0, "the Collector is not for sale")
+
+
+func test_destroying_through_the_tooltip_refunds_each_machine() -> void:
+	_game.money = 0
+	var smelter: Smelter = _placement.place("smelter", Vector2i(8, 8))
+	_main.get_node("%GridMap2D").cell_clicked.emit(Vector2i(8, 8))
+	_tooltip.get_node("%DestroyButton").pressed.emit()
+	check(smelter.get_parent() == null, "the smelter is gone")
+	check_eq(_game.money, 15, "half of 30 came back")
+	_placement.place("assembler", Vector2i(10, 8))
+	_main.get_node("%GridMap2D").cell_clicked.emit(Vector2i(10, 8))
+	_tooltip.get_node("%DestroyButton").pressed.emit()
+	check_eq(_game.money, 35, "then half of 40")
+	check_eq((_page.get_node("%MoneyLabel") as Label).text, "Money: 35", "the Build page shows it")
+
+
+func test_an_exploding_smelter_refunds_nothing() -> void:
+	_game.money = 0
+	var smelter: Smelter = _placement.place("smelter", Vector2i(8, 8))
+	smelter.temperature = Smelter.EXPLODE_AT
+	smelter._explode()
+	await wait_until(func() -> bool: return _game.get_machine_at(Vector2i(8, 8)) == null, 3.0)
+	check(_game.get_machine_at(Vector2i(8, 8)) == null, "the smelter was destroyed")
+	check_eq(_game.money, 0, "an explosion gives nothing back")
 
 
 func test_tooltip_hides_actions_for_the_collector() -> void:

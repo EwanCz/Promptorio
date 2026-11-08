@@ -24,6 +24,9 @@ const SELECT_ACTIONS: Dictionary = {
 ## Machine catalog: money cost of every buildable type, in Build page order. The Collector is provided at the map center: not buildable, not removable.
 const COSTS: Dictionary = {"miner": 20, "smelter": 30, "assembler": 40, "conveyor": 2}
 
+## Share of the price given back when the player destroys a machine: one over this (half).
+const REFUND_DIVISOR: int = 2
+
 @export var grid: GridMap2D
 @export var machines: Node2D
 
@@ -81,6 +84,12 @@ func restore_machine(type: String, cell: Vector2i, direction: Vector2i, id: int)
 	if not SCENES.has(type) or not grid.can_place(type, cell):
 		return null
 	return _spawn(type, cell, direction, id)
+
+
+## Money given back for destroying a machine of this type: half its price, rounded down. 0 for a type
+## that is not for sale (the Collector).
+static func refund_for(type: String) -> int:
+	return int(COSTS.get(type, 0)) / REFUND_DIVISOR
 
 
 ## Same rules as place(), plus the cost: charged once, only on success. Emits placement_rejected otherwise.
