@@ -1,0 +1,74 @@
+{
+	"version": 1,
+	"tick_count": 0,
+	"money": 100,
+	"next_machine_id": 4,
+	"minesites": [
+		[8, 10]
+	],
+	"chips": [],
+	"order": {
+		"product": "ingot",
+		"quantity": 5,
+		"progress": 0,
+		"reward": 30
+	},
+	"machines": [
+		{
+			"type": "collector",
+			"id": 1,
+			"cell": [10, 10],
+			"facing": [1, 0],
+			"enabled": true,
+			"status": 0,
+			"chips": [],
+			"predefined_behaviors": [],
+			"data": {"sold": 0, "earned": 0, "accepting": true}
+		},
+		{
+			"type": "smelter",
+			"id": 2,
+			"cell": [9, 10],
+			"facing": [1, 0],
+			"enabled": true,
+			"status": 0,
+			"chips": [],
+			"predefined_behaviors": [
+				{"id": 1}
+			],
+			"data": {
+				"product": "ingot",
+				"stock": {},
+				"stock_limit": 10,
+				"progress": 0,
+				"making": "",
+				"output": "",
+				"blocked": false,
+				"temperature": 20.0,
+				"cooling": false,
+				"emergency_stop": false
+			}
+		},
+		{
+			"type": "miner",
+			"id": 3,
+			"cell": [8, 10],
+			"facing": [1, 0],
+			"enabled": true,
+			"status": 0,
+			"chips": [],
+			"predefined_behaviors": [
+				{"id": 1}
+			],
+			"data": {
+				"item": "ore",
+				"mine_ticks": 20,
+				"progress": 0,
+				"held": "",
+				"blocked": false,
+				"mode": 0,
+				"mode_ticks_left": 0
+			}
+		}
+	]
+}
