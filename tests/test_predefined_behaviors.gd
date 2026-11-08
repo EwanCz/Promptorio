@@ -97,12 +97,12 @@ func test_prospector_starts_prospecting_on_a_fixed_timer() -> void:
 func test_cool_runner_and_overheat_risk_set_cooling() -> void:
 	_smelter.attach_predefined_behavior(1)
 	check_eq(_smelter.cooling, false, "starts off")
-	_tick(150)
-	check_eq(_smelter.cooling, true, "Cool Runner turns cooling on")
+	_tick(1)
+	check_eq(_smelter.cooling, true, "Cool Runner turns cooling on at the next tick")
 	_smelter.detach_predefined_behavior(1)
 	_smelter.cooling = true
 	_smelter.attach_predefined_behavior(2)
-	_tick(150)
+	_tick(1)
 	check_eq(_smelter.cooling, false, "Overheat Risk turns cooling off")
 
 
@@ -118,9 +118,8 @@ func test_behavior_reapplies_every_interval_not_once() -> void:
 func test_detached_component_stops_acting() -> void:
 	_smelter.attach_predefined_behavior(1)
 	_smelter.detach_predefined_behavior(1)
-	await tree.process_frame
 	_tick(150)
-	check_eq(_smelter.cooling, false, "no longer applies once detached")
+	check_eq(_smelter.cooling, false, "no longer applies immediately after detaching")
 
 
 func test_discard_frees_predefined_behavior_components() -> void:

@@ -146,6 +146,7 @@ func detach_predefined_behavior(behavior_id: int) -> void:
 	if component == null:
 		return
 	predefined_behaviors.erase(component)
+	remove_child(component)
 	component.queue_free()
 	predefined_behaviors_changed.emit()
 

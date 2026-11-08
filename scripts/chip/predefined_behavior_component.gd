@@ -33,7 +33,7 @@ func setup(behavior: Dictionary) -> void:
 	behavior_description = String(behavior.get("description", ""))
 	_interval = maxi(int(behavior.get("interval_ticks", 1)), 1)
 	_steps = behavior.get("steps", [])
-	_elapsed = 0
+	_elapsed = _interval - clampi(int(behavior.get("initial_delay_ticks", _interval)), 1, _interval)
 	_step_index = 0
 
 
