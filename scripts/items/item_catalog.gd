@@ -40,6 +40,16 @@ func ticks_of(id: String) -> int:
 	return 0 if item == null else item.ticks
 
 
+## Why a machine of this type cannot build the resource, as a sentence for the log. Empty when it can.
+func refusal_for(id: String, machine_type: String) -> String:
+	var item: ItemData = get_item(id)
+	if item == null:
+		return "'%s' is not a resource of the game" % id
+	if item.is_built_by(machine_type):
+		return ""
+	return "'%s' cannot be made by this %s: it is built by %ss" % [id, machine_type, item.machine]
+
+
 ## The resources a machine type can build, in file order.
 func get_built_by(machine_type: String) -> Array[ItemData]:
 	var result: Array[ItemData] = []

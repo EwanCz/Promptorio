@@ -18,6 +18,8 @@ enum Status { NORMAL, DOWN, OVERHEATING }
 @export var turn_front_sideways: bool = false
 
 var machine_id: int = 0
+## Why the last tool call was refused by _apply(): the sentence written to the log. Set by the machine before it returns false.
+var refusal: String = ""
 var cell: Vector2i = Vector2i.ZERO
 var status: Status = Status.NORMAL
 var enabled: bool = true
@@ -152,8 +154,9 @@ func apply_tool_call(tool_name: String, args: Dictionary) -> bool:
 			log_chip("ignored %s: bad value for '%s'" % [tool_name, key])
 			return false
 		clean[key] = value
+	refusal = ""
 	if not _apply(tool_name, clean):
-		log_chip("ignored %s(%s): the machine refused it" % [tool_name, JSON.stringify(clean)])
+		log_chip("ignored %s(%s): %s" % [tool_name, JSON.stringify(clean), refusal if refusal != "" else "the machine refused it"])
 		return false
 	log_chip("%s(%s)" % [tool_name, JSON.stringify(clean)])
 	tool_applied.emit(tool_name, clean)

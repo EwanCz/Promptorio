@@ -57,8 +57,8 @@ func _apply(tool_name: String, args: Dictionary) -> bool:
 ## says another machine builds it or it does not exist. The pace goes back to the new resource's own time and
 ## a unit already held is pushed on as it was.
 func set_mined_item(new_item: String) -> bool:
-	var data: ItemData = ItemCatalog.shared().get_item(new_item)
-	if data == null or not data.is_built_by(machine_type):
+	refusal = ItemCatalog.shared().refusal_for(new_item, machine_type)
+	if refusal != "":
 		return false
 	item = new_item
 	mine_ticks = get_min_mine_ticks()

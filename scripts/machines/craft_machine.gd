@@ -34,8 +34,8 @@ func receive(item: String) -> bool:
 ## Switches the product to a resource that a machine of this type builds. False, and nothing changes, if the
 ## catalog says another machine builds it or it does not exist. A craft already running finishes as it started.
 func set_product(item: String) -> bool:
-	var data: ItemData = ItemCatalog.shared().get_item(item)
-	if data == null or not data.is_built_by(machine_type):
+	refusal = ItemCatalog.shared().refusal_for(item, machine_type)
+	if refusal != "":
 		return false
 	product_id = item
 	return true

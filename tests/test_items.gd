@@ -211,6 +211,8 @@ func test_a_refused_tool_call_is_logged_and_not_reported_as_applied() -> void:
 	check_eq(lines.size(), 2, "one log line each")
 	check(lines[0].begins_with("ignored set_product") and lines[0].contains("circuit"), "the refusal names the tool and the resource")
 	check(lines[1].begins_with("set_product("), "the success is logged as applied")
+	check(lines[0].contains("'circuit' cannot be made by this smelter: it is built by assemblers"), "the refusal explains why")
+	check(not lines[0].contains("the machine refused it"), "instead of the generic message")
 
 
 func test_set_product_only_offers_what_the_machine_builds() -> void:
@@ -358,3 +360,23 @@ func test_collector_refuses_what_is_not_a_resource() -> void:
 	check(not collector.receive("nothing"), "refused")
 	check_eq(_game.money, 0, "and not paid")
 	check_eq(collector.sold, 0, "nor counted")
+
+
+func test_every_refusal_says_what_the_machine_cannot_build() -> void:
+	var catalog: ItemCatalog = ItemCatalog.shared()
+	check_eq(catalog.refusal_for("power", "smelter"), "", "no refusal when the machine builds it")
+	check_eq(catalog.refusal_for("ore", "smelter"), "'ore' cannot be made by this smelter: it is built by miners", "a mined resource on a smelter")
+	check_eq(catalog.refusal_for("gun", "miner"), "'gun' cannot be made by this miner: it is built by assemblers", "a crafted resource on a miner")
+	check_eq(catalog.refusal_for("wood", "smelter"), "'wood' is not a resource of the game", "an unknown resource")
+	var miner: Miner = _put("miner", Vector2i(0, 0)) as Miner
+	var lines: Array[String] = []
+	var on_log: Callable = func(machine: Node, message: String) -> void:
+		if machine == miner:
+			lines.append(message)
+	_bus.chip_log_added.connect(on_log)
+	check(not miner.apply_tool_call("set_mined_item", {"item": "ingot"}), "a miner cannot mine an ingot")
+	check(not miner.apply_tool_call("set_mined_item", {"item": "wood"}), "nor an unknown resource")
+	_bus.chip_log_added.disconnect(on_log)
+	check_eq(lines.size(), 2, "one line each")
+	check(lines[0].contains("'ingot' cannot be made by this miner: it is built by smelters"), "the miner log explains")
+	check(lines[1].contains("'wood' is not a resource of the game"), "the unknown resource is explained")
