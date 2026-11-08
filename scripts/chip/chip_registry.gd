@@ -77,6 +77,35 @@ func update(chip_id: int, chip_name: String, desc: String, prompt: String) -> bo
 	return true
 
 
+## Puts a chip from a save file in the registry under its own id: a chip with that id is overwritten (the
+## save wins), else it is created. A name already used by another chip gets a number appended, so names
+## stay unique. Null for an invalid id or an empty name.
+func import_chip(chip_id: int, chip_name: String, desc: String, prompt: String) -> ChipRessource:
+	if chip_id <= 0 or chip_name == "":
+		return null
+	var unique_name: String = chip_name
+	var suffix: int = 2
+	while _name_used_by_other(unique_name, chip_id):
+		unique_name = "%s (%d)" % [chip_name, suffix]
+		suffix += 1
+	var chip: ChipRessource = _chips.get(chip_id)
+	var created: bool = chip == null
+	if created:
+		chip = ChipRessource.new()
+		chip.id = chip_id
+		_chips[chip_id] = chip
+		_next_id = maxi(_next_id, chip_id + 1)
+	chip.name = unique_name
+	chip.description = desc
+	chip.prompt = prompt
+	if created:
+		EventBus.chip_registered.emit(chip)
+	else:
+		EventBus.chip_updated.emit(chip)
+	_save()
+	return chip
+
+
 ## Returns true if the id existed.
 func remove(chip_id: int) -> bool:
 	var chip: ChipRessource = _chips.get(chip_id)
@@ -99,6 +128,13 @@ func get_all() -> Array[ChipRessource]:
 	for chip: ChipRessource in _chips.values():
 		result.append(chip)
 	return result
+
+
+func _name_used_by_other(chip_name: String, chip_id: int) -> bool:
+	for existing: ChipRessource in _chips.values():
+		if existing.id != chip_id and existing.name == chip_name:
+			return true
+	return false
 
 
 func _read(path: String) -> ChipLibrary:
