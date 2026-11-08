@@ -166,6 +166,11 @@ State sent with a request (`get_state()`): `type`, `enabled`, `status`, plus Min
 - [ ] Build/export test, and check that no key is baked into the export (`.env` must not be in the export filter)
 - [ ] README and demo rehearsal
 
+## Much Later — Machine Decisions
+- [ ] Make individual machine chips face meaningful, situation-dependent choices so one generic prompt is not automatically the best solution for every factory. Explore trade-offs between throughput, resource efficiency, safety and production goals; keep the player's priorities visible in the results. Build on the proposed Miner and Assembler modes above and playtest different prompts, supply rates and factory layouts before adding complexity broadly.
+- [ ] Explore deeper Smelter decisions: build on the existing cooling-versus-speed trade-off with possible extra resource costs for faster production, a slower resource-efficient option, recipe selection based on available stock and production needs, and reserving inputs for later instead of consuming everything. These are ideas to investigate, not settled mechanics; define what information and controls a chip needs, and avoid duplicating the existing cooling behavior.
+- [ ] Playtest whether distinct priorities (speed, safety, conservation or a particular product) lead to useful differences in behavior and outcomes. Check that decisions remain understandable and that a general-purpose prompt can still work, even when it is not always the best choice.
+
 ## Later — Orchestrator
 - [ ] Orchestrator building (proposed, not implemented): an expensive, optional late-game building whose chip manages chip assignments on nearby machines. The player writes its prompt; it sees eligible machines and their relevant states, plus the chips available in the registry, and selects existing registry chips to attach or remove. It cannot create or edit registry prompts or call machine tools directly. Assigned chips remain independent and use their own timers, cooldowns and decisions.
 - [ ] Limit management to a visible proximity range. When selected, show the range and affected machines; make assignments and removals visible on the machines and record details in the log. Give the Orchestrator its own timer and cooldown to avoid constant changes.
