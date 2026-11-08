@@ -176,6 +176,25 @@ func test_snapshot_restore_round_trip() -> void:
 	_game.tick_count = 1
 	check_eq(SaveGame.restore(_placement, before), "", "restore accepts its own snapshot")
 	check_eq(_text(SaveGame.snapshot(_placement)), _text(before), "the game is identical after restoring")
+
+
+func test_chip_default_timeout_round_trips_through_save() -> void:
+	_build_world()
+	var chip: ChipRessource = autoload("ChipRegistry").get_from_id(_machine_dict(SaveGame.snapshot(_placement), "smelter")["chips"][0]["id"])
+	chip.default_timeout = 30
+	var save: Dictionary = SaveGame.snapshot(_placement)
+	var saved_chip: Dictionary = save["chips"][0]
+	check_eq(saved_chip.get("default_timeout", -1), 30, "chip default is saved")
+	chip.default_timeout = 0
+	check_eq(SaveGame.restore(_placement, save), "", "save restores")
+	check_eq(chip.default_timeout, 30, "chip default is restored")
+	saved_chip["default_timeout"] = -2
+	check(SaveGame.validate(_placement, save) != "", "negative timeout rejected")
+	saved_chip["default_timeout"] = "30"
+	check(SaveGame.validate(_placement, save) != "", "non-numeric timeout rejected")
+	saved_chip.erase("default_timeout")
+	check_eq(SaveGame.restore(_placement, save), "", "older saves still restore")
+	check_eq(chip.default_timeout, 30, "older saves preserve an existing default")
 	var smelter: Smelter = _game.get_machine_at(Vector2i(8, 8))
 	check(smelter != null, "the destroyed smelter is back")
 	check_eq(smelter.stock, {"ore": 4}, "stock restored")
