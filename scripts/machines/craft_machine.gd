@@ -53,9 +53,19 @@ func is_working() -> bool:
 
 
 func get_state() -> Dictionary:
+	return super.get_state().merged({"product": product_id, "needs": get_effective_inputs(), "stock": stock, "working": is_working()})
+
+
+## Inputs a craft of the current product needs right now (item id -> count): the recipe as-is, unless a
+## subclass with production modes scales it (Assembler's fast mode). Empty when there is no product.
+func get_effective_inputs() -> Dictionary:
 	var product: ItemData = get_product()
-	var needs: Dictionary = {} if product == null else product.inputs
-	return super.get_state().merged({"product": product_id, "needs": needs, "stock": stock, "working": is_working()})
+	return {} if product == null else _scale_inputs(product)
+
+
+## Overridden by subclasses that scale the recipe's inputs (e.g. a faster, costlier mode).
+func _scale_inputs(product: ItemData) -> Dictionary:
+	return product.inputs
 
 
 func get_progress() -> float:
@@ -157,8 +167,9 @@ func _tick() -> void:
 			_output = _making
 	elif _can_start():
 		var product: ItemData = get_product()
-		for item: String in product.inputs:
-			stock[item] = int(stock[item]) - int(product.inputs[item])
+		var needs: Dictionary = get_effective_inputs()
+		for item: String in needs:
+			stock[item] = int(stock[item]) - int(needs[item])
 		_making = product.id
 		progress = _craft_ticks()
 		_craft_total = progress
@@ -178,7 +189,8 @@ func _can_start() -> bool:
 	var product: ItemData = get_product()
 	if product == null:
 		return false
-	for item: String in product.inputs:
-		if int(stock.get(item, 0)) < int(product.inputs[item]):
+	var needs: Dictionary = get_effective_inputs()
+	for item: String in needs:
+		if int(stock.get(item, 0)) < int(needs[item]):
 			return false
 	return true

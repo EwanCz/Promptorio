@@ -30,9 +30,13 @@ Runtime status is shown with icons, not persistent text. Keep text where it carr
 - Money and building choice on the Build page: coin icon plus amount, machine art plus cost number; no "Money" or "Miner - 20" text.
 - Placement refusal in the Build page: a coin icon for insufficient funds, a red dash for any other refusal, reason on hover.
 - Chip log: an icon timeline (see "Chip log").
+- Miner prospecting / boost in the world: a small badge in the corner of the Miner's cell, hidden while it mines normally (see "Miner prospecting feedback on the map").
 
 ## Smelter heat feedback on the map
 Besides the red tint, the Smelter art trembles as it approaches the 150° explosion: nothing below 100° (the overheating line), almost imperceptible until about 120°, a clear one near the end (at most 4 px on a 64 px cell, at 150°). It eases off as the Smelter cools and stops when it explodes. It moves the art only, never the machine or its cell. See `docs/PLAN.md`, "Smelter temperature".
+
+## Miner prospecting feedback on the map
+A Miner that is prospecting or boosted shows a small badge in a corner of its cell, separate from the chip indicator above it: a magnifying glass while prospecting (paused), a bolt while boosted (mining faster). It is hidden the rest of the time, while the Miner mines at its normal pace. See `docs/PLAN.md`, "Miner prospecting".
 
 ## Machine tooltip
 The Bar is split in two halves of equal height, with one row of icon buttons below them (Menu, Resources, Machine tools, Save / Load, Settings):
@@ -73,9 +77,10 @@ The machine tooltip panel provides the actions that apply to an existing machine
 - Remove: immediately free the machine's grid cell and remove it from the scene. Discard its stock, held item, and attached chips; refund half of its purchase price (`Placement.refund_for()`, rounded down: Miner 10, Smelter 15, Assembler 20, Conveyor 1), only when the player destroys it from the tooltip; a Smelter that explodes gives nothing. Do not offer removal for the fixed Collector. The freed cell can be rebuilt using normal placement checks and cost.
 
 Tooltip current-action content:
-- Miner: production rate (one unit of its resource per `mine_ticks`, which depends on the resource) and whether its output is blocked.
+- Miner: effective production rate (ticks per unit, including the boost) and whether its output is blocked. While prospecting or boosted, an extra icon (magnifying glass / bolt) shows the ticks left in that span.
 - Smelter / Assembler: recipe inputs and output, stock, idle/working/output-blocked state, and remaining craft time while working.
 - Smelter additionally shows temperature and whether cooling is enabled.
+- Assembler additionally shows its production mode (an icon, normal or fast) first in the recipe row; the recipe quantities shown are the active mode's (fast mode doubles each input).
 - Conveyor: facing direction and whether it holds an item (and the item type when occupied).
 - Collector: items sold and money earned.
 
