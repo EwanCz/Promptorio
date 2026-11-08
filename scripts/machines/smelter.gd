@@ -1,7 +1,9 @@
 class_name Smelter
 extends CraftMachine
-## Smelts ore into ingots. Working heats it up and idling cools it. Cooling is a trade-off: crafts take
-## COOLED_CRAFT_FACTOR times longer (the factor applies to the next craft) and the smelter cools even while working.
+## Smelts ore into ingots. Working heats it up and idling cools it. Cooling is a trade-off. Cooling off runs
+## flat out: crafts take 1/UNCOOLED_SPEEDUP of the recipe time, and it heats up while working. Cooling on
+## takes COOLED_CRAFT_FACTOR times the recipe time and the smelter cools even while working. The factor
+## applies to the next craft.
 ## Above OVERHEAT_AT it is OVERHEATING; at EXPLODE_AT it explodes (fail state): it goes DOWN, flashes and
 ## fades out, then is destroyed and frees its cell. The art turns redder as it heats up.
 
@@ -13,6 +15,8 @@ const COOLING_EXTRA_PER_TICK: float = 0.3
 ## Net change per tick while working with cooling on: the temperature falls.
 const COOLED_WORK_PER_TICK: float = -0.2
 const COOLED_CRAFT_FACTOR: int = 2
+## Cooling off: crafts are this many times faster than the recipe time.
+const UNCOOLED_SPEEDUP: int = 2
 const OVERHEAT_AT: float = 100.0
 const SAFE_AT: float = 80.0
 const EXPLODE_AT: float = 150.0
@@ -83,7 +87,9 @@ func _tick() -> void:
 
 
 func _craft_ticks() -> int:
-	return super._craft_ticks() * (COOLED_CRAFT_FACTOR if cooling else 1)
+	if cooling:
+		return super._craft_ticks() * COOLED_CRAFT_FACTOR
+	return maxi(1, super._craft_ticks() / UNCOOLED_SPEEDUP)
 
 
 func _status_text() -> String:

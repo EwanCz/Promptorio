@@ -227,33 +227,67 @@ func _smelter_with_collector(cell: Vector2i) -> Array:
 	return [smelter, collector]
 
 
-func test_cooling_doubles_the_craft_duration() -> void:
+func test_cooling_off_crafts_fast_and_cooling_on_crafts_slow() -> void:
 	var plain: Machine = _smelter_with_collector(Vector2i(1, 0))[0]
 	var cooled: Machine = _smelter_with_collector(Vector2i(5, 0))[0]
 	cooled.apply_tool_call("set_cooling", {"on": true})
 	plain.receive("ore")
 	cooled.receive("ore")
 	_ticks(1)
-	check_eq(plain.progress, plain.recipe.ticks, "a craft takes the recipe's ticks")
-	check_eq(cooled.progress, plain.recipe.ticks * 2, "twice as long while cooling")
+	check_eq(plain.progress, plain.recipe.ticks / Smelter.UNCOOLED_SPEEDUP, "cooling off: the recipe time divided by the speedup")
+	check_eq(cooled.progress, plain.recipe.ticks * Smelter.COOLED_CRAFT_FACTOR, "cooling on: the recipe time times the factor")
+	check_eq(cooled.progress / plain.progress, Smelter.UNCOOLED_SPEEDUP * Smelter.COOLED_CRAFT_FACTOR, "so cooling off is that many times faster")
 
 
-func test_cooled_smelter_keeps_producing_at_reduced_throughput() -> void:
-	var plain_pair: Array = _smelter_with_collector(Vector2i(1, 0))
-	var cooled_pair: Array = _smelter_with_collector(Vector2i(5, 0))
-	var plain: Machine = plain_pair[0]
-	var cooled: Machine = cooled_pair[0]
-	cooled.apply_tool_call("set_cooling", {"on": true})
-	for i: int in 150:
-		plain.receive("ore")
-		cooled.receive("ore")
+## Same feed, same period, one smelter with cooling off and one with it on.
+func _sold_over(ticks: int, cooling_on: bool) -> Array:
+	var pair: Array = _smelter_with_collector(Vector2i(1, 0) if not cooling_on else Vector2i(5, 0))
+	var smelter: Machine = pair[0]
+	smelter.apply_tool_call("set_cooling", {"on": cooling_on})
+	for i: int in ticks:
+		smelter.receive("ore")
 		_ticks(1)
-	var plain_sold: int = plain_pair[1].sold
-	var cooled_sold: int = cooled_pair[1].sold
-	check(cooled_sold >= 2, "it keeps producing")
-	check(cooled_sold < plain_sold, "but slower than an uncooled smelter")
-	check(absi(plain_sold - 2 * cooled_sold) <= 2, "about half the throughput (%d vs %d)" % [cooled_sold, plain_sold])
-	check_eq(plain.status, Machine.Status.NORMAL, "still within limits after 15 s")
+	return [pair[1].sold, smelter]
+
+
+func test_cooling_off_has_clearly_better_throughput_than_cooling_on() -> void:
+	var fast: Array = _sold_over(150, false)
+	var slow: Array = _sold_over(150, true)
+	print("  throughput over 150 ticks: cooling off %d ingots, cooling on %d ingots" % [fast[0], slow[0]])
+	check(slow[0] >= 3, "cooling on keeps producing")
+	check(fast[0] >= 3 * slow[0], "cooling off makes at least three times as many ingots (%d vs %d)" % [fast[0], slow[0]])
+	check(fast[1].temperature > Smelter.AMBIENT + 40.0, "and it runs hot (%d degrees)" % int(fast[1].temperature))
+	check(slow[1].temperature < Smelter.OVERHEAT_AT and slow[1].status == Machine.Status.NORMAL, "while the cooled one stays safe")
+
+
+func test_cooling_off_still_overheats_and_explodes_when_left_alone() -> void:
+	var smelter: Machine = _smelter_with_collector(Vector2i(1, 0))[0]
+	var saw_overheat: Array[bool] = [false]
+	var ticks: Array[int] = [0]
+	_feed(smelter, 600, func(m: Machine) -> bool:
+		ticks[0] += 1
+		saw_overheat[0] = saw_overheat[0] or m.status == Machine.Status.OVERHEATING
+		return m.status == Machine.Status.DOWN)
+	print("  unattended fast smelter exploded after %d ticks" % ticks[0])
+	check(saw_overheat[0], "it overheats first")
+	check_eq(smelter.status, Machine.Status.DOWN, "and explodes: the heat risk is real")
+	check(ticks[0] > 150 and ticks[0] < 400, "after a demoable 15 to 40 s, not instantly (%d ticks)" % ticks[0])
+	check_eq(_exploded, [smelter], "exploded once")
+
+
+func test_a_fast_smelter_stopped_in_time_survives_and_resumes() -> void:
+	var pair: Array = _smelter_with_collector(Vector2i(1, 0))
+	var smelter: Machine = pair[0]
+	_feed(smelter, 600, func(m: Machine) -> bool: return m.status == Machine.Status.OVERHEATING)
+	check_eq(smelter.status, Machine.Status.OVERHEATING, "got hot")
+	smelter.apply_tool_call("set_emergency_stop", {"on": true})
+	_ticks(40)
+	check(smelter.temperature < Smelter.EXPLODE_AT and _exploded.is_empty(), "the emergency stop saved it")
+	_cool_down(smelter)
+	smelter.apply_tool_call("set_emergency_stop", {"on": false})
+	var sold: int = pair[1].sold
+	_feed(smelter, 60)
+	check(pair[1].sold > sold, "and it produces again at full speed")
 
 
 func test_temperature_falls_during_cooled_production() -> void:
@@ -423,7 +457,7 @@ func test_deliverable_craft_output_is_never_blocked() -> void:
 func test_craft_failed_delivery_raises_output_full_once_then_again_after_clearing() -> void:
 	var smelter: Machine = _put("smelter", Vector2i(1, 1), Vector2i.UP)
 	smelter.receive("ore")
-	var ticks_to_craft: int = (smelter as Smelter).recipe.ticks + 1
+	var ticks_to_craft: int = (smelter as Smelter).recipe.ticks / Smelter.UNCOOLED_SPEEDUP + 1
 	check_eq(_output_full_rises(smelter, ticks_to_craft), 0, "a finished ingot is not blocked before a delivery attempt")
 	check_eq(_output_full_rises(smelter, 1), 1, "the failed delivery raises it")
 	check(smelter.get_action_text().contains("output blocked"), "action text is blocked")
