@@ -171,6 +171,9 @@ func _refresh_operation() -> void:
 			op.append(_icon_entry("blocked", "", "Not accepting items"))
 	if _machine.is_blocked():
 		op.append(_icon_entry("blocked", "", "Output blocked: nothing takes it"))
+	elif _machine.shows_production_feedback() and _machine.get_production_state() == Machine.ProductionState.PRODUCING:
+		var rate: float = _machine.get_production_rate()
+		op.append(_icon_entry("state_normal", "%.1f/min" % rate, "Producing %.1f items per minute" % rate))
 	_fill_row(_op_row, op, catalog)
 	_fill_row(_stock_row, stock, catalog)
 	var progress: float = _machine.get_progress()
