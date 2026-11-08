@@ -16,6 +16,7 @@ const MAIN_MENU_SCENE: String = "res://scenes/menu/main_menu.tscn"
 @onready var _save_dialog: SaveDialog = %SaveDialog
 @onready var _pause_menu: PauseMenu = %PauseMenu
 @onready var _placement: Placement = get_node("Game/FactoryView/SubViewport/World/Placement") as Placement
+@onready var _bar_buttons: HBoxContainer = %BarButtons
 
 
 func _ready() -> void:
@@ -31,6 +32,7 @@ func _ready() -> void:
 	_bar.menu_requested.connect(_pause_menu.open)
 	_pause_menu.restart_requested.connect(_on_restart_requested)
 	_pause_menu.main_menu_requested.connect(_on_main_menu_requested)
+	_start_sfx_events()
 	_restore_pending_save()
 	EventBus.settings_changed.connect(_check_key)
 	_check_key()
@@ -88,6 +90,16 @@ func _on_main_menu_requested() -> void:
 	GameState.reset()
 	if get_tree().current_scene == self:
 		get_tree().change_scene_to_file(MAIN_MENU_SCENE)
+
+
+## The one listener that turns factory events into sound, plus a click on every Bar button.
+func _start_sfx_events() -> void:
+	var sfx_events: SfxEvents = SfxEvents.new()
+	add_child(sfx_events)
+	sfx_events.setup(_placement, _tooltip)
+	for child: Node in _bar_buttons.get_children():
+		if child is BaseButton:
+			SfxEvents.attach_click(child as BaseButton)
 
 
 ## Verifies the key for the Bar's status. Headless runs (tests) never touch the network.

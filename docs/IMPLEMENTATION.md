@@ -176,14 +176,36 @@ A player with no API key configured (and no `.env`) can still give a Miner or a 
 - [x] Build/machine action feedback: selected build type is visible, placement mode can be canceled with Escape, invalid placement and insufficient money are communicated, and machine tooltip actions do not click through to the world.
 
 ### Audio (engine, GR2-28)
-- `Sfx` autoload (`scripts/core/sfx.gd`): `Sfx.play(cue: StringName, position := Vector2.INF) -> bool`. Code only names a sound; it never owns players, buses or limits. Returns true when a sound started.
-- Cues are data: `SfxCue` (`scripts/core/sfx_cue.gd`: `id`, `stream`, `volume_db`, `pitch_jitter`, `cooldown` s, `max_voices`, `ui`) in the `SfxLibrary` resource `data/sfx.tres` (empty until the sound assets land: add one `SfxCue` sub-resource per sound there). An unknown cue, or one with no stream, is ignored with a single warning per name.
+- `Sfx` autoload (`scripts/core/sfx.gd`): `Sfx.play(cue: StringName, position := Vector2.INF, pitch_scale := 1.0) -> bool`. Code only names a sound; it never owns players, buses or limits. `pitch_scale` multiplies the cue's jittered pitch. Returns true when a sound started.
+- Cues are data: `SfxCue` (`scripts/core/sfx_cue.gd`: `id`, `stream`, `volume_db`, `pitch_jitter`, `cooldown` s, `max_voices`, `ui`) in the `SfxLibrary` resource `data/sfx.tres` (14 cues, one per file in `assets/audio/sfx/`; cue id = file name; add one `SfxCue` sub-resource per sound there). An unknown cue, or one with no stream, is ignored with a single warning per name.
 - Buses: `SFX` and `UI` under `Master`, plus a `AudioEffectHardLimiter` on `Master`, are created in code by `Sfx.setup_buses()` at startup (idempotent), so `default_bus_layout.tres` stays untouched. A cue with `ui = true` goes to `UI`, any other to `SFX`; `Sfx.apply_volumes()` applies the saved master and effects levels at startup and when settings change.
 - Voice limiting: a fixed pool of `Sfx.POOL_SIZE` (16) `AudioStreamPlayer`s, no per-machine nodes. A request is dropped inside its cue's cooldown (real clock). A cue at its `max_voices` replaces its oldest voice. With the pool full, the quietest voice (oldest among equals) is stolen, unless the new sound is quieter than all of them, which is then dropped. So 50 machines asking for the same cue play a couple of voices.
 - Position: only attenuates. Screen distance (world distance from the listening camera x zoom) is free up to 500 px, fades linearly in amplitude, and is silent (and not played, so it takes no voice) from 1800 px (`Sfx.distance_attenuation_db()`). `FactoryCamera` registers itself with `Sfx.set_listener()`; with no camera nothing is attenuated. No position (`Vector2.INF`): full volume.
 - Pause and scenes: the pool is `PROCESS_MODE_ALWAYS`. While `get_tree().paused`, a `ui` cue plays and a simulation cue is dropped. When the current scene changes (menu, restart, new game) every simulation voice stops; UI voices finish, so a button click is not cut by the scene it opens. `Sfx.stop_all(include_ui := true)` stops everything.
 - Headless: runs the same rules on the Dummy audio driver. Tests read the `played(cue, position, volume_db, pitch_scale)` signal, `Sfx.stats` (requested, played, unknown, cooldown, paused, too_far, stolen, dropped) and `Sfx.active_voices()`. Tests in `tests/test_sfx.gd`; they swap `Sfx.library` for their own and put it back, and the last test waits for the audio thread to release stopped streams so no leak is reported.
-- Not done here: the sound files, wiring cues to gameplay events, the volume UI.
+
+#### Cues wired to the game (GR2-30)
+`SfxEvents` (`scripts/core/sfx_events.gd`) is the one listener: `Main` creates it and calls `setup(placement, tooltip)`; machines and the UI only emit signals, and nothing else calls `Sfx` for gameplay. Levels, cooldowns and voice counts are cue data in `data/sfx.tres` (frequent cues quieter, with a cooldown and one or two voices; warnings and the explosion loudest); what a cooldown cannot say lives in `SfxEvents`. Positioned cues use the machine's cell center, so a far machine is quieter.
+
+| Event (source) | Cue | Rate limit |
+|---|---|---|
+| Player builds a machine (`Placement.machine_placed`, from `try_place`) | `place` | cooldown 0.05 s, 3 voices |
+| Player destroys a machine (`MachineTooltip.machine_destroyed`) | `remove` | cooldown 0.05 s, 2 voices |
+| Placement refused (`Placement.placement_rejected`) | `place_rejected` (ui) | cooldown 0.2 s |
+| Collector sells an item (`Collector.item_sold`) | `sell`, pitch 0.85 to 1.3 by price (log scale over the catalog) | cooldown 0.25 s, 2 voices |
+| Order done (`EventBus.order_completed`) | `order_complete` | cooldown 0.5 s |
+| Smelter or Assembler hands a unit on (`Machine.produced`) | `craft_done` | cooldown 0.34 s, 2 voices |
+| Miner hands a unit on (`Machine.produced`) | `deliver` (quietest cue) | cooldown 0.5 s, 1 voice |
+| A miner, smelter or assembler enters STALLED (checked each tick) | `blocked` | once per machine, then a 25 s hold-off; cue cooldown 1.5 s |
+| A machine enters OVERHEATING (checked each tick) | `overheat_warn` | on entry, then at most every 6 s while any machine is still overheating; cue cooldown 1 s |
+| Smelter explodes (`EventBus.machine_exploded`) | `explosion` | cooldown 0.3 s, 2 voices |
+| A chip finishes a request (`Machine.chip_outcome_reported`: applied, none, failed) | `chip_ok`, `chip_none`, `chip_fail` | one shared gap of 0.5 s across the three; each cue also has its own cooldown |
+| A Bar button or a main menu button is pressed (`SfxEvents.attach_click`) | `ui_click` (ui) | cooldown 0.05 s, 2 voices |
+
+- Silent by construction: restoring a save (`restore_machine`, `restore_order`), `GameState.reset()` and the starting Collector use none of these signals. A machine's first tick only records its state (a save sets the status right after the machine appears), so a restored stalled or overheating machine is not announced; its overheat reminder comes 6 s later. Conveyors never sound `blocked`, and predefined behaviors (not chips) make no chip cue.
+- Gameplay cues are dropped while the tree is paused (the `Sfx` rule); `place_rejected` and `ui_click` are `ui` cues and still play. Scene changes stop the simulation voices by themselves.
+- Tests: `tests/test_sfx_events.gd` (a recording stand-in for `Sfx` and `tests/support/clocked_sfx_events.gd` for the hold-offs; the real `Sfx` for the library, pause, a 50-machine burst and the button clicks). The runner stops the `Sfx` voices and waits before exiting so a click made by another test leaks nothing.
+- Not done: continuous machine loops and ambience.
 
 ## Phase 2 — Integration (h20–32)
 - [x] `ChipComponent` wired to `LLMManager`: timer and manual triggers only (state thresholds and machine events removed), per-chip cooldown, one request in flight per chip (`tests/test_chip_triggers.gd`). The tooltip has an "Ask now" button and the timer per chip.

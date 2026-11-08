@@ -72,8 +72,8 @@ func _process(_delta: float) -> void:
 
 
 ## Plays a cue once. `position` is a world position: a far one is quieter, a very far one is not played.
-## Returns true when a sound started.
-func play(cue_id: StringName, position: Vector2 = Vector2.INF) -> bool:
+## `pitch_scale` multiplies the cue's jittered pitch (1.0 keeps it). Returns true when a sound started.
+func play(cue_id: StringName, position: Vector2 = Vector2.INF, pitch_scale: float = 1.0) -> bool:
 	_count("requested")
 	var cue: SfxCue = library.get_cue(cue_id) if library != null else null
 	if cue == null or cue.stream == null:
@@ -97,7 +97,7 @@ func play(cue_id: StringName, position: Vector2 = Vector2.INF) -> bool:
 	if voice == null:
 		_count("dropped")
 		return false
-	var pitch: float = 1.0 + _rng.randf_range(-cue.pitch_jitter, cue.pitch_jitter)
+	var pitch: float = maxf(pitch_scale, 0.01) * (1.0 + _rng.randf_range(-cue.pitch_jitter, cue.pitch_jitter))
 	voice.cue = cue_id
 	voice.ui = cue.ui
 	voice.volume_db = volume_db
