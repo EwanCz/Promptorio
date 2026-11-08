@@ -80,7 +80,7 @@ Machine (Node2D, machine.gd)
 - Machines expose their tool schemas via `get_tool_schemas()` (the shared `set_enabled(on: bool)` plus one tool per machine type, e.g. `set_mine_ticks(ticks: 5..100)` on the Miner and `set_cooling(on: bool)` on the Smelter; the full list is in `docs/PLAN.md`, "AI tool inventory"). `apply_tool_call(name, args)` is the only way LLM output touches a machine.
 
 ### Chip triggers
-Each `ChipComponent` (one chip, one prompt) requests a decision on: fixed timer, state threshold (temp > X), manual "Ask chip now" button. All go through one method, `request_decision(reason: String)`, which enforces the per-chip cooldown and the "one request in flight per chip" rule.
+Each `ChipComponent` (one chip, one prompt) requests a decision on exactly two triggers: its fixed timer and the manual "Ask now" button. A machine's state or events (temperature, OVERHEATING, error, output full, input empty) never wake a chip; temperature and status are only sent in the state when the chip is asked. All go through one method, `request_decision(reason: String)`, which enforces the per-chip cooldown and the "one request in flight per chip" rule.
 
 ## Async HTTP rules (CRITICAL)
 1. Never block the main thread. No `OS.delay_*`, no polling loops with `HTTPClient.poll()` in `_process`, no synchronous waits.
@@ -137,7 +137,7 @@ Every feature ships with tests, and every bug fix ships with a test that fails w
 tests/run.sh              # whole suite (refreshes the class cache, exit 1 on any failure)
 tests/run.sh llm          # only test files whose name contains "llm"
 ```
-Env: `GODOT` (godot binary, default `godot`), `TEST_TIMEOUT` (seconds, default 120). `TEST_PROFILE=1` prints the slowest files and tests. `TEST_REAL_LATENCY=1` keeps the mock provider's real 0.3-1.5 s answer delay: by default the runner swaps in `tests/support/fast_mock_llm_manager.gd` (0.01-0.05 s, still an asynchronous timer), which cuts the suite from ~31 s to ~7 s. Don't count on the mock's real latency in a test; hold a chip pending by hand when you need it to stay pending.
+Env: `GODOT` (godot binary, default `godot`), `TEST_TIMEOUT` (seconds, default 120). `TEST_PROFILE=1` prints the slowest files and tests. `TEST_REAL_LATENCY=1` keeps the mock provider's real 0.3-1.5 s answer delay: by default the runner swaps in `tests/support/fast_mock_llm_manager.gd` (0.01-0.05 s, still an asynchronous timer), which cuts the suite from ~31 s to ~7 s. The production manager's own provider choice (and the mock's 0.3-1.5 s latency) is still covered in the default suite by `test_production_manager_picks_the_unmodified_mock_provider` and `test_mock_provider.gd`. Don't count on the mock's real latency in a test; hold a chip pending by hand when you need it to stay pending.
 
 ### Writing a test
 - One file per feature: `tests/test_<feature>.gd`, starting with `extends "res://tests/test_case.gd"`. The runner finds it automatically.

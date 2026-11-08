@@ -2,9 +2,9 @@ class_name ChipComponent
 extends Node
 ## One AI chip running on a machine (child of the Machine). Holds a ChipRessource (the prompt),
 ## its own timeout and in-flight flag. call_llm() asks the LLM, the answer is applied to the machine.
-## Triggers (all go through call_llm, so cooldown and one request in flight apply): timer, a state value
-## rising above the threshold, and manual. Machine events (output full, error...) never wake a chip.
-## A trigger that fires while pending or cooling down is dropped, the timer is the fallback.
+## Only two triggers go through call_llm (so cooldown and one request in flight apply): the timer and manual.
+## A machine's state or events (temperature, status, output full...) never wake a chip; the state is only
+## sent along when the chip is asked. A request that fires while pending or cooling down is dropped.
 ## Not named `call`: Object.call() is native and cannot be overridden.
 
 signal decision_applied(reason: String, applied: int)
@@ -17,11 +17,7 @@ var chip: ChipRessource
 ## Ticks between two timer-triggered calls.
 var timeout: int = DEFAULT_TIMEOUT
 var pending: bool = false
-## State key watched by the threshold trigger ("" = off) and the value it must exceed.
-var threshold_key: String = ""
-var threshold: float = 0.0
 
-var _over: bool = false
 var _elapsed: int = 0
 var _last_msec: int = -1000000
 var _reason: String = ""
@@ -44,13 +40,6 @@ func set_timeout(ticks: int) -> void:
 	_elapsed = 0
 
 
-## Fires "threshold:<key>" when the state value `key` rises above `value`. An empty key turns it off.
-func set_threshold(key: String, value: float) -> void:
-	threshold_key = key
-	threshold = value
-	_over = false
-
-
 ## Returns true if a request was sent. Ignored (not queued) while pending or cooling down.
 func call_llm(reason: String) -> bool:
 	var machine: Machine = get_parent() as Machine
@@ -70,26 +59,8 @@ func call_llm(reason: String) -> bool:
 
 func _on_tick(_tick: int) -> void:
 	_elapsed += 1
-	var reason: String = _check_triggers()
-	if reason == "" and _elapsed >= timeout:
-		reason = "timer"
-	if reason != "":
-		call_llm(reason)
-
-
-## "threshold:<key>" when the watched value crossed its limit since the last tick, "" if none.
-func _check_triggers() -> String:
-	var machine: Machine = get_parent() as Machine
-	if machine == null:
-		return ""
-	var reason: String = ""
-	if threshold_key != "":
-		var value: Variant = machine.get_state().get(threshold_key)
-		var over: bool = (value is int or value is float) and float(value) > threshold
-		if over and not _over:
-			reason = "threshold:" + threshold_key
-		_over = over
-	return reason
+	if _elapsed >= timeout:
+		call_llm("timer")
 
 
 func _on_decision_received(requester_id: int, tool_calls: Array[Dictionary]) -> void:

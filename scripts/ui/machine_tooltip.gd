@@ -8,12 +8,11 @@ signal log_requested(machine: Machine)
 
 const NAME_MIN_WIDTH: int = 80
 const MAX_TIMEOUT: int = 100000
-const MAX_LIMIT: int = 100000
-const NO_WATCH: String = "-"
 const STATE_HINTS: Dictionary = {
 	"normal": "Running normally",
 	"down": "Down: this machine is out of service",
 	"overheating": "Overheating: it explodes if it keeps heating up",
+	"paused": "Paused: switched off, it does nothing until it is switched on",
 }
 
 var _machine: Machine = null
@@ -89,7 +88,14 @@ func _show_details(shown: bool) -> void:
 
 func _refresh_status() -> void:
 	var status: String = Machine.Status.keys()[_machine.status].to_lower()
-	Icons.apply(_status_icon, "state_" + status, STATE_HINTS[status])
+	var paused: bool = not _machine.enabled and _machine.honors_enabled()
+	var shown: String = status
+	if status == "normal" and paused:
+		shown = "paused"
+	var hint: String = STATE_HINTS[shown]
+	if status == "overheating" and paused:
+		hint += " (and paused)"
+	Icons.apply(_status_icon, "state_" + shown, hint)
 	_action_label.text = _machine.get_action_text()
 	_action_label.visible = _action_label.text != ""
 	var state: Dictionary = _machine.get_state()
@@ -120,8 +126,8 @@ func _refresh_chips() -> void:
 	_add_button.disabled = _picker.item_count == 0
 
 
-## One chip: its name (hover for the prompt), the timer in ticks, ask now and remove, then the optional
-## threshold trigger. Icons carry the meaning; each has a hover description.
+## One chip: its name (hover for the prompt), the timer in ticks, ask now and remove. Icons carry the
+## meaning; each has a hover description.
 func _make_row(component: ChipComponent) -> Control:
 	var box: VBoxContainer = VBoxContainer.new()
 	var row: HFlowContainer = HFlowContainer.new()
@@ -153,38 +159,7 @@ func _make_row(component: ChipComponent) -> Control:
 	remove.name = "Remove"
 	remove.pressed.connect(_on_remove_pressed.bind(component))
 	row.add_child(remove)
-	box.add_child(_make_watch_row(component))
 	return box
-
-
-## Threshold trigger: pick a numeric state value and the limit it must rise above.
-func _make_watch_row(component: ChipComponent) -> Control:
-	var row: HFlowContainer = HFlowContainer.new()
-	row.name = "Watch"
-	row.add_child(Icons.rect("watch", "Also ask when a value rises above a limit"))
-	var keys: OptionButton = OptionButton.new()
-	keys.name = "Key"
-	keys.tooltip_text = "Value to watch"
-	keys.add_item(NO_WATCH, 0)
-	var state: Dictionary = _machine.get_state()
-	for key: String in state:
-		if state[key] is int or state[key] is float:
-			keys.add_item(key)
-			if key == component.threshold_key:
-				keys.select(keys.item_count - 1)
-	keys.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_child(keys)
-	var limit: SpinBox = SpinBox.new()
-	limit.name = "Limit"
-	limit.min_value = -MAX_LIMIT
-	limit.max_value = MAX_LIMIT
-	limit.prefix = ">"
-	limit.value = component.threshold
-	limit.tooltip_text = "Limit it must rise above"
-	row.add_child(limit)
-	keys.item_selected.connect(_on_watch_changed.bind(keys, limit, component))
-	limit.value_changed.connect(_on_limit_changed.bind(keys, limit, component))
-	return row
 
 
 func _on_machine_selected(machine: Node) -> void:
@@ -236,19 +211,6 @@ func _on_remove_pressed(component: ChipComponent) -> void:
 
 func _on_ask_pressed(component: ChipComponent) -> void:
 	component.call_llm("manual")
-
-
-func _on_watch_changed(_index: int, keys: OptionButton, limit: SpinBox, component: ChipComponent) -> void:
-	_apply_watch(keys, limit, component)
-
-
-func _on_limit_changed(_value: float, keys: OptionButton, limit: SpinBox, component: ChipComponent) -> void:
-	_apply_watch(keys, limit, component)
-
-
-func _apply_watch(keys: OptionButton, limit: SpinBox, component: ChipComponent) -> void:
-	var key: String = "" if keys.selected == 0 else keys.get_item_text(keys.selected)
-	component.set_threshold(key, limit.value)
 
 
 func _on_timeout_changed(value: float, component: ChipComponent) -> void:

@@ -28,6 +28,10 @@ func can_rotate() -> bool:
 	return false
 
 
+func honors_enabled() -> bool:
+	return false
+
+
 func get_action_text() -> String:
 	return "Sold %d items, earned %d" % [sold, earned]
 

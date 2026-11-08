@@ -35,15 +35,6 @@ func get_state() -> Dictionary:
 	return super.get_state().merged({"stock": stock, "working": is_working()})
 
 
-func get_events() -> Array[String]:
-	var events: Array[String] = super.get_events()
-	if _blocked:
-		events.append("output_full")
-	elif progress == 0 and not _can_start():
-		events.append("input_empty")
-	return events
-
-
 func get_action_text() -> String:
 	if recipe == null:
 		return "No recipe"

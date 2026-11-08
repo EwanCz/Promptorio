@@ -35,13 +35,6 @@ func _apply(tool_name: String, args: Dictionary) -> void:
 	super._apply(tool_name, args)
 
 
-func get_events() -> Array[String]:
-	var events: Array[String] = super.get_events()
-	if _blocked:
-		events.append("output_full")
-	return events
-
-
 func get_action_text() -> String:
 	return "Mining 1 %s every %d ticks%s" % [ITEM, mine_ticks, " (output blocked)" if _blocked else ""]
 

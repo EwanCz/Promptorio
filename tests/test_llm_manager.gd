@@ -127,3 +127,25 @@ func test_removed_requesters_are_discarded() -> void:
 	check(not _received.has(active) and not _failed.has(active), "removed active requester receives no signal")
 	check(not _received.has(queued) and not _failed.has(queued), "removed queued requester receives no signal")
 	check(_llm._in_flight == 0 and _llm._queue.is_empty(), "removed requests release capacity")
+
+
+## The runner swaps in a fast-mock manager, so this covers the production script itself.
+func test_production_manager_picks_the_unmodified_mock_provider() -> void:
+	var production: Node = (load("res://scripts/llm/llm_manager.gd") as GDScript).new()
+	_settings.provider = "mock"
+	var provider: LLMProvider = production._make_provider()
+	check(provider is MockProvider and provider.get_script() == MockProvider, "mock selects MockProvider itself, not a test subclass")
+	check(provider.requires_network() == false, "offline")
+	for i: int in 20:
+		var latency: float = provider.simulated_latency()
+		check(latency >= 0.3 and latency <= 1.5, "production mock latency is unchanged (0.3 to 1.5 s)")
+	_settings.provider = "anthropic"
+	check(production._make_provider() is AnthropicProvider, "anthropic")
+	_settings.provider = "openai"
+	check(production._make_provider() is OpenAIProvider, "openai")
+	_settings.provider = "nope"
+	check(production._make_provider() == null, "unknown provider")
+	production.free()
+	_settings.provider = "mock"
+	check(autoload("LLMManager")._make_provider() is MockProvider, "the suite's manager is also a MockProvider, only faster")
+	check(autoload("LLMManager")._make_provider().simulated_latency() < 0.1, "the suite stays fast")

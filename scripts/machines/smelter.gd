@@ -36,7 +36,7 @@ var emergency_stop: bool = false
 func _own_tool_schemas() -> Array:
 	return [{
 		"name": "set_cooling",
-		"description": "Turn the cooling on or off. While on, the smelter cools down even while working but crafts take twice as long; it also cools faster while idle.",
+		"description": "Turn the cooling on or off. While on, the smelter cools down even while working but crafts take four times as long (40 ticks instead of 10 for the current recipe); the duration is chosen when a craft starts. It also cools faster while idle.",
 		"input_schema": {"type": "object", "properties": {"on": {"type": "boolean"}}},
 	}, {
 		"name": "set_emergency_stop",

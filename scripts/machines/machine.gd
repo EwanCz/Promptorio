@@ -87,6 +87,11 @@ func is_removable() -> bool:
 	return true
 
 
+## False for machines whose logic ignores `enabled` (Conveyor, Collector): set_enabled is accepted but does nothing.
+func honors_enabled() -> bool:
+	return true
+
+
 ## False for machines with no output direction (the Collector).
 func can_rotate() -> bool:
 	return true
@@ -131,14 +136,6 @@ func get_tool_schemas() -> Array:
 ## Compact state sent to the LLM. Only fields the chip needs.
 func get_state() -> Dictionary:
 	return {"type": machine_type, "enabled": enabled, "status": Status.keys()[status].to_lower()}
-
-
-## Named conditions that can wake a chip (it is asked when one appears). Subclasses add theirs.
-func get_events() -> Array[String]:
-	var events: Array[String] = []
-	if status != Status.NORMAL:
-		events.append("error")
-	return events
 
 
 ## Validates a tool call against get_tool_schemas(), clamps args, then applies it.

@@ -5,6 +5,8 @@ extends PanelContainer
 signal settings_requested
 
 var _verdict: String = ""
+var _spin_time: float = 0.0
+var _frames: Array[Texture2D] = []
 var _detail: String = ""
 
 @onready var _key_status: PanelContainer = %KeyStatus
@@ -28,6 +30,8 @@ func _ready() -> void:
 	_settings_button.pressed.connect(settings_requested.emit)
 	EventBus.settings_changed.connect(_on_settings_changed)
 	EventBus.key_checked.connect(_on_key_checked)
+	_frames = Icons.spinner_frames()
+	set_process(false)
 	_refresh_key_status()
 	(_tabs.get_child(0) as Button).button_pressed = true
 	_show_page(0)
@@ -50,10 +54,17 @@ func _on_key_checked(state: String, detail: String) -> void:
 	_refresh_key_status()
 
 
+## Animates the checking spinner while a check is pending (the process only runs then).
+func _process(delta: float) -> void:
+	_spin_time += delta
+	_key_badge.texture = _frames[int(_spin_time / ChipIndicator.FRAME_SECONDS) % _frames.size()]
+
+
 ## Hidden for providers without a key. Otherwise a key icon with a badge: "!" missing, spinner being checked,
 ## check accepted, cross rejected, "?" could not be verified. Hover for the explanation.
 func _refresh_key_status() -> void:
 	_key_status.visible = Settings.ENV_VARS.has(Settings.provider)
+	set_process(false)
 	if not _key_status.visible:
 		return
 	var badge: String = "checking"
@@ -73,3 +84,5 @@ func _refresh_key_status() -> void:
 	Icons.apply(_key_icon, "key", text)
 	Icons.apply(_key_badge, badge, text)
 	_key_status.tooltip_text = text
+	_spin_time = 0.0
+	set_process(badge == "checking")

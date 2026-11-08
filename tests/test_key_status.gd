@@ -131,3 +131,26 @@ func test_the_bar_shows_no_status_text() -> void:
 	for node: Node in _panel.find_children("*", "Label", true, false):
 		check(false, "the key status holds no label: %s" % node.name)
 	check_eq(_panel.find_children("*", "Label", true, false).size(), 0, "icons only")
+
+
+func _badge_pixels() -> PackedByteArray:
+	return _badge.texture.get_image().get_data()
+
+
+func test_the_checking_spinner_animates_until_the_verdict() -> void:
+	_settings.api_key = "sk-test"
+	_changed()
+	check(_shows("checking"), "checking")
+	var first: PackedByteArray = _badge_pixels()
+	await wait_until(func() -> bool: return _badge_pixels() != first, 2.0)
+	check(_badge_pixels() != first, "the spinner frame changes while the check is pending")
+	_checked("valid")
+	check(_shows("applied"), "the verdict replaces the spinner")
+	var settled: PackedByteArray = _badge_pixels()
+	await wait_seconds(0.3)
+	check_eq(_badge_pixels(), settled, "and nothing animates any more")
+	_settings.api_key = ""
+	_changed()
+	check(_shows("warn"), "a missing key shows the warning")
+	await wait_seconds(0.3)
+	check(_shows("warn"), "which is not animated either")

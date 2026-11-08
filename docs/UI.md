@@ -24,7 +24,7 @@ When a chip is clicked in the chip registry page. The game is paused and a popup
 ## Visual feedback rule
 Runtime status is shown with icons, not persistent text. Keep text where it carries content or meaning: machine and chip names, values and prices (the amount of money, the Smelter's temperature number), prompts, settings and necessary control labels. Every symbol that is not self-evident has a brief hover description (`tooltip_text`). Icons come from one pixel-art set (`Icons`, `scripts/ui/icons.gd`): 12x12 glyphs on colored badges, drawn at x2 with the nearest filter to match the 16 px machine art, and meaning is in the shape as well as the color. Static labels and text-entry screens (Settings, Chip Page, Chip Registry) are out of this rule. Decision bubbles are not part of the design.
 - Chip activity above each machine (`ChipIndicator`, centered just above the machine's cell): an animated spinner while any attached chip waits for an answer, then briefly (1.5 s) one distinct icon for the last result: check (an action was applied), dash (no action), cross (failure or a rejected call). With several chips the spinner stays until all have answered, so one finishing chip never hides another that still runs.
-- Machine state in the details panel: one icon (green play: normal, grey cross: down, orange flame: overheating) with the explanation on hover.
+- Machine state in the details panel: one icon (green play: running, grey pause bars: paused, i.e. switched off, grey cross: down, orange flame: overheating) with the explanation on hover. Overheating and down win over paused, so a paused overheating machine still shows the flame (the hover adds "and paused"). The Conveyor and Collector ignore `enabled`, so they never show paused.
 - API key in the Bar: a key icon plus a badge (see "API key status").
 - Money and building choice on the Build page: coin icon plus amount, machine art plus cost number; no "Money" or "Miner - 20" text.
 - Placement refusal in the Build page: a coin icon for insufficient funds, a red dash for any other refusal, reason on hover.
@@ -36,9 +36,9 @@ The Bar is split in two halves of equal height, with the Settings button below t
 - Bottom half: the machine details panel (`MachineTooltip`), a panel of the Bar (not a popup over the map). It shows "Select a machine" until a machine is clicked. Clicking the same machine or an empty cell goes back to that hint. The details scroll when they do not fit. Layout, top to bottom, with no section titles or explanatory text:
   - Header: the state icon (see "Visual feedback rule"), the title "<Type> #<id>", then icon buttons: log, rotate and destroy (rotate and destroy are hidden for machines that cannot use them, e.g. the Collector).
   - The current operation and its values as text (recipe, stock, state of work, facing, sales). A Smelter adds one heat row: a thermometer icon that fills and turns green, orange, red as it heats up (hover: "Temperature (explodes at 150)"), the temperature as a number, and a snowflake icon that is lit when cooling is on and dim when off (hover: "Cooling on" / "Cooling off").
-  - One block per attached chip: its name (hover shows the prompt), a clock icon with the timer in ticks, an "ask now" bolt button and a "remove" button, then a watch row: an up-arrow icon, the value to watch ("-" = none) and the limit it must rise above.
+  - One block per attached chip: its name (hover shows the prompt), a clock icon with the timer in ticks, an "ask now" bolt button and a "remove" button. There are no state or event triggers: a chip is asked only by its timer or by "ask now".
   - Last, the chip picker with a plus button that attaches the picked chip.
-  - Every icon button has a hover description: "Chip log", "Rotate", "Destroy this machine", "Ask the chip now", "Remove this chip", "Add the chosen chip", and the clock and arrow explain the timer and the watch. The panel stays narrow enough for the Bar: rows wrap, and long chip names are trimmed with an ellipsis (hover shows the prompt).
+  - Every icon button has a hover description: "Chip log", "Rotate", "Destroy this machine", "Ask the chip now", "Remove this chip", "Add the chosen chip", and the clock explains the timer. The panel stays narrow enough for the Bar: rows wrap, and long chip names are trimmed with an ellipsis (hover shows the prompt).
   - The Settings button at the bottom of the Bar is a gear icon (hover: "Settings").
 
 The tooltip hides with the rest of the Bar (`E`).
@@ -84,7 +84,7 @@ For `anthropic` and `openai`, an optional "Base URL" field (blank by default, sa
 ### API key status
 At the top of the Bar (above the page tabs), the `KeyStatus` panel reports the state of the selected provider's key as a key icon with a badge; hovering either shows the explanation. It is hidden for `mock`, which needs no key. States:
 - Orange "!" badge, "No active API key...": neither a saved key nor a `.env` one (`Settings.needs_api_key()`).
-- Spinner badge, "Checking the API key...": a key exists and no verdict has arrived yet. Any settings change discards the previous verdict.
+- Animated spinner badge (it turns while the check is pending and stops at the verdict), "Checking the API key...": a key exists and no verdict has arrived yet. Any settings change discards the previous verdict.
 - Green check, "API key verified.": the provider accepted the key.
 - Red cross, "API key rejected (HTTP 401 ...)": the provider answered 401 or 403.
 - Orange "?", "Could not verify the API key (...)": timeout, network failure, 429 or 5xx, or an invalid base URL. This never says the key is wrong.
@@ -94,7 +94,7 @@ The verdict comes from `LLMManager.check_key()` (a free "list models" GET, so no
 ### Chip log
 Open the selected machine's log from its tooltip. It is a compact timeline of icons, oldest first, wrapping and scrolling, holding the machine's most recent 200 entries; new entries appear while it is open. It has a close button; closing returns to the factory view without changing the selected machine or pausing the simulation. There is no log text: hovering an icon shows a short plain-language explanation, never raw trigger names, tool names or JSON.
 - Spinner: "Checking: <chip name>", a chip asked the LLM.
-- Green check: an applied call says what was set, e.g. "Cooling set on", "Machine set to paused", "Mining pace set to 40 ticks per ore". It says what was set, not that something changed, because the call may have been a no-op.
+- Green check: an applied call says what was set, e.g. "Cooling set on", "Machine set to paused", "Mining pace set to 40 ticks per ore". It says what was set, not that something changed, because the call may have been a no-op. A conveyor turn names its direction: "Direction set to right / down / left / up".
 - Grey dash: "No action", a successful answer without tool calls.
 - Red cross: "Request failed", or "Action rejected" for a call the machine refused.
 - Blue dot: any other message, shown as is (e.g. "exploded at 150°").

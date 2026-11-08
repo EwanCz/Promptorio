@@ -147,11 +147,13 @@ func test_chip_log_shows_short_plain_language_entries() -> void:
 	var machine: Machine = _spawn("res://scenes/machines/machine.tscn")
 	log.show_machine(machine)
 	check_eq(_shown(log, machine, "asking chip Smelter Cooler (event:error)"), "Checking: Smelter Cooler", "request, without the trigger name")
-	check_eq(_shown(log, machine, "asking chip Cooler (v2) (threshold:temperature)"), "Checking: Cooler (v2)", "a chip name with parentheses survives")
+	check_eq(_shown(log, machine, "asking chip Cooler (v2) (timer)"), "Checking: Cooler (v2)", "a chip name with parentheses survives")
 	check_eq(_shown(log, machine, "no tool calls"), "No action", "no-action answer")
 	check_eq(_shown(log, machine, "set_cooling({\"on\":true})"), "Cooling set on", "cooling")
 	check_eq(_shown(log, machine, "set_enabled({\"on\":false})"), "Machine set to paused", "pause")
 	check_eq(_shown(log, machine, "set_mine_ticks({\"ticks\":40})"), "Mining pace set to 40 ticks per ore", "mining pace")
+	for pair: Array in [[0, "right"], [1, "down"], [2, "left"], [3, "up"]]:
+		check_eq(_shown(log, machine, "set_direction({\"direction\":%d})" % pair[0]), "Direction set to %s" % pair[1], "direction %d" % pair[0])
 	check_eq(_shown(log, machine, "set_emergency_stop({\"on\":false})"), "Emergency stop release requested", "a release that may be a no-op is not claimed as done")
 	check_eq(_shown(log, machine, "ignored set_cooling: bad value for 'on'"), "Action rejected", "rejected action")
 	check_eq(_shown(log, machine, "ignored unknown tool 'launch_missiles'"), "Action rejected", "unknown tool")
@@ -383,7 +385,7 @@ func test_collector_panel_hides_rotate_and_destroy_icons() -> void:
 	check((tooltip.get_node("%LogButton") as Button).visible, "but its log is still there")
 
 
-func test_tooltip_ask_now_and_threshold() -> void:
+func test_tooltip_ask_now_has_no_threshold_controls() -> void:
 	var tooltip: MachineTooltip = _spawn("res://scenes/ui/popups/machine_tooltip.tscn")
 	var machine: Machine = _spawn("res://scenes/machines/smelter.tscn")
 	var chip: ChipRessource = _add("ui_ask", "prompt text")
@@ -396,20 +398,7 @@ func test_tooltip_ask_now_and_threshold() -> void:
 	var box: Node = tooltip.get_node("%ChipsList").get_child(0)
 	(box.find_child("Ask", true, false) as Button).pressed.emit()
 	check(machine.chips[0].pending, "Ask now sends a request")
-	var keys: OptionButton = box.find_child("Key", true, false) as OptionButton
-	var index: int = -1
-	for i: int in keys.item_count:
-		if keys.get_item_text(i) == "temperature":
-			index = i
-	check(index > 0, "numeric state values are offered")
-	keys.select(index)
-	keys.item_selected.emit(index)
-	(box.find_child("Limit", true, false) as SpinBox).value = 90
-	check_eq(machine.chips[0].threshold_key, "temperature", "watched value set from the tooltip")
-	check_eq(machine.chips[0].threshold, 90.0, "limit set from the tooltip")
-	keys.select(0)
-	keys.item_selected.emit(0)
-	check_eq(machine.chips[0].threshold_key, "", "never turns the trigger off")
+	check(box.find_child("Key", true, false) == null and box.find_child("Limit", true, false) == null, "no watch controls: only the timer and Ask now")
 	await wait_until(func() -> bool: return not machine.chips[0].pending)
 	settings.provider = saved[0]
 	settings.chip_cooldown = saved[1]
@@ -426,3 +415,51 @@ func test_registry_page_shows_a_save_error() -> void:
 	_registry.user_path = saved_path
 	_registry.update(chip.id, "ui_save_fail", "", "p")
 	check(not label.visible, "label hides after a good save")
+
+
+func _status_icon_is(tooltip: MachineTooltip, icon_name: String) -> bool:
+	var icon: TextureRect = tooltip.get_node("%StatusIcon") as TextureRect
+	return icon.texture.get_image().get_data() == Icons.icon(icon_name).get_image().get_data()
+
+
+func test_the_state_icon_tells_a_paused_machine_from_a_running_one() -> void:
+	var tooltip: MachineTooltip = _spawn("res://scenes/ui/popups/machine_tooltip.tscn")
+	var smelter: Smelter = _spawn("res://scenes/machines/smelter.tscn") as Smelter
+	var bus: Node = autoload("EventBus")
+	bus.machine_selected.emit(smelter)
+	check(_status_icon_is(tooltip, "state_normal"), "running: the play icon")
+	smelter.apply_tool_call("set_enabled", {"on": false})
+	bus.tick_fired.emit(0)
+	check(_status_icon_is(tooltip, "state_paused"), "paused: a different icon")
+	check((tooltip.get_node("%StatusIcon") as TextureRect).tooltip_text.begins_with("Paused"), "explained on hover")
+	smelter.apply_tool_call("set_enabled", {"on": true})
+	bus.tick_fired.emit(1)
+	check(_status_icon_is(tooltip, "state_normal"), "running again")
+	smelter.temperature = Smelter.OVERHEAT_AT + 5.0
+	smelter.status = Machine.Status.OVERHEATING
+	smelter.apply_tool_call("set_emergency_stop", {"on": true})
+	bus.tick_fired.emit(2)
+	var icon: TextureRect = tooltip.get_node("%StatusIcon") as TextureRect
+	check(_status_icon_is(tooltip, "state_overheating"), "an overheating machine that is paused still shows the warning")
+	check(icon.tooltip_text.begins_with("Overheating") and icon.tooltip_text.contains("paused"), "and the hover says it is paused too")
+	smelter.status = Machine.Status.DOWN
+	bus.tick_fired.emit(3)
+	check(_status_icon_is(tooltip, "state_down"), "down wins over paused")
+
+
+func test_a_conveyor_or_collector_never_looks_paused() -> void:
+	var tooltip: MachineTooltip = _spawn("res://scenes/ui/popups/machine_tooltip.tscn")
+	var belt: Machine = _spawn("res://scenes/machines/conveyor.tscn")
+	belt.apply_tool_call("set_enabled", {"on": false})
+	autoload("EventBus").machine_selected.emit(belt)
+	check(not belt.honors_enabled() and _status_icon_is(tooltip, "state_normal"), "set_enabled does nothing to a conveyor, so it still looks running")
+
+
+func test_conveyor_direction_in_the_log_matches_what_the_conveyor_does() -> void:
+	var log: ChipLog = _spawn("res://scenes/ui/popups/chip_log.tscn")
+	var belt: Machine = _spawn("res://scenes/machines/conveyor.tscn")
+	for pair: Array in [[0, Vector2i.RIGHT, "right"], [1, Vector2i.DOWN, "down"], [2, Vector2i.LEFT, "left"], [3, Vector2i.UP, "up"]]:
+		check(belt.apply_tool_call("set_direction", {"direction": pair[0]}), "applied")
+		check_eq(belt.facing, pair[1], "the conveyor faces %s" % pair[2])
+		var lines: Array[String] = log.get_lines(belt)
+		check_eq(lines[lines.size() - 1], "Direction set to %s" % pair[2], "and the log says %s" % pair[2])

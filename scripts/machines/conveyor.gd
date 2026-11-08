@@ -96,6 +96,10 @@ func _tick() -> void:
 		held = ""
 
 
+func honors_enabled() -> bool:
+	return false
+
+
 func _apply(tool_name: String, args: Dictionary) -> void:
 	if tool_name == "set_direction":
 		facing = ARROWS.keys()[args["direction"]]

@@ -5,6 +5,8 @@ extends PanelContainer
 ## explains it in plain language (see _describe). The technical entries stay in the session log.
 
 const MAX_LINES: int = 200
+## What set_direction's 0..3 means, as the conveyor turns it: right, down, left, up.
+const DIRECTIONS: Array[String] = ["right", "down", "left", "up"]
 
 var _machine: Machine = null
 var _asking: RegEx = RegEx.create_from_string("^asking chip (.*) \\([^()]*\\)$")
@@ -114,5 +116,5 @@ func _tool_label(tool_name: String, args: Variant) -> String:
 		"set_stock_limit":
 			return "Stock limit set to %d" % int(values.get("limit", 0))
 		"set_direction":
-			return "Direction set"
+			return "Direction set to %s" % DIRECTIONS[clampi(int(values.get("direction", 0)), 0, DIRECTIONS.size() - 1)]
 	return "Action requested"
