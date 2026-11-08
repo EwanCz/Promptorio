@@ -12,6 +12,9 @@ signal decision_applied(reason: String, applied: int)
 signal activity_changed(outcome: String)
 
 const DEFAULT_TIMEOUT: int = 100
+## How many recent decisions outcome_counts() reports over: old ones fall off, so an Orchestrator judges a
+## chip on what it has been doing lately, not everything since it was first attached.
+const OUTCOME_HISTORY: int = 20
 
 var chip: ChipRessource
 ## Ticks between two timer-triggered calls.
@@ -25,6 +28,8 @@ var assigned_by: int = 0
 var _elapsed: int = 0
 var _last_msec: int = -1000000
 var _reason: String = ""
+## Last OUTCOME_HISTORY outcomes ("applied", "none" or "failed"), oldest first.
+var _recent_outcomes: Array[String] = []
 
 
 func _ready() -> void:
@@ -82,7 +87,9 @@ func _on_decision_received(requester_id: int, tool_calls: Array[Dictionary]) -> 
 		if typeof(args) == TYPE_DICTIONARY and machine.apply_tool_call(str(tool_call.get("name", "")), args):
 			applied += 1
 	decision_applied.emit(_reason, applied)
-	activity_changed.emit("applied" if applied > 0 else ("none" if tool_calls.is_empty() else "failed"))
+	var outcome: String = "applied" if applied > 0 else ("none" if tool_calls.is_empty() else "failed")
+	_record_outcome(outcome)
+	activity_changed.emit(outcome)
 
 
 func _on_decision_failed(requester_id: int, reason: String) -> void:
@@ -92,4 +99,20 @@ func _on_decision_failed(requester_id: int, reason: String) -> void:
 	var machine: Machine = get_parent() as Machine
 	if machine != null:
 		machine.log_chip("chip request failed: %s" % reason)
+	_record_outcome("failed")
 	activity_changed.emit("failed")
+
+
+func _record_outcome(outcome: String) -> void:
+	_recent_outcomes.append(outcome)
+	if _recent_outcomes.size() > OUTCOME_HISTORY:
+		_recent_outcomes.pop_front()
+
+
+## How many of the last OUTCOME_HISTORY decisions landed on each outcome: {"applied", "none", "failed"}.
+## The evidence an Orchestrator checks before revising a chip it owns (Orchestrator.revise_chip()).
+func outcome_counts() -> Dictionary:
+	var counts: Dictionary = {"applied": 0, "none": 0, "failed": 0}
+	for outcome: String in _recent_outcomes:
+		counts[outcome] = int(counts.get(outcome, 0)) + 1
+	return counts

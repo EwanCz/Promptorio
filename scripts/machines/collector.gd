@@ -17,6 +17,7 @@ func receive(item: String) -> bool:
 		return false
 	var price: int = ItemCatalog.shared().price_of(item)
 	GameState.add_money(price)
+	GameState.record_order_sale(item)
 	sold += 1
 	earned += price
 	_pulse_left = PULSE_TICKS

@@ -54,7 +54,9 @@ func load_registry() -> void:
 
 
 ## Creates a chip with a fresh id and returns it. Returns null if the name is empty or already used.
-func add(chip_name: String, prompt: String, desc: String = "") -> ChipRessource:
+## `created_by` is 0 for a player-authored chip (ChipPage never passes anything else), else the machine_id
+## of the Orchestrator generating it with create_chip. See ChipRessource.created_by.
+func add(chip_name: String, prompt: String, desc: String = "", created_by: int = 0) -> ChipRessource:
 	if chip_name == "":
 		return null
 	for existing: ChipRessource in _chips.values():
@@ -65,6 +67,7 @@ func add(chip_name: String, prompt: String, desc: String = "") -> ChipRessource:
 	chip.name = chip_name
 	chip.prompt = prompt
 	chip.description = desc
+	chip.created_by = created_by
 	_next_id += 1
 	_chips[chip.id] = chip
 	EventBus.chip_registered.emit(chip)
@@ -72,7 +75,10 @@ func add(chip_name: String, prompt: String, desc: String = "") -> ChipRessource:
 	return chip
 
 
-## Edits a chip in place. Returns false for an unknown id, an empty name, or a name used by another chip.
+## Edits a chip in place: the player's own path (ChipPage "Save"). Returns false for an unknown id, an
+## empty name, or a name used by another chip. Always clears created_by: saving a generated chip by hand
+## claims it, so no Orchestrator revises it afterwards (see ChipRessource.created_by). An Orchestrator
+## revising its own chip goes through revise() instead, which keeps created_by as is.
 func update(chip_id: int, chip_name: String, desc: String, prompt: String) -> bool:
 	var chip: ChipRessource = _chips.get(chip_id)
 	if chip == null or chip_name == "":
@@ -83,15 +89,57 @@ func update(chip_id: int, chip_name: String, desc: String, prompt: String) -> bo
 	chip.name = chip_name
 	chip.description = desc
 	chip.prompt = prompt
+	chip.created_by = 0
 	EventBus.chip_updated.emit(chip)
 	_save()
 	return true
 
 
+## The Orchestrator path (Orchestrator.revise_chip): updates description and prompt only (the name stays,
+## so it keeps reading the same everywhere it is already assigned). Returns false for an unknown chip or
+## one this Orchestrator (`by`) did not create (ChipRessource.created_by): a player chip, or one created by
+## a different Orchestrator, is never touched.
+func revise(chip_id: int, desc: String, prompt: String, by: int) -> bool:
+	var chip: ChipRessource = _chips.get(chip_id)
+	if chip == null or chip.created_by != by:
+		return false
+	chip.description = desc
+	chip.prompt = prompt
+	EventBus.chip_updated.emit(chip)
+	_save()
+	return true
+
+
+## Clears created_by on every chip this Orchestrator (`machine_id`) generated, so a removed Orchestrator
+## never leaves a chip permanently locked to a creator that no longer exists; it becomes an ordinary
+## player-editable chip, same spirit as Orchestrator.discard() releasing its assigned_by ownership.
+func release_created_by(machine_id: int) -> void:
+	var changed: bool = false
+	for chip: ChipRessource in _chips.values():
+		if chip.created_by == machine_id:
+			chip.created_by = 0
+			changed = true
+			EventBus.chip_updated.emit(chip)
+	if changed:
+		_save()
+
+
+## Machine IDs belong to a game, so they cannot retain ownership across game changes.
+func release_all_creators() -> void:
+	var changed: bool = false
+	for chip: ChipRessource in _chips.values():
+		if chip.created_by != 0:
+			chip.created_by = 0
+			changed = true
+			EventBus.chip_updated.emit(chip)
+	if changed:
+		_save()
+
+
 ## Puts a chip from a save file in the registry under its own id: a chip with that id is overwritten (the
 ## save wins), else it is created. A name already used by another chip gets a number appended, so names
 ## stay unique. Null for an invalid id or an empty name.
-func import_chip(chip_id: int, chip_name: String, desc: String, prompt: String) -> ChipRessource:
+func import_chip(chip_id: int, chip_name: String, desc: String, prompt: String, created_by: int = 0) -> ChipRessource:
 	if chip_id <= 0 or chip_name == "":
 		return null
 	var unique_name: String = chip_name
@@ -109,6 +157,7 @@ func import_chip(chip_id: int, chip_name: String, desc: String, prompt: String) 
 	chip.name = unique_name
 	chip.description = desc
 	chip.prompt = prompt
+	chip.created_by = created_by
 	if created:
 		EventBus.chip_registered.emit(chip)
 	else:

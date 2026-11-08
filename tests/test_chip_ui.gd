@@ -158,6 +158,12 @@ func test_chip_log_shows_short_plain_language_entries() -> void:
 	for pair: Array in [[0, "right"], [1, "down"], [2, "left"], [3, "up"]]:
 		check_eq(_shown(log, machine, "set_direction({\"direction\":%d})" % pair[0]), "Direction set to %s" % pair[1], "direction %d" % pair[0])
 	check_eq(_shown(log, machine, "set_emergency_stop({\"on\":false})"), "Emergency stop release requested", "a release that may be a no-op is not claimed as done")
+	var orchestrator_chip: ChipRessource = _add("log_orchestrator_chip")
+	check_eq(_shown(log, machine, "assign_chip({\"chip_id\":%d,\"machine_id\":7})" % orchestrator_chip.id), "Assigned chip 'log_orchestrator_chip' to machine #7", "assignment names the chip, not its id")
+	check_eq(_shown(log, machine, "remove_chip({\"machine_id\":7})"), "Removed its chip from machine #7", "removal")
+	check_eq(_shown(log, machine, "set_range({\"cells\":3})"), "Range set to 3 cells", "range")
+	check_eq(_shown(log, machine, "create_chip({\"description\":\"d\",\"name\":\"new_chip\",\"prompt\":\"p\"})"), "Created chip 'new_chip'", "creation names the new chip")
+	check_eq(_shown(log, machine, "revise_chip({\"chip_id\":%d,\"description\":\"d2\",\"prompt\":\"p2\"})" % orchestrator_chip.id), "Revised chip 'log_orchestrator_chip'", "revision names the chip, not its id")
 	check_eq(_shown(log, machine, "ignored set_cooling: bad value for 'on'"), "Action rejected", "rejected action")
 	check_eq(_shown(log, machine, "ignored unknown tool 'launch_missiles'"), "Action rejected", "unknown tool")
 	check_eq(_shown(log, machine, "chip request failed: HTTP 401 (authentication_error)"), "Request failed", "failure")

@@ -44,6 +44,28 @@ func _chip(chip_name: String) -> ChipRessource:
 	return chip
 
 
+## The chip create_chip() just added to the registry, found by name (create_chip only returns a bool).
+func _created(chip_name: String) -> ChipRessource:
+	for chip: ChipRessource in _registry.get_all():
+		if chip.name == chip_name:
+			_chip_ids.append(chip.id)
+			return chip
+	return null
+
+
+## Feeds `component` `count` decisions of the given outcome ("applied", "none" or "failed"), the evidence
+## revise_chip weighs. Goes through the public LLMManager signals, same as a real answer arriving.
+func _give_evidence(component: ChipComponent, count: int, outcome: String) -> void:
+	var llm: Node = autoload("LLMManager")
+	for i: int in count:
+		if outcome == "failed":
+			llm.decision_failed.emit(component.get_instance_id(), "HTTP 500")
+		elif outcome == "none":
+			llm.decision_received.emit(component.get_instance_id(), [] as Array[Dictionary])
+		else:
+			llm.decision_received.emit(component.get_instance_id(), [{"name": "set_enabled", "args": {"on": true}}] as Array[Dictionary])
+
+
 func test_default_range_and_nearby_machines_listed() -> void:
 	var orchestrator: Orchestrator = _put("orchestrator", Vector2i(10, 10), 1) as Orchestrator
 	check_eq(orchestrator.range_cells, Orchestrator.DEFAULT_RANGE, "default range")
@@ -244,3 +266,120 @@ func test_range_and_ownership_persist_across_save_and_load() -> void:
 	var component: ChipComponent = restored_miner.get_chip(chip.id)
 	check(component != null, "the assigned chip is restored")
 	check_eq(component.assigned_by, restored_orchestrator.machine_id, "ownership restored by matching machine id")
+
+
+## GR2-18: creating and revising its own chips.
+
+func test_create_chip_adds_to_the_registry_owned_by_this_orchestrator() -> void:
+	var orchestrator: Orchestrator = _put("orchestrator", Vector2i(5, 5), 1) as Orchestrator
+	check(orchestrator.apply_tool_call("create_chip", {"name": "generated", "description": "d", "prompt": "p"}), "creation applied")
+	var created: ChipRessource = _created("generated")
+	check(created != null, "the chip exists in the registry")
+	check_eq(created.created_by, orchestrator.machine_id, "ownership recorded on the chip resource")
+	check_eq(created.prompt, "p", "prompt stored")
+	var available: Array = orchestrator.get_state()["available_chips"]
+	var mine: Array = available.filter(func(entry: Dictionary) -> bool: return entry["id"] == created.id and entry["mine"])
+	check_eq(mine.size(), 1, "available_chips marks it mine")
+
+
+func test_create_chip_refused_for_empty_or_duplicate_name() -> void:
+	var orchestrator: Orchestrator = _put("orchestrator", Vector2i(5, 5), 1) as Orchestrator
+	check(not orchestrator.create_chip("", "d", "p"), "empty name refused")
+	_chip("dup_name")
+	check(not orchestrator.create_chip("dup_name", "d", "p"), "duplicate name refused")
+
+
+func test_created_chip_can_be_assigned_like_any_other() -> void:
+	var orchestrator: Orchestrator = _put("orchestrator", Vector2i(5, 5), 1) as Orchestrator
+	var miner: Machine = _put("miner", Vector2i(6, 5), 2)
+	check(orchestrator.create_chip("generated_assign", "d", "p"), "created")
+	var created: ChipRessource = _created("generated_assign")
+	check(orchestrator.assign_chip(miner.machine_id, created.id), "assignable like any registry chip")
+	check_eq(miner.get_chip(created.id).assigned_by, orchestrator.machine_id, "assignment ownership recorded too")
+
+
+func test_revise_chip_refused_without_enough_evidence() -> void:
+	var orchestrator: Orchestrator = _put("orchestrator", Vector2i(5, 5), 1) as Orchestrator
+	var miner: Machine = _put("miner", Vector2i(6, 5), 2)
+	orchestrator.create_chip("revise_target", "d", "p")
+	var chip: ChipRessource = _created("revise_target")
+	orchestrator.assign_chip(miner.machine_id, chip.id)
+	_give_evidence(miner.get_chip(chip.id), Orchestrator.MIN_REVISION_EVIDENCE - 1, "failed")
+	check(not orchestrator.revise_chip(chip.id, "new d", "new p"), "not enough evidence yet")
+	check_eq(chip.prompt, "p", "prompt unchanged")
+
+
+func test_revise_chip_succeeds_with_enough_evidence_and_keeps_the_name() -> void:
+	var orchestrator: Orchestrator = _put("orchestrator", Vector2i(5, 5), 1) as Orchestrator
+	var miner: Machine = _put("miner", Vector2i(6, 5), 2)
+	orchestrator.create_chip("revise_ok", "d", "p")
+	var chip: ChipRessource = _created("revise_ok")
+	orchestrator.assign_chip(miner.machine_id, chip.id)
+	_give_evidence(miner.get_chip(chip.id), Orchestrator.MIN_REVISION_EVIDENCE, "failed")
+	check(orchestrator.revise_chip(chip.id, "new d", "new p"), "revision applied")
+	check_eq(chip.name, "revise_ok", "name unchanged")
+	check_eq(chip.description, "new d", "description updated")
+	check_eq(chip.prompt, "new p", "prompt updated")
+
+
+func test_revise_chip_refused_during_cooldown_right_after_a_revision() -> void:
+	var orchestrator: Orchestrator = _put("orchestrator", Vector2i(5, 5), 1) as Orchestrator
+	var miner: Machine = _put("miner", Vector2i(6, 5), 2)
+	orchestrator.create_chip("revise_cooldown", "d", "p")
+	var chip: ChipRessource = _created("revise_cooldown")
+	orchestrator.assign_chip(miner.machine_id, chip.id)
+	var component: ChipComponent = miner.get_chip(chip.id)
+	_give_evidence(component, Orchestrator.MIN_REVISION_EVIDENCE, "failed")
+	check(orchestrator.revise_chip(chip.id, "new d", "new p"), "first revision applied")
+	_give_evidence(component, Orchestrator.MIN_REVISION_EVIDENCE, "failed")
+	check(not orchestrator.revise_chip(chip.id, "again", "again"), "too soon after the last revision")
+	check_eq(chip.prompt, "new p", "the first revision's prompt stands")
+
+
+func test_revise_chip_refused_for_a_chip_it_did_not_create() -> void:
+	var orchestrator: Orchestrator = _put("orchestrator", Vector2i(5, 5), 1) as Orchestrator
+	var miner: Machine = _put("miner", Vector2i(6, 5), 2)
+	var player_chip: ChipRessource = _chip("player_owned_prompt")
+	miner.attach_chip(player_chip.id)
+	_give_evidence(miner.get_chip(player_chip.id), Orchestrator.MIN_REVISION_EVIDENCE, "failed")
+	check(not orchestrator.revise_chip(player_chip.id, "new d", "new p"), "a player-authored chip is never revised")
+	check_eq(player_chip.prompt, "p", "untouched")
+
+
+func test_player_edit_claims_a_generated_chip_from_further_revision() -> void:
+	var orchestrator: Orchestrator = _put("orchestrator", Vector2i(5, 5), 1) as Orchestrator
+	var miner: Machine = _put("miner", Vector2i(6, 5), 2)
+	orchestrator.create_chip("claimed", "d", "p")
+	var chip: ChipRessource = _created("claimed")
+	orchestrator.assign_chip(miner.machine_id, chip.id)
+	_give_evidence(miner.get_chip(chip.id), Orchestrator.MIN_REVISION_EVIDENCE, "failed")
+	check(_registry.update(chip.id, "claimed", "edited by player", "edited prompt"), "the player saves an edit")
+	check_eq(chip.created_by, 0, "ownership released to the player")
+	check(not orchestrator.revise_chip(chip.id, "attempted", "attempted"), "the Orchestrator can no longer revise it")
+	check_eq(chip.prompt, "edited prompt", "the player's edit stands")
+
+
+func test_discard_releases_created_chips_too() -> void:
+	var orchestrator: Orchestrator = _put("orchestrator", Vector2i(5, 5), 1) as Orchestrator
+	orchestrator.create_chip("released_on_discard", "d", "p")
+	var chip: ChipRessource = _created("released_on_discard")
+	_nodes.erase(orchestrator)
+	orchestrator.discard()
+	check_eq(chip.created_by, 0, "no longer locked to the deleted Orchestrator")
+
+
+func test_assign_remove_create_revise_flash_the_management_icon() -> void:
+	var orchestrator: Orchestrator = _put("orchestrator", Vector2i(5, 5), 1) as Orchestrator
+	var miner: Machine = _put("miner", Vector2i(6, 5), 2)
+	orchestrator.indicator.result_seconds = 999.0
+	miner.indicator.result_seconds = 999.0
+	check(orchestrator.create_chip("flash_created", "d", "p"), "created")
+	check_eq(orchestrator.indicator.state, "managed_created", "flash on itself for a creation")
+	var chip: ChipRessource = _created("flash_created")
+	check(orchestrator.assign_chip(miner.machine_id, chip.id), "assigned")
+	check_eq(miner.indicator.state, "managed_assigned", "flash on the target for an assignment")
+	_give_evidence(miner.get_chip(chip.id), Orchestrator.MIN_REVISION_EVIDENCE, "failed")
+	check(orchestrator.revise_chip(chip.id, "d2", "p2"), "revised")
+	check_eq(miner.indicator.state, "managed_revised", "flash on the machine running the revised chip")
+	check(orchestrator.remove_chip(miner.machine_id), "removed")
+	check_eq(miner.indicator.state, "managed_removed", "flash on the target for a removal")

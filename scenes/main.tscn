@@ -90,6 +90,29 @@ layout_mode = 2
 unique_name_in_owner = true
 layout_mode = 2
 
+[node name="OrderStatus" type="PanelContainer" parent="Game/Bar/VBoxContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="OrderRow" type="HBoxContainer" parent="Game/Bar/VBoxContainer/OrderStatus"]
+layout_mode = 2
+
+[node name="OrderIcon" type="TextureRect" parent="Game/Bar/VBoxContainer/OrderStatus/OrderRow"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="OrderProgressLabel" type="Label" parent="Game/Bar/VBoxContainer/OrderStatus/OrderRow"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="OrderRewardIcon" type="TextureRect" parent="Game/Bar/VBoxContainer/OrderStatus/OrderRow"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="OrderRewardLabel" type="Label" parent="Game/Bar/VBoxContainer/OrderStatus/OrderRow"]
+unique_name_in_owner = true
+layout_mode = 2
+
 [node name="TopHalf" type="VBoxContainer" parent="Game/Bar/VBoxContainer" unique_id=1187879507]
 layout_mode = 2
 size_flags_vertical = 3

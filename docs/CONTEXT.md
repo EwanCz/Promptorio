@@ -42,6 +42,7 @@ Main (Node)
 │  └─ Bar (PanelContainer, size_flags_stretch_ratio 1)
 │     └─ VBoxContainer
 │        ├─ KeyStatus (API key state as key icon + badge, hidden for mock)
+│        ├─ OrderStatus (current order: resource icon, progress "N/M", reward coin + amount)
 │        ├─ TopHalf (VBoxContainer, top half of the Bar)
 │        │  ├─ PageTabs (HFlowContainer of page markers at the top)
 │        │  └─ PageScroll (ScrollContainer)
