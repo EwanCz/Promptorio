@@ -17,7 +17,8 @@ const MINESITE_TILE: Vector2i = Vector2i(4, 0)
 const BIOME_TILES: Array[Vector2i] = [DIRT_TILE, ROCK_TILE, GRASS_TILE]
 ## One cluster grows from each seed cell (every other cell joins its nearest seed), so the ground reads
 ## as contiguous dirt/rock/grass patches instead of a single tile repeated everywhere.
-const BIOME_SEED_COUNT: int = 16
+const BIOME_SEEDS_MIN: int = 7
+const BIOME_SEEDS_MAX: int = 12
 ## Checked in this order for the one neighbor (if any) a non-grass cell blends into; a cell between two
 ## foreign biomes (a corner) just gets whichever of these is checked first, not a dedicated corner tile.
 const EDGE_DIRECTIONS: Array[Vector2i] = [Vector2i.UP, Vector2i.DOWN, Vector2i.RIGHT, Vector2i.LEFT]
@@ -204,10 +205,15 @@ func _build_ground() -> void:
 ## turns a dirt or rock cell touching grass into the matching edge tile, oriented toward the grass side.
 func _generate_ground(rng: RandomNumberGenerator) -> Dictionary:
 	var seeds: Array = []
-	for i: int in BIOME_SEED_COUNT:
+	var used_cells: Dictionary = {}
+	for i: int in rng.randi_range(BIOME_SEEDS_MIN, BIOME_SEEDS_MAX):
+		var seed_cell: Vector2i = Vector2i(rng.randi_range(0, GameState.GRID_SIZE.x - 1), rng.randi_range(0, GameState.GRID_SIZE.y - 1))
+		while used_cells.has(seed_cell):
+			seed_cell = Vector2i(rng.randi_range(0, GameState.GRID_SIZE.x - 1), rng.randi_range(0, GameState.GRID_SIZE.y - 1))
+		used_cells[seed_cell] = true
 		seeds.append({
-			"cell": Vector2i(rng.randi_range(0, GameState.GRID_SIZE.x - 1), rng.randi_range(0, GameState.GRID_SIZE.y - 1)),
-			"biome": BIOME_TILES[rng.randi() % BIOME_TILES.size()],
+			"cell": seed_cell,
+			"biome": BIOME_TILES[i] if i < BIOME_TILES.size() else BIOME_TILES[rng.randi() % BIOME_TILES.size()],
 		})
 	var ground: Dictionary = {}
 	for x: int in GameState.GRID_SIZE.x:

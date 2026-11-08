@@ -51,6 +51,25 @@ func test_ground_has_multiple_contiguous_biomes() -> void:
 	check(float(same_biome) / float(checked) > 0.6, "most neighbors of a biome cell share its biome (contiguous clusters): %d/%d" % [same_biome, checked])
 
 
+func test_every_biome_appears_across_seeded_maps() -> void:
+	var missing: Array[int] = []
+	for seed_value: int in 100:
+		var rng: RandomNumberGenerator = RandomNumberGenerator.new()
+		rng.seed = seed_value
+		var ground: Dictionary = _grid._generate_ground(rng)
+		var found: Dictionary = {}
+		for cell: Vector2i in ground:
+			var tile: Vector2i = ground[cell]["atlas"]
+			if tile == GridMap2D.DIRT_GRASS_EDGE:
+				tile = GridMap2D.DIRT_TILE
+			elif tile == GridMap2D.ROCK_GRASS_EDGE:
+				tile = GridMap2D.ROCK_TILE
+			found[tile] = true
+		if not (found.has(GridMap2D.DIRT_TILE) and found.has(GridMap2D.ROCK_TILE) and found.has(GridMap2D.GRASS_TILE)):
+			missing.append(seed_value)
+	check_eq(missing, [], "every seeded map contains all three biomes")
+
+
 func test_ground_biomes_are_randomized_per_build() -> void:
 	_grid._build_ground()
 	var first: Dictionary = _grid._ground.duplicate(true)
@@ -87,6 +106,14 @@ func test_minesite_art_does_not_replace_terrain_corner() -> void:
 	check(GridMap2D.MINESITE_TILE != Vector2i(2, 1), "minesite and dirt/grass corner use different atlas cells")
 	check(atlas.has_tile(GridMap2D.MINESITE_TILE), "minesite art exists in the atlas")
 	check(atlas.has_tile(Vector2i(2, 1)) and atlas.has_tile(Vector2i(3, 1)), "both terrain corners remain available")
+	var image: Image = atlas.texture.get_image()
+	var origin: Vector2i = GridMap2D.MINESITE_TILE * atlas.texture_region_size
+	var opaque: int = 0
+	for x: int in atlas.texture_region_size.x:
+		for y: int in atlas.texture_region_size.y:
+			if image.get_pixel(origin.x + x, origin.y + y).a > 0.0:
+				opaque += 1
+	check(opaque > 0, "minesite artwork is visible, not an empty atlas cell")
 
 
 func test_minesites() -> void:

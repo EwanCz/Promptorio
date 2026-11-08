@@ -8,7 +8,7 @@
 | 1:0 | rock | Cropped from the same CC0 pack |
 | 2:0 | grass | Drawn for this project (procedural pixel fill using the grass palette sampled from the CC0 pack above) |
 | 3:0 | rock/dirt straight edge (rock above, dirt below) | Composited from the 0:0 and 1:0 tiles above, using the same border shape as the 0:1 edge tile |
-| 4:0 | minesite (ore vein in rock) | Drawn for this project: the rock tile recolored to an amber/copper ore palette |
+| 4:0 | minesite (ore vein in rock) | Drawn for this project: the rock tile with procedural silver/copper flecks |
 | 0:1 | dirt/grass straight edge (grass above, dirt below) | Cropped from the same CC0 pack |
 | 1:1 | rock/grass straight edge (grass above, rock below) | Composited from the 1:0 and 2:0 tiles above, using the border shape cut from the 0:1 edge tile (the originally committed 1:1 tile was a mis-cropped plain rock tile with no grass at all — this replaces it) |
 | 2:1 | dirt/grass outer corner (grass wraps the top-left corner) | Composited from the 0:0 and 2:0 tiles above, using an L-shaped border built by combining the 0:1 edge border with a 90°-rotated copy of itself |

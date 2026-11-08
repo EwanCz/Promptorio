@@ -51,6 +51,7 @@ render_target_update_mode = 4
 
 [node name="GridMap2D" type="TileMapLayer" parent="Game/FactoryView/SubViewport/World" unique_id=209097729]
 unique_name_in_owner = true
+texture_filter = 1
 tile_set = ExtResource("1_tileset")
 script = ExtResource("2_grid")
 
