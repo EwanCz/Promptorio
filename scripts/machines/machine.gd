@@ -32,6 +32,11 @@ var chips: Array[ChipComponent] = []
 ## The icon above the machine: a spinner while any chip waits for an answer, then the last result.
 var indicator: ChipIndicator
 
+## Where the sprite rests for the current facing, and the temporary offset an effect (the Smelter's shake)
+## adds on top. The sprite always sits at home + offset, so an offset never accumulates or fights a rotation.
+var _sprite_home: Vector2 = Vector2.ZERO
+var _sprite_offset: Vector2 = Vector2.ZERO
+
 @onready var _label: Label = get_node_or_null("StatusLabel") as Label
 @onready var _sprite: Sprite2D = get_node_or_null("Sprite2D") as Sprite2D
 
@@ -183,13 +188,20 @@ func _update_sprite() -> void:
 		return
 	_sprite.texture = back_texture if facing == Vector2i.UP and back_texture != null else front_texture
 	_sprite.rotation = 0.0
-	_sprite.position = Vector2.ZERO
+	_sprite_home = Vector2.ZERO
 	if turn_front_sideways and facing.y == 0:
 		# The front art has its doorway at the bottom. The sprite turns around its top-left corner,
 		# so it is moved back over the cell: right is a quarter turn counter-clockwise, left clockwise.
 		var span: Vector2 = front_texture.get_size() * _sprite.scale
 		_sprite.rotation = -PI / 2.0 if facing == Vector2i.RIGHT else PI / 2.0
-		_sprite.position = Vector2(0.0, span.y) if facing == Vector2i.RIGHT else Vector2(span.x, 0.0)
+		_sprite_home = Vector2(0.0, span.y) if facing == Vector2i.RIGHT else Vector2(span.x, 0.0)
+	_place_sprite()
+
+
+## Puts the sprite at its home position plus the current offset.
+func _place_sprite() -> void:
+	if _sprite != null:
+		_sprite.position = _sprite_home + _sprite_offset
 
 
 ## Text drawn over the machine. Empty by default: the machine's name is not shown there.

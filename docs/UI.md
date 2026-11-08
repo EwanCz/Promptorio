@@ -30,6 +30,9 @@ Runtime status is shown with icons, not persistent text. Keep text where it carr
 - Placement refusal in the Build page: a coin icon for insufficient funds, a red dash for any other refusal, reason on hover.
 - Chip log: an icon timeline (see "Chip log").
 
+## Smelter heat feedback on the map
+Besides the red tint, the Smelter art trembles as it approaches the 150° explosion: nothing below 100° (the overheating line), almost imperceptible until about 120°, a clear one near the end (at most 4 px on a 64 px cell, at 150°). It eases off as the Smelter cools and stops when it explodes. It moves the art only, never the machine or its cell. See `docs/PLAN.md`, "Smelter temperature".
+
 ## Machine tooltip
 The Bar is split in two halves of equal height, with the Settings button below them at the very bottom:
 - Top half: the page tabs (Build / Chip Registry) and the current page inside a scroll container, so a long list scrolls instead of growing the Bar.

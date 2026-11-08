@@ -23,6 +23,11 @@ const EXPLODE_AT: float = 150.0
 ## The art starts to redden at TINT_FROM and is fully HOT_COLOR at EXPLODE_AT.
 const TINT_FROM: float = 60.0
 const HOT_COLOR: Color = Color(1.0, 0.15, 0.1)
+## The art trembles only from SHAKE_FROM (the overheating line) up to SHAKE_MAX_PIXELS at EXPLODE_AT, and
+## almost imperceptibly until about 120 degrees (cubic growth).
+const SHAKE_FROM: float = 100.0
+const SHAKE_MAX_PIXELS: float = 4.0
+const SHAKE_HZ: float = 25.0
 const EXPLOSION_SECONDS: float = 0.6
 const FLASH_COLOR: Color = Color(3.0, 2.2, 0.8)
 
@@ -31,6 +36,36 @@ var cooling: bool = false
 ## True while the smelter is stopped by set_emergency_stop(on=true). Any set_enabled call clears it, so a
 ## pause from another chip is never mistaken for the emergency stop.
 var emergency_stop: bool = false
+
+var _shake_time: float = 0.0
+
+
+## How far the art may move at this temperature, in pixels: 0 up to SHAKE_FROM, then growing smoothly
+## and slowly at first (cubic: about 0.26 px at 120, 1.4 px at 135) to SHAKE_MAX_PIXELS at EXPLODE_AT.
+static func shake_amplitude(heat: float) -> float:
+	var fraction: float = clampf(inverse_lerp(SHAKE_FROM, EXPLODE_AT, heat), 0.0, 1.0)
+	return SHAKE_MAX_PIXELS * fraction * fraction * fraction
+
+
+func _process(delta: float) -> void:
+	_shake_time += delta
+	_set_shake(shake_offset(_shake_time))
+
+
+## The art's offset at `time`: a quick wobble of the current amplitude, none once the smelter is down
+## (the explosion plays on the art's own position).
+func shake_offset(time: float) -> Vector2:
+	var amplitude: float = 0.0 if status == Status.DOWN else shake_amplitude(temperature)
+	if amplitude <= 0.0:
+		return Vector2.ZERO
+	var phase: float = time * SHAKE_HZ * TAU
+	return Vector2(sin(phase), cos(phase * 0.83 + 1.3)) * amplitude
+
+
+func _set_shake(offset: Vector2) -> void:
+	if offset != _sprite_offset:
+		_sprite_offset = offset
+		_place_sprite()
 
 
 func _own_tool_schemas() -> Array:
@@ -103,6 +138,7 @@ func _explode() -> void:
 	clear_contents()
 	log_chip("exploded at %d°" % roundi(temperature))
 	EventBus.machine_exploded.emit(self)
+	_set_shake(Vector2.ZERO)
 	_play_explosion()
 
 
