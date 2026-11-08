@@ -25,6 +25,70 @@ func test_every_cell_has_a_tile() -> void:
 	check_eq(_grid.get_cell_source_id(size), -1, "no tile outside the grid")
 
 
+func test_ground_has_multiple_contiguous_biomes() -> void:
+	var rng: RandomNumberGenerator = RandomNumberGenerator.new()
+	rng.seed = 42
+	var ground: Dictionary = _grid._generate_ground(rng)
+	var biomes: Dictionary = {}
+	for cell: Vector2i in ground:
+		biomes[ground[cell]["atlas"]] = true
+	check(biomes.size() >= 2, "more than one ground tile is used, not a single tile repeated everywhere: %s" % [biomes.keys()])
+	# Clustering: a pure-biome cell shares its biome with most of its neighbors most of the time,
+	# which random per-cell noise (one of 3 types independently per cell) would not produce.
+	var same_biome: int = 0
+	var checked: int = 0
+	for cell: Vector2i in ground:
+		var biome: Vector2i = ground[cell]["atlas"]
+		if biome != GridMap2D.DIRT_TILE and biome != GridMap2D.ROCK_TILE and biome != GridMap2D.GRASS_TILE:
+			continue
+		for direction: Vector2i in [Vector2i.RIGHT, Vector2i.DOWN]:
+			var neighbor: Variant = ground.get(cell + direction)
+			if neighbor == null:
+				continue
+			checked += 1
+			if neighbor["atlas"] == biome:
+				same_biome += 1
+	check(float(same_biome) / float(checked) > 0.6, "most neighbors of a biome cell share its biome (contiguous clusters): %d/%d" % [same_biome, checked])
+
+
+func test_ground_biomes_are_randomized_per_build() -> void:
+	_grid._build_ground()
+	var first: Dictionary = _grid._ground.duplicate(true)
+	_grid._build_ground()
+	var second: Dictionary = _grid._ground.duplicate(true)
+	var differs: bool = false
+	for cell: Vector2i in first:
+		if first[cell]["atlas"] != second[cell]["atlas"] or first[cell]["alt"] != second[cell]["alt"]:
+			differs = true
+			break
+	check(differs, "building the map again draws a different ground layout")
+
+
+func test_minesite_restores_its_ground_tile_including_edge_art() -> void:
+	_grid._build_ground()
+	var edge_cell: Vector2i = Vector2i.ZERO
+	_grid._ground[edge_cell] = {"atlas": GridMap2D.DIRT_GRASS_EDGE, "alt": TileSetAtlasSource.TRANSFORM_FLIP_V}
+	var before: Dictionary = _grid._ground[edge_cell].duplicate()
+	var with_edge_cell: Array[Vector2i] = _grid.minesites.duplicate()
+	with_edge_cell.append(edge_cell)
+	_grid.set_minesites(with_edge_cell)
+	check(_grid.is_minesite(edge_cell), "the cell became a minesite")
+	var without_edge_cell: Array[Vector2i] = []
+	for c: Vector2i in _grid.minesites:
+		if c != edge_cell:
+			without_edge_cell.append(c)
+	_grid.set_minesites(without_edge_cell)
+	check_eq(_grid.get_cell_atlas_coords(edge_cell), before["atlas"], "its edge art is restored")
+	check_eq(_grid.get_cell_alternative_tile(edge_cell), before["alt"], "with the same orientation")
+
+
+func test_minesite_art_does_not_replace_terrain_corner() -> void:
+	var atlas: TileSetAtlasSource = _grid.tile_set.get_source(GridMap2D.SOURCE_ID)
+	check(GridMap2D.MINESITE_TILE != Vector2i(2, 1), "minesite and dirt/grass corner use different atlas cells")
+	check(atlas.has_tile(GridMap2D.MINESITE_TILE), "minesite art exists in the atlas")
+	check(atlas.has_tile(Vector2i(2, 1)) and atlas.has_tile(Vector2i(3, 1)), "both terrain corners remain available")
+
+
 func test_minesites() -> void:
 	_grid._build_ground()
 	check_eq(_grid.minesites.size(), GridMap2D.MINESITE_GROUPS * GridMap2D.GROUP_SIZE, "every minesite is listed")

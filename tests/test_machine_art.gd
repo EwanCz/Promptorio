@@ -101,6 +101,17 @@ func test_rotating_cycles_the_art() -> void:
 	check(seen[3] == machine.front_texture, "and ends on the front again (facing right)")
 
 
+func test_rotating_a_miner_cycles_its_art_too() -> void:
+	var machine: Machine = _spawn("miner")
+	var seen: Array[Texture2D] = []
+	for i: int in 4:
+		machine.rotate_facing()
+		seen.append(_sprite(machine).texture)
+	check(seen[0] == machine.front_texture and seen[1] == machine.front_texture, "down and left show the front")
+	check(seen[2] == machine.back_texture, "a full turn passes through up, which shows the back")
+	check(seen[3] == machine.front_texture, "and ends on the front again (facing right)")
+
+
 func test_art_follows_a_facing_set_before_the_machine_enters_the_tree() -> void:
 	var machine: Machine = _spawn("assembler", Vector2i.UP)
 	check(_sprite(machine).texture == machine.back_texture, "placement-style spawn facing up shows the back")

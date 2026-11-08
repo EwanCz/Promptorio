@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://b6o7awrl7vegq"]
 
-[ext_resource type="TileSet" path="res://data/tilesets/factory_tileset.tres" id="1_tileset"]
+[ext_resource type="TileSet" path="res://data/tilesets/natural_tileset.tres" id="1_tileset"]
 [ext_resource type="Script" uid="uid://b8oeeol4bsmyo" path="res://scripts/world/grid_map_2d.gd" id="2_grid"]
 [ext_resource type="Script" uid="uid://de246c1obg1pv" path="res://scripts/world/camera.gd" id="3_camera"]
 [ext_resource type="Script" uid="uid://wkjx42pv5064" path="res://scripts/ui/main.gd" id="4_main"]
