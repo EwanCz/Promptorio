@@ -37,8 +37,6 @@ extends Machine
 const RANGE_MIN: int = 1
 const RANGE_MAX: int = 8
 const DEFAULT_RANGE: int = 4
-## Marks the art as "not an ordinary production machine"; no new art asset for this prototype.
-const TINT: Color = Color(0.68, 0.58, 0.95)
 ## Decisions (outcome_counts() total) a created chip needs, summed over every machine in range currently
 ## running it, before revise_chip accepts a change: enough to see a pattern, not just one bad answer.
 const MIN_REVISION_EVIDENCE: int = 5
@@ -50,12 +48,6 @@ var range_cells: int = DEFAULT_RANGE
 ## chip_id -> the tick revise_chip last succeeded on it. Not saved: a reload may let a revision happen
 ## sooner than the cooldown would otherwise allow, a minor restart quirk rather than a real exploit.
 var _last_revision_tick: Dictionary = {}
-
-
-func _ready() -> void:
-	super._ready()
-	if _sprite != null:
-		_sprite.modulate = TINT
 
 
 func can_rotate() -> bool:
