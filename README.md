@@ -85,6 +85,7 @@ Requires the `godot` binary on your `PATH` (or set `GODOT=/path/to/godot`). The 
 ## Project documentation
 
 - [`docs/CONTEXT.md`](docs/CONTEXT.md) — architecture, coding conventions and the async HTTP rules (also the brief used by coding agents working on this repo, via `AGENTS.md` / `CLAUDE.md`).
+- [`docs/TECHNICAL.md`](docs/TECHNICAL.md) — technical overview: how the in-game AI agents work (chips, `LLMManager`, providers, tools, Orchestrator) and how we used development agents (superfliX).
 - [`docs/PLAN.md`](docs/PLAN.md) — project goals, decisions and open risks.
 - [`docs/IMPLEMENTATION.md`](docs/IMPLEMENTATION.md) — detailed reference of implemented features, the resource catalog and the AI tool inventory.
 - [`docs/UI.md`](docs/UI.md) — UI layout and visual feedback rules.
