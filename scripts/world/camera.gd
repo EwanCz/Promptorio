@@ -13,6 +13,7 @@ var _auto_fit: bool = true
 
 
 func _ready() -> void:
+	Sfx.set_listener(self)
 	get_viewport().size_changed.connect(_on_viewport_resized)
 	fit_to_grid()
 

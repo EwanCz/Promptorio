@@ -2,6 +2,9 @@ class_name Collector
 extends Machine
 ## Accepts every resource of the catalog and sells it for its price.
 
+## One item was sold for `price`.
+signal item_sold(item: String, price: int)
+
 ## Ticks a just-sold pulse stays on for is_producing(), so a sale reads as a brief burst rather than a flicker.
 const PULSE_TICKS: int = 3
 
@@ -21,6 +24,7 @@ func receive(item: String) -> bool:
 	sold += 1
 	earned += price
 	_pulse_left = PULSE_TICKS
+	item_sold.emit(item, price)
 	return true
 
 

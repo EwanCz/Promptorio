@@ -5,6 +5,8 @@ extends PanelContainer
 ## cell is clicked or the machine goes away.
 
 signal log_requested(machine: Machine)
+## The player destroyed a machine; `world_position` is where it stood (its cell center).
+signal machine_destroyed(world_position: Vector2)
 
 const NAME_MIN_WIDTH: int = 80
 ## Resource art is 32 px: shown as it is.
@@ -36,6 +38,11 @@ var _machine: Machine = null
 @onready var _picker: OptionButton = %ChipPicker
 @onready var _add_button: Button = %AddButton
 @onready var _log_button: Button = %LogButton
+@onready var _predefined_list: VBoxContainer = %PredefinedList
+@onready var _predefined_row: HBoxContainer = %PredefinedRow
+@onready var _predefined_icon: TextureRect = %PredefinedIcon
+@onready var _predefined_picker: OptionButton = %PredefinedPicker
+@onready var _add_predefined_button: Button = %AddPredefinedButton
 
 
 func _ready() -> void:
@@ -51,28 +58,36 @@ func _ready() -> void:
 	Icons.apply_button(_add_button, "add", "Add the chosen chip")
 	Icons.apply_button(_log_button, "log", "Chip log")
 	_picker.tooltip_text = "Chip to add"
+	Icons.apply(_predefined_icon, "settings", "Predefined behavior: a fixed, canned schedule — no AI, no prompt, no network")
+	_predefined_picker.tooltip_text = "Predefined behavior to add (no AI)"
+	Icons.apply_button(_add_predefined_button, "add", "Add the chosen predefined behavior (no AI)")
 	_rotate_button.pressed.connect(_on_rotate_pressed)
 	_destroy_button.pressed.connect(_on_destroy_pressed)
 	_add_button.pressed.connect(_on_add_pressed)
 	_log_button.pressed.connect(_on_log_pressed)
+	_add_predefined_button.pressed.connect(_on_add_predefined_pressed)
 
 
 func open(machine: Machine) -> void:
 	if _machine != null and is_instance_valid(_machine):
 		_machine.chips_changed.disconnect(_refresh_chips)
+		_machine.predefined_behaviors_changed.disconnect(_refresh_predefined_behaviors)
 	_machine = machine
 	_machine.chips_changed.connect(_refresh_chips)
+	_machine.predefined_behaviors_changed.connect(_refresh_predefined_behaviors)
 	_id_label.text = "%s #%d" % [machine.machine_type.capitalize(), machine.machine_id]
 	_rotate_button.visible = machine.can_rotate()
 	_destroy_button.visible = machine.is_removable()
 	_show_details(true)
 	_refresh_status()
 	_refresh_chips()
+	_refresh_predefined_behaviors()
 
 
 func close() -> void:
 	if _machine != null and is_instance_valid(_machine):
 		_machine.chips_changed.disconnect(_refresh_chips)
+		_machine.predefined_behaviors_changed.disconnect(_refresh_predefined_behaviors)
 	_machine = null
 	_show_details(false)
 
@@ -292,6 +307,44 @@ func _make_row(component: ChipComponent) -> Control:
 	return box
 
 
+## Offered only for machine types PredefinedBehaviors has an entry for (Miner, Smelter as of GR2-6):
+## hidden entirely for a machine type with none, so there is nothing dead to show on, say, a Collector.
+func _refresh_predefined_behaviors() -> void:
+	for row: Node in _predefined_list.get_children():
+		_predefined_list.remove_child(row)
+		row.queue_free()
+	for component: PredefinedBehaviorComponent in _machine.predefined_behaviors:
+		_predefined_list.add_child(_make_predefined_row(component))
+	var available: Array = PredefinedBehaviors.for_machine_type(_machine.machine_type)
+	_predefined_row.visible = not available.is_empty()
+	_predefined_picker.clear()
+	for behavior: Dictionary in available:
+		if _machine.get_predefined_behavior(int(behavior.get("id", 0))) == null:
+			_predefined_picker.add_item(String(behavior.get("name", "")), int(behavior.get("id", 0)))
+	_add_predefined_button.disabled = _predefined_picker.item_count == 0
+
+
+## One predefined behavior: its name (hover for its description, not a prompt), a gear badge marking it
+## canned/no-AI, and remove. No timer control: its schedule is fixed, not a chip setting a player tunes.
+func _make_predefined_row(component: PredefinedBehaviorComponent) -> Control:
+	var row: HFlowContainer = HFlowContainer.new()
+	var behavior_name: Label = Label.new()
+	behavior_name.name = "Name"
+	behavior_name.text = component.behavior_name
+	behavior_name.tooltip_text = component.behavior_description
+	behavior_name.mouse_filter = Control.MOUSE_FILTER_STOP
+	behavior_name.custom_minimum_size.x = NAME_MIN_WIDTH
+	behavior_name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	behavior_name.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	row.add_child(behavior_name)
+	row.add_child(Icons.rect("settings", "Predefined behavior: fixed, no AI, offline"))
+	var remove: Button = Icons.button("remove", "Remove this predefined behavior")
+	remove.name = "Remove"
+	remove.pressed.connect(_on_remove_predefined_pressed.bind(component))
+	row.add_child(remove)
+	return row
+
+
 func _on_machine_selected(machine: Node) -> void:
 	if machine == null or machine == _machine:
 		close()
@@ -321,9 +374,11 @@ func _on_rotate_pressed() -> void:
 func _on_destroy_pressed() -> void:
 	var machine: Machine = _machine
 	var refund: int = Placement.refund_for(machine.machine_type)
+	var center: Vector2 = machine.global_position + Vector2.ONE * (GameState.CELL_SIZE / 2.0)
 	close()
 	if machine.destroy():
 		GameState.add_money(refund)
+		machine_destroyed.emit(center)
 
 
 func _on_registry_changed(_chip: Resource) -> void:
@@ -339,6 +394,16 @@ func _on_add_pressed() -> void:
 func _on_remove_pressed(component: ChipComponent) -> void:
 	_machine.detach_chip(component.chip.id)
 	_refresh_chips()
+
+
+func _on_add_predefined_pressed() -> void:
+	if _machine.attach_predefined_behavior(_predefined_picker.get_selected_id()) != null:
+		_refresh_predefined_behaviors()
+
+
+func _on_remove_predefined_pressed(component: PredefinedBehaviorComponent) -> void:
+	_machine.detach_predefined_behavior(component.behavior_id)
+	_refresh_predefined_behaviors()
 
 
 func _on_ask_pressed(component: ChipComponent) -> void:

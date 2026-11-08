@@ -4,6 +4,7 @@ extends Node
 
 const PATH: String = "user://settings.cfg"
 const SECTION: String = "llm"
+const AUDIO_SECTION: String = "audio"
 ## .env variable holding each provider's key.
 const ENV_VARS: Dictionary = {"anthropic": "ANTHROPIC_API_KEY", "openai": "OPENAI_API_KEY"}
 ## Optional dev override of a provider's origin (a relay), from the process environment or .env.
@@ -26,6 +27,10 @@ var max_concurrency: int = 4
 var request_timeout: float = 20.0
 var chip_cooldown: float = 5.0
 var max_tokens: int = 300
+## Audio, 0..1 linear (0 = silent). Master scales everything, SFX only the effects bus. `muted` silences all buses.
+var master_volume: float = 0.8
+var sfx_volume: float = 1.0
+var muted: bool = false
 ## Dev key file at the project root. Tests point it elsewhere.
 var env_path: String = "res://.env"
 
@@ -37,6 +42,7 @@ var _env: Dictionary = {}
 
 func _ready() -> void:
 	load_settings()
+	apply_audio()
 	if OS.has_feature("editor"):
 		load_env()
 
@@ -133,6 +139,11 @@ func load_settings() -> void:
 	request_timeout = clampf(cfg.get_value(SECTION, "request_timeout", request_timeout), 1.0, 120.0)
 	chip_cooldown = clampf(cfg.get_value(SECTION, "chip_cooldown", chip_cooldown), 0.0, 600.0)
 	max_tokens = clampi(cfg.get_value(SECTION, "max_tokens", max_tokens), 16, 300)
+	# A config file is not trusted: a wrong type or NaN falls back to the default, a number out of range is clamped.
+	master_volume = _volume_from(cfg.get_value(AUDIO_SECTION, "master_volume", 0.8), 0.8)
+	sfx_volume = _volume_from(cfg.get_value(AUDIO_SECTION, "sfx_volume", 1.0), 1.0)
+	var saved_muted: Variant = cfg.get_value(AUDIO_SECTION, "muted", false)
+	muted = saved_muted if typeof(saved_muted) == TYPE_BOOL else false
 	EventBus.settings_changed.emit()
 
 
@@ -167,9 +178,39 @@ func save_settings() -> void:
 	cfg.set_value(SECTION, "request_timeout", request_timeout)
 	cfg.set_value(SECTION, "chip_cooldown", chip_cooldown)
 	cfg.set_value(SECTION, "max_tokens", max_tokens)
+	cfg.set_value(AUDIO_SECTION, "master_volume", master_volume)
+	cfg.set_value(AUDIO_SECTION, "sfx_volume", sfx_volume)
+	cfg.set_value(AUDIO_SECTION, "muted", muted)
 	if cfg.save(PATH) != OK:
 		push_warning("Settings: could not save %s" % PATH)
+	apply_audio()
 	EventBus.settings_changed.emit()
+
+
+## Pushes master_volume, sfx_volume and muted to the audio buses. The `Sfx` autoload owns the buses;
+## until it exists only the Master bus is driven here, so volume and mute already work.
+func apply_audio() -> void:
+	var sfx: Node = get_node_or_null("/root/Sfx")
+	if sfx != null and sfx.has_method("apply_volumes"):
+		sfx.apply_volumes()
+		return
+	var master: int = AudioServer.get_bus_index("Master")
+	if master < 0:
+		return
+	AudioServer.set_bus_volume_db(master, volume_to_db(master_volume))
+	AudioServer.set_bus_mute(master, muted)
+
+
+## Linear volume 0..1 to decibels. 0 is a floor of -80 dB (silent) rather than -inf.
+static func volume_to_db(volume: float) -> float:
+	return -80.0 if volume <= 0.0001 else maxf(linear_to_db(volume), -80.0)
+
+
+func _volume_from(value: Variant, fallback: float) -> float:
+	if typeof(value) != TYPE_FLOAT and typeof(value) != TYPE_INT:
+		return fallback
+	var number: float = value
+	return fallback if is_nan(number) else clampf(number, 0.0, 1.0)
 
 
 func _get_env_key(provider_name: String) -> String:

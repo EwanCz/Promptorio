@@ -5,6 +5,8 @@ extends Node
 
 signal selection_changed(type: String)
 signal placement_rejected(reason: String)
+## The player built a machine with try_place(). Not emitted for the Collector or a restored save.
+signal machine_placed(machine: Machine)
 
 const SCENES: Dictionary = {
 	"miner": preload("res://scenes/machines/miner.tscn"),
@@ -112,6 +114,7 @@ func try_place(type: String, cell: Vector2i) -> Machine:
 		placement_rejected.emit("Cannot place a %s here" % type)
 		return null
 	GameState.add_money(-cost)
+	machine_placed.emit(machine)
 	return machine
 
 
