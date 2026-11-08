@@ -259,6 +259,33 @@ func test_bus_volume_linear() -> void:
 	check(true, "an unknown bus only warns")
 
 
+func test_settings_apply_to_the_sfx_bus_and_master() -> void:
+	var settings: Node = autoload("Settings")
+	var old_master: float = settings.master_volume
+	var old_sfx: float = settings.sfx_volume
+	var old_muted: bool = settings.muted
+	settings.master_volume = 0.5
+	settings.sfx_volume = 0.25
+	settings.muted = false
+	settings.apply_audio()
+	check(is_equal_approx(AudioServer.get_bus_volume_db(AudioServer.get_bus_index(&"Master")), linear_to_db(0.5)), "master setting applied")
+	check(is_equal_approx(AudioServer.get_bus_volume_db(AudioServer.get_bus_index(&"SFX")), linear_to_db(0.25)), "SFX setting applied")
+	settings.muted = true
+	settings.apply_audio()
+	check(AudioServer.is_bus_mute(AudioServer.get_bus_index(&"Master")), "mute setting applied")
+	settings.master_volume = old_master
+	settings.sfx_volume = old_sfx
+	settings.muted = old_muted
+	settings.apply_audio()
+
+
+func test_factory_camera_registers_as_listener() -> void:
+	var camera: Camera2D = load("res://scripts/world/camera.gd").new()
+	tree.root.add_child(camera)
+	check_eq(autoload("Sfx").get("_listener"), camera, "factory camera is the listener")
+	camera.free()
+
+
 func test_pitch_jitter_stays_in_range() -> void:
 	var library: SfxLibrary = _sfx.get("library")
 	library.cues[1].pitch_jitter = 0.1

@@ -61,6 +61,7 @@ func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_rng.randomize()
 	_ensure_buses()
+	apply_volumes()
 	if library == null:
 		library = _load_library()
 	for i: int in maxi(pool_size, 1):
@@ -143,6 +144,13 @@ func set_muted(mute: bool) -> void:
 	AudioServer.set_bus_mute(AudioServer.get_bus_index(MASTER_BUS), mute)
 	if mute:
 		stop_all()
+
+
+## Applies the saved settings after the buses are created and when settings change.
+func apply_volumes() -> void:
+	set_bus_volume_linear(MASTER_BUS, Settings.master_volume)
+	set_bus_volume_linear(SFX_BUS, Settings.sfx_volume)
+	set_muted(Settings.muted or Settings.master_volume <= 0.0)
 
 
 ## How many voices are sounding `cue`, or any cue when `cue` is empty.

@@ -50,6 +50,7 @@ func start_game(save: Dictionary = {}) -> void:
 ## Only the running scene switches, so a menu instanced by a test never replaces the test runner.
 func _go_to_game() -> void:
 	if get_tree().current_scene == self:
+		Sfx.stop_all()
 		get_tree().change_scene_to_file(GAME_SCENE)
 
 

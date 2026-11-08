@@ -191,7 +191,7 @@ func save_settings() -> void:
 ## until it exists only the Master bus is driven here, so volume and mute already work.
 func apply_audio() -> void:
 	var sfx: Node = get_node_or_null("/root/Sfx")
-	if sfx != null and sfx.has_method("apply_volumes"):
+	if sfx != null and sfx.is_node_ready() and sfx.has_method("apply_volumes"):
 		sfx.apply_volumes()
 		return
 	var master: int = AudioServer.get_bus_index("Master")

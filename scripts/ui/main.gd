@@ -81,12 +81,14 @@ func _restore_pending_save() -> void:
 func _on_restart_requested() -> void:
 	GameState.reset()
 	if get_tree().current_scene == self:
+		Sfx.stop_all()
 		get_tree().reload_current_scene()
 
 
 func _on_main_menu_requested() -> void:
 	GameState.reset()
 	if get_tree().current_scene == self:
+		Sfx.stop_all()
 		get_tree().change_scene_to_file(MAIN_MENU_SCENE)
 
 
