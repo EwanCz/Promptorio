@@ -33,7 +33,7 @@ Runtime status is shown with icons, not persistent text. Keep text where it carr
 - Placement refusal in the Build page: a coin icon for insufficient funds, a red dash for any other refusal, reason on hover.
 - Chip log: an icon timeline (see "Chip log").
 - Miner prospecting / boost in the world: a small badge in the corner of the Miner's cell, hidden while it mines normally (see "Miner prospecting feedback on the map").
-- Production in the world (`ProductionEffect`): particles rise from the upper-left edge while a machine is actively producing. Blockage uses the existing production badge where available, or a bottom-right badge for conveyors.
+- Production in the world (`ProductionEffect`): particles rise from the upper-left edge while a machine is actively producing. Blockage uses the existing production badge where available, or a bottom-right badge for conveyors. A conveyor also shows its blocked state through its own motion: the belt surface stops scrolling the moment it jams and resumes the same shared scroll phase as every other belt once it clears (`Conveyor._on_tick`), so a stalled belt reads as stopped even before a player notices the badge.
 
 ## Smelter heat feedback on the map
 Besides the red tint, the Smelter art trembles as it approaches the 150° explosion: nothing below 100° (the overheating line), almost imperceptible until about 120°, a clear one near the end (at most 4 px on a 64 px cell, at 150°). It eases off as the Smelter cools and stops when it explodes. It moves the art only, never the machine or its cell. See `docs/PLAN.md`, "Smelter temperature".
