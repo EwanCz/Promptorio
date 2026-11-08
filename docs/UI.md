@@ -120,6 +120,10 @@ Open Settings from the Bar. Offer `mock`, `anthropic`, and `openai` providers. F
 
 For `anthropic` and `openai`, an optional "Base URL" field (blank by default, saved per provider) lets the player use a compatible relay; it takes precedence over the editor-only `ANTHROPIC_BASE_URL` / `OPENAI_BASE_URL` environment and .env overrides (see "Provider base URL" in `CLAUDE.md`). A malformed value is not blocked in the dialog: the Bar's key status reports that the base URL is invalid and nothing is sent.
 
+A "Sound" section sits under the provider fields: a Master and an Effects slider (0..1, step 0.01) and a "Mute all sound" switch. They apply live while dragging or toggling (`Settings.apply_audio()`), so the player hears the change before saving. Save persists them (`user://settings.cfg`, `[audio]` section: `master_volume`, `sfx_volume`, `muted`); Close, without saving, puts back the values the dialog opened with. Mute silences every bus, UI cues included. Audio is applied at startup by `Settings._ready()` and again on each save; an `[audio]` value that is out of range is clamped on load and one of a wrong type falls back to its default, and a settings file without the section still loads.
+
+Accessibility: sound is never the only carrier of information. Every audio cue mirrors something already shown by an icon or badge (see "Visual feedback rule"), so a muted or deaf player loses no information; a new cue must come with its visual. The Sound labels are plain text, since settings screens are exempt from the icon rule.
+
 ### Main menu
 The game starts on `scenes/menu/main_menu.tscn` (`run/main_scene`), not on the factory. Buttons, top to bottom: Play, Load Game, Chips, Options, Exit (no Credits). Each is a `PixelButton` (`scripts/ui/pixel_button.gd`) drawn with the pack art (`assets/pixel_art_buttons_pack/btn_<name>_{normal,hover,pressed}@8x.png`, 64x16 art shown 4x bigger, label included in the image).
 - Play: `GameState.reset()` (starting money, clock at 0) then the game scene.
