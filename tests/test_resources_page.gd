@@ -70,6 +70,19 @@ func test_resource_cell_shows_its_icon_before_the_name() -> void:
 		var icon_rect: TextureRect = cell.get_child(0) as TextureRect
 		check(icon_rect != null, "%s: icon comes before the name" % item.id)
 		check_eq(icon_rect.texture, item.icon, "%s: icon matches the catalog" % item.id)
+		check_eq(icon_rect.get_combined_minimum_size(), Vector2(20, 20), "%s: icon fits its cell" % item.id)
+		check_eq(icon_rect.texture_filter, CanvasItem.TEXTURE_FILTER_NEAREST, "%s: nearest filtering" % item.id)
+
+
+func test_resource_without_icon_shows_its_name() -> void:
+	var item: ItemData = ItemCatalog.shared().items[0]
+	var original: Texture2D = item.icon
+	item.icon = null
+	var page: ResourcesPage = _page()
+	item.icon = original
+	var cell: Node = page.get_node("%Grid").get_child(5)
+	check_eq(cell.get_child_count(), 1, "no icon placeholder")
+	check_eq((cell.get_child(0) as Label).text, item.display_name, "name remains visible")
 
 
 func test_needs_text() -> void:
