@@ -574,3 +574,19 @@ func test_destroy_shortcut_removes_the_open_machine_and_only_that() -> void:
 	check(tooltip.destroy_machine(), "the shortcut destroys the open machine")
 	check(belt.is_queued_for_deletion() and not tooltip.is_open(), "it is removed and the panel closes")
 	_nodes.erase(belt)
+
+
+func test_a_blocked_conveyor_shows_the_blocked_icon_and_clears_it() -> void:
+	var tooltip: MachineTooltip = _spawn("res://scenes/ui/popups/machine_tooltip.tscn")
+	var belt: Conveyor = _spawn("res://scenes/machines/conveyor.tscn") as Conveyor
+	var bus: Node = autoload("EventBus")
+	bus.machine_selected.emit(belt)
+	var blocked: Callable = func() -> bool: return _hints(tooltip.get_node("%OpRow")).any(func(h: String) -> bool: return h.begins_with("Output blocked"))
+	check(not blocked.call(), "an empty belt shows no blocked icon")
+	belt.receive("ore")
+	for i: int in 12:
+		bus.tick_fired.emit(i)
+	check(belt.is_blocked() and blocked.call(), "a belt that cannot deliver shows it")
+	belt.clear_contents()
+	bus.tick_fired.emit(13)
+	check(not blocked.call(), "and the icon goes when the belt is emptied")

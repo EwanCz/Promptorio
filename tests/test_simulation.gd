@@ -609,3 +609,47 @@ func test_the_shake_stops_when_it_explodes_and_removal_is_safe() -> void:
 	check(other.is_queued_for_deletion(), "a shaking smelter can be removed")
 	await tree.process_frame
 	check(not is_instance_valid(other) or other.is_queued_for_deletion(), "without errors")
+
+
+func test_a_conveyor_with_nowhere_to_go_is_blocked_and_it_clears() -> void:
+	var belt: Conveyor = _put("conveyor", Vector2i(1, 1), Vector2i.UP) as Conveyor
+	check(not belt.is_blocked(), "an empty belt is not blocked")
+	belt.receive("ore")
+	_ticks(Conveyor.MOVE_TICKS - 2)
+	check(not belt.is_blocked(), "still on its way: not blocked yet")
+	_ticks(10)
+	check_eq(belt.held, "ore", "nothing in front, so it keeps the ore")
+	check(belt.is_blocked() and belt.get_state()["blocked"], "blocked, and the state tells a chip")
+	var collector: Machine = _put("collector", Vector2i(1, 0))
+	_ticks(2)
+	check_eq(belt.held, "", "the way clears and it delivers")
+	check(not belt.is_blocked() and not belt.get_state()["blocked"], "so it is not blocked any more")
+	check_eq(collector.sold, 1, "delivered")
+
+
+func test_a_conveyor_blocked_clears_when_emptied_or_turned() -> void:
+	var belt: Conveyor = _put("conveyor", Vector2i(1, 1), Vector2i.UP) as Conveyor
+	belt.receive("ore")
+	_ticks(12)
+	check(belt.is_blocked(), "blocked")
+	belt.clear_contents()
+	check(not belt.is_blocked(), "emptied: not blocked")
+	belt.receive("ore")
+	_ticks(12)
+	check(belt.is_blocked(), "blocked again")
+	belt.facing = Vector2i.RIGHT
+	check(not belt.is_blocked(), "turned: it gets a fresh attempt")
+	_put("collector", Vector2i(2, 1))
+	_ticks(2)
+	check(belt.held == "" and not belt.is_blocked(), "and delivers the other way")
+
+
+func test_a_head_on_conveyor_is_blocked() -> void:
+	var smelter: Smelter = _put("smelter", Vector2i(0, 0), Vector2i.RIGHT) as Smelter
+	var belt: Conveyor = _put("conveyor", Vector2i(1, 0), Vector2i.LEFT) as Conveyor
+	belt.receive("ore")
+	_ticks(12)
+	check(belt.is_blocked(), "a belt facing a machine that faces back cannot deliver")
+	smelter.facing = Vector2i.DOWN
+	_ticks(2)
+	check(not belt.is_blocked(), "turn the smelter away and it flows")

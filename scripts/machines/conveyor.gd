@@ -30,6 +30,8 @@ var held: String = "":
 		_update_item_icon()
 
 var _wait: int = 0
+## True after a delivery attempt failed (see is_blocked).
+var _blocked: bool = false
 ## True when the item arrived during the current tick before this conveyor's turn in it: that tick must not
 ## count, or the item would be one tick ahead on every conveyor that plays after its sender.
 var _skip_tick: bool = false
@@ -47,7 +49,7 @@ func _ready() -> void:
 
 
 func get_state() -> Dictionary:
-	return super.get_state().merged({"direction": ARROWS.keys().find(facing), "holding": held != ""})
+	return super.get_state().merged({"direction": ARROWS.keys().find(facing), "holding": held != "", "blocked": is_blocked()})
 
 
 func _own_tool_schemas() -> Array:
@@ -80,6 +82,7 @@ func note_sender(sender_cell: Vector2i, sender_tick: int) -> void:
 
 func clear_contents() -> void:
 	held = ""
+	_blocked = false
 	_wait = 0
 	_skip_tick = false
 	_slide_from = Vector2.ZERO
@@ -107,6 +110,7 @@ func _on_tick(tick_number: int) -> void:
 
 
 func _update_sprite() -> void:
+	_blocked = false  # a turned belt gets a fresh attempt
 	if _sprite == null or _belt == null or up_texture == null or side_texture == null:
 		return
 	var horizontal: bool = facing.y == 0
@@ -132,17 +136,29 @@ func _scroll(tick_number: int) -> void:
 
 func _tick() -> void:
 	if held == "":
+		_blocked = false
 		return
 	if _skip_tick:
 		_skip_tick = false
 	else:
 		_wait += 1
-	if _wait >= MOVE_TICKS and _push(held):
+	if _wait < MOVE_TICKS:
+		_blocked = false
+	elif _push(held):
 		held = ""
+		_blocked = false
+	else:
+		_blocked = true
 
 
 func honors_enabled() -> bool:
 	return false
+
+
+## True while the belt holds an item it has tried and failed to hand on (nothing in front, a head-on
+## machine, or one that refuses it). Cleared when it is delivered, taken away, or the belt is turned.
+func is_blocked() -> bool:
+	return _blocked and held != ""
 
 
 func _apply(tool_name: String, args: Dictionary) -> bool:
