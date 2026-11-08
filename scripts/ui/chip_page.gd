@@ -2,6 +2,8 @@ class_name ChipPage
 extends PanelContainer
 ## Popup to edit one chip (name, description, prompt). Pauses the game while open.
 
+signal closed
+
 const BLANK_NAME: String = "Blank"
 
 ## null means a new chip that is not in the registry until saved.
@@ -49,6 +51,7 @@ func open(chip: ChipRessource) -> void:
 func close() -> void:
 	visible = false
 	get_tree().paused = false
+	closed.emit()
 
 
 func _fill(chip_name: String, desc: String, prompt: String) -> void:
