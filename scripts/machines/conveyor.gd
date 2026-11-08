@@ -4,9 +4,9 @@ extends Machine
 ## The frame art stays still and a Belt sprite scrolls the moving surface on top of it. The surface
 ## repeats every SCROLL_PERIOD pixels, so a full period of ticks puts it back on its first pose with
 ## no jump. Down and left are the up and right art flipped, which also flips the scroll direction.
-## The scroll is skipped entirely while is_blocked() (GR2-26): the belt freezes on its current pose
-## instead of sliding under a stalled item, and resumes the same absolute-tick scroll phase as every
-## other belt the moment it clears, so adjacent conveyors never drift out of sync.
+## A jammed belt (is_blocked()) freezes on its current pose instead of scrolling forever; since the
+## pose is a pure function of the tick number, it resumes the same shared phase as every other belt
+## the instant it clears, with no drift to correct for.
 const MOVE_TICKS: int = 5
 const TEXTURE_SIZE: int = 16
 ## The item icon rests at the center of the cell.

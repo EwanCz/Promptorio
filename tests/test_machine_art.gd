@@ -209,6 +209,23 @@ func test_belt_scrolls_along_the_facing() -> void:
 	check_eq(fposmod(right_a - _belt(conveyor).region_rect.position.x, float(Conveyor.SCROLL_PERIOD)), float(step), "right samples further left, so the arrows move right")
 
 
+func test_belt_freezes_while_blocked_and_resumes_in_phase_once_clear() -> void:
+	var belt: Conveyor = _spawn("conveyor") as Conveyor
+	var neighbour: Conveyor = _spawn("conveyor") as Conveyor
+	check(belt.receive("coal"), "item placed on the belt")
+	for i: int in Conveyor.MOVE_TICKS:
+		_tick(i)
+	check(belt.is_blocked(), "nothing ahead, so the delivery fails and the belt jams")
+	var frozen: Rect2 = _belt(belt).region_rect
+	var steps: int = 2 * Conveyor.SCROLL_PERIOD / Conveyor.SCROLL_PER_TICK
+	for i: int in steps:
+		_tick(Conveyor.MOVE_TICKS + i)
+		check_eq(_belt(belt).region_rect, frozen, "a jammed belt holds its pose instead of scrolling forever")
+	belt.clear_contents()
+	_tick(Conveyor.MOVE_TICKS + steps)
+	check_eq(_belt(belt).region_rect, _belt(neighbour).region_rect, "cleared, it resumes the shared scroll phase with no drift")
+
+
 func test_belt_ticks_are_shared_so_neighbours_stay_in_phase() -> void:
 	var first: Conveyor = _spawn("conveyor") as Conveyor
 	var second: Conveyor = _spawn("conveyor") as Conveyor
@@ -216,7 +233,7 @@ func test_belt_ticks_are_shared_so_neighbours_stay_in_phase() -> void:
 	check_eq(_sprite(first).region_rect, _sprite(second).region_rect, "two belts on the same tick show the same pose")
 
 
-func test_belt_freezes_while_blocked_and_resumes_in_phase_once_clear() -> void:
+func test_belt_resumes_in_phase_after_delivery_clears_jam() -> void:
 	var blocked: Conveyor = _spawn("conveyor") as Conveyor
 	blocked.receive("coal")
 	for t: int in range(1, Conveyor.MOVE_TICKS + 1):

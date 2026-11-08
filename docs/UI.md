@@ -33,7 +33,7 @@ Runtime status is shown with icons, not persistent text. Keep text where it carr
 - Placement refusal in the Build page: a coin icon for insufficient funds, a red dash for any other refusal, reason on hover.
 - Chip log: an icon timeline (see "Chip log").
 - Miner prospecting / boost in the world: a small badge in the corner of the Miner's cell, hidden while it mines normally (see "Miner prospecting feedback on the map").
-- Production in the world (`ProductionEffect`): particles rise from the upper-left edge while a machine is actively producing. Blockage uses the existing production badge where available, or a bottom-right badge for conveyors.
+- Production in the world (`ProductionEffect`): particles rise from the upper-left edge while a machine is actively producing. Blockage uses the existing production badge where available, or a bottom-right badge for conveyors. A conveyor also shows its blocked state through its own motion: the belt surface stops scrolling the moment it jams and resumes the same shared scroll phase as every other belt once it clears (`Conveyor._on_tick`), so a stalled belt reads as stopped even before a player notices the badge.
 
 ## Smelter heat feedback on the map
 Besides the red tint, the Smelter art trembles as it approaches the 150° explosion: nothing below 100° (the overheating line), almost imperceptible until about 120°, a clear one near the end (at most 4 px on a 64 px cell, at 150°). It eases off as the Smelter cools and stops when it explodes. It moves the art only, never the machine or its cell. See `docs/PLAN.md`, "Smelter temperature".
@@ -129,15 +129,14 @@ A "Sound" section sits under the provider fields: a Master and an Effects slider
 Accessibility: sound is never the only carrier of information. Every audio cue mirrors something already shown by an icon or badge (see "Visual feedback rule"), so a muted or deaf player loses no information; a new cue must come with its visual. The Sound labels are plain text, since settings screens are exempt from the icon rule.
 
 ### Main menu
-The game starts on `scenes/menu/main_menu.tscn` (`run/main_scene`), not on the factory. Buttons, top to bottom: Play, Load Game, Chips, Options, Exit (no Credits). Each is a `PixelButton` (`scripts/ui/pixel_button.gd`) drawn with the pack art (`assets/pixel_art_buttons_pack/btn_<name>_{normal,hover,pressed}@8x.png`, 64x16 art shown 4x bigger, label included in the image).
+The game starts on `scenes/menu/main_menu.tscn` (`run/main_scene`), not on the factory. Buttons, top to bottom: Play, Load Game, Chips, Options, Exit (no Credits). Each is a themed `Button` (`MainMenuButton` variation of `data/ui/theme.tres`) with an `Icons` glyph, inside a `MainMenuPanel`.
 - Play: `GameState.reset()` (starting money, clock at 0) then the game scene.
 - Load Game: the `SaveDialog` in menu mode (`use_as_menu()`): slots of `saves/` with Load / Delete, plus "Import a file...", no Save row and no Export, no pause. A picked save is fully validated (`SaveGame.validate(null, data)`), stored in `SaveGame.pending`, and the game scene restores it when it starts. A refused file keeps the player in the menu with the reason.
 - Chips: `ChipManager` popup (the Chip Registry list with "New chip") and the same `ChipPage` popup as in game, to prepare chips before playing. They are saved to `user://chip_registry.tres` like in game.
 - Options: the `SettingsDialog`. Exit quits.
-- Art still missing: the Chips button has no image in the pack yet, so it shows a text label in the pack's colors. Dropping `btn_chips_normal@8x.png`, `btn_chips_hover@8x.png` and `btn_chips_pressed@8x.png` in `assets/pixel_art_buttons_pack/` makes it use them with no code change.
 
 ### Pause menu
-The "Menu" button of the Bar, or `cancel_placement` (Escape) when no machine type is selected, opens `PauseMenu` (a popup that pauses the game like `ChipPage`; Escape closes it). Resume closes it, Restart starts a new game (`GameState.reset()`, scene reloaded), Main Menu goes back to the start screen. Nothing is saved automatically: the menu says unsaved progress is lost. Art: `assets/pixel_ui_pack/pause_{resume,restart,main_menu}_*@8x.png`.
+The "Menu" button of the Bar, or `cancel_placement` (Escape) when no machine type is selected, opens `PauseMenu` (a popup that pauses the game like `ChipPage`; Escape closes it). Resume closes it, Restart starts a new game (`GameState.reset()`, scene reloaded), Main Menu goes back to the start screen. Nothing is saved automatically: the menu says unsaved progress is lost. It looks like the main menu: a `MainMenuPanel`, a gold title, `MainMenuButton` buttons with an `Icons` glyph (play, rotate, home) and the click sound.
 
 ### Save / Load dialog
 The "Save / Load" button (Bar, below the Menu button and above Settings) opens `SaveDialog`, a popup that pauses the game like `ChipPage`. A name field and "Save" write a slot to `saves/<name>.json` (in the project folder in an editor run, `user://saves/` in an exported build); the list below shows each slot with its date, a "Load" and a "Delete" button. "Import a file..." and "Export to a file..." use the system file dialog to read or write a save anywhere on the disk. A successful load or import replaces the whole game (machines, money, and the minesites of the map) and closes the dialog. Messages never show a path or the file content.
