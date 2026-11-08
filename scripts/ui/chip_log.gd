@@ -115,6 +115,8 @@ func _tool_label(tool_name: String, args: Variant) -> String:
 			return "Mining pace set to %d ticks per item" % int(values.get("ticks", 0))
 		"set_mined_item":
 			return "Mining resource set to %s" % str(values.get("item", "")).capitalize()
+		"start_prospecting":
+			return "Prospecting started"
 		"set_product":
 			return "Product set to %s" % str(values.get("item", "")).capitalize()
 		"discard_stock":

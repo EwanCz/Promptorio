@@ -150,6 +150,10 @@ func _refresh_operation() -> void:
 		var miner: Miner = _machine as Miner
 		op.append(_item_entry(miner.item, "", "Mines %s"))
 		op.append(_icon_entry("timer", str(miner.mine_ticks), "Ticks per unit"))
+		if miner.mode == Miner.Mode.PROSPECTING:
+			op.append(_icon_entry("prospecting", str(miner.mode_ticks_left), "Prospecting: %d ticks left" % miner.mode_ticks_left))
+		elif miner.mode == Miner.Mode.BOOST:
+			op.append(_icon_entry("boost", str(miner.mode_ticks_left), "Boosted mining: %d ticks left" % miner.mode_ticks_left))
 	elif _machine is Conveyor:
 		var belt: Conveyor = _machine as Conveyor
 		op.append(_icon_entry(Icons.direction(belt.facing), "", "Facing %s" % _direction_name(belt.facing)))
