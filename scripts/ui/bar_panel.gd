@@ -4,6 +4,7 @@ extends PanelContainer
 
 signal settings_requested
 signal saves_requested
+signal menu_requested
 
 var _verdict: String = ""
 var _detail: String = ""
@@ -14,6 +15,7 @@ var _detail: String = ""
 @onready var _pages: Control = %Pages
 @onready var _saves_button: Button = %SavesButton
 @onready var _settings_button: Button = %SettingsButton
+@onready var _menu_button: Button = %MenuButton
 
 
 func _ready() -> void:
@@ -27,6 +29,7 @@ func _ready() -> void:
 		_tabs.add_child(button)
 	_saves_button.pressed.connect(saves_requested.emit)
 	_settings_button.pressed.connect(settings_requested.emit)
+	_menu_button.pressed.connect(menu_requested.emit)
 	EventBus.settings_changed.connect(_on_settings_changed)
 	EventBus.key_checked.connect(_on_key_checked)
 	_refresh_key_status()
