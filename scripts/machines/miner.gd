@@ -65,8 +65,12 @@ func set_mined_item(new_item: String) -> bool:
 	return true
 
 
-func get_action_text() -> String:
-	return "Mining 1 %s every %d ticks%s" % [item, mine_ticks, " (output blocked)" if _blocked else ""]
+func get_progress() -> float:
+	return clampf(float(_progress) / float(maxi(mine_ticks, 1)), 0.0, 1.0)
+
+
+func is_blocked() -> bool:
+	return _blocked
 
 
 func clear_contents() -> void:

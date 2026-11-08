@@ -333,7 +333,7 @@ func test_details_panel_is_compact_and_icon_driven() -> void:
 	check_eq((tooltip.get_node("%IdLabel") as Label).text, "Smelter #%d" % machine.machine_id, "title: type and id")
 	for pair: Array in [["%LogButton", "log", "Chip log"], ["%RotateButton", "rotate", "Rotate"], ["%DestroyButton", "destroy", "Destroy this machine"], ["%AddButton", "add", "Add the chosen chip"]]:
 		var button: Button = tooltip.get_node(pair[0]) as Button
-		check_eq(button.text, "", "%s has no text" % pair[0])
+		check_eq(button.text, "X" if pair[0] == "%DestroyButton" else "", "%s: no text but the destroy key" % pair[0])
 		check(button.icon != null and _same_icon(button.icon, pair[1]), "%s shows the %s icon" % [pair[0], pair[1]])
 		check_eq(button.tooltip_text, pair[2], "%s explains itself on hover" % pair[0])
 	var row: Node = tooltip.get_node("%ChipsList").get_child(0)
@@ -344,7 +344,7 @@ func test_details_panel_is_compact_and_icon_driven() -> void:
 		var button: Button = row.find_child(pair[0], true, false) as Button
 		check(button.text == "" and _same_icon(button.icon, pair[1]) and button.tooltip_text == pair[2], "%s is an icon button with a hover" % pair[0])
 	var texts: Array[String] = _texts(tooltip)
-	for gone: String in ["Type: smelter", "Chips", "Ask when", "Add chip", "Ask now", "Log", "Rotate", "Destroy", "X", "State: normal"]:
+	for gone: String in ["Type: smelter", "Chips", "Ask when", "Add chip", "Ask now", "Log", "Rotate", "Destroy", "State: normal"]:
 		check(not gone in texts, "no '%s' text" % gone)
 	check(texts.has("ui_compact"), "names stay as text")
 	check(texts.has("20°"), "the temperature value stays as text, without a caption")
@@ -466,3 +466,127 @@ func test_conveyor_direction_in_the_log_matches_what_the_conveyor_does() -> void
 		check_eq(belt.facing, pair[1], "the conveyor faces %s" % pair[2])
 		var lines: Array[String] = log.get_lines(belt)
 		check_eq(lines[lines.size() - 1], "Direction set to %s" % pair[2], "and the log says %s" % pair[2])
+
+
+## Entries of a details-panel row, as (icon kind, text, hover) so a test can read what the player sees.
+func _entries(row: Node) -> Array[Array]:
+	var found: Array[Array] = []
+	for cell: Node in row.get_children():
+		var picture: TextureRect = cell.get_child(0) as TextureRect
+		var number: String = "" if cell.get_child_count() < 2 else (cell.get_child(1) as Label).text
+		found.append([picture.texture, number, picture.tooltip_text])
+	return found
+
+
+func _hints(row: Node) -> Array[String]:
+	var hints: Array[String] = []
+	for entry: Array in _entries(row):
+		hints.append(entry[2])
+	return hints
+
+
+func test_a_smelter_shows_its_recipe_stock_and_progress_as_icons() -> void:
+	var tooltip: MachineTooltip = _spawn("res://scenes/ui/popups/machine_tooltip.tscn")
+	var smelter: Smelter = _spawn("res://scenes/machines/smelter.tscn") as Smelter
+	var bus: Node = autoload("EventBus")
+	bus.machine_selected.emit(smelter)
+	var op: Node = tooltip.get_node("%OpRow")
+	var stock: Node = tooltip.get_node("%StockRow")
+	var progress: ProgressBar = tooltip.get_node("%Progress") as ProgressBar
+	check_eq(_hints(op), ["Needs Ore", "Makes", "Makes Ingot"] as Array[String], "recipe: the input, an arrow, the product")
+	for entry: Array in _entries(op):
+		check(entry[0] != null, "every recipe entry has art")
+	check(not stock.visible, "no stock row when nothing is stored")
+	check(progress.visible and progress.value == 0.0, "an idle smelter has an empty progress bar")
+	smelter.receive("ore")
+	smelter.receive("ore")
+	for i: int in 3:
+		bus.tick_fired.emit(i)
+	check(stock.visible, "stock appears")
+	var counts: Array = _entries(stock)
+	check(counts.size() == 1 and counts[0][1] == "1" and counts[0][2] == "In stock: Ore", "the remaining ore with its count (one was taken into the craft)")
+	check(progress.value > 0.0 and progress.value < 1.0, "the bar fills as the craft goes (%.2f)" % progress.value)
+	var before: float = progress.value
+	for i: int in 3:
+		bus.tick_fired.emit(3 + i)
+	check(progress.value > before, "and keeps filling")
+	for text: String in ["Working", "ticks left", "Stock:", "->", "idle"]:
+		check(not _texts(tooltip).any(func(t: String) -> bool: return t.contains(text)), "no '%s' text" % text)
+
+
+func test_the_rows_are_not_rebuilt_while_nothing_changes() -> void:
+	var tooltip: MachineTooltip = _spawn("res://scenes/ui/popups/machine_tooltip.tscn")
+	var smelter: Smelter = _spawn("res://scenes/machines/smelter.tscn") as Smelter
+	autoload("EventBus").machine_selected.emit(smelter)
+	var first: Node = tooltip.get_node("%OpRow").get_child(0)
+	autoload("EventBus").tick_fired.emit(0)
+	autoload("EventBus").tick_fired.emit(1)
+	check(tooltip.get_node("%OpRow").get_child(0) == first, "the same icons stay (a hover is not interrupted)")
+
+
+func test_a_blocked_machine_shows_a_blocked_icon() -> void:
+	var tooltip: MachineTooltip = _spawn("res://scenes/ui/popups/machine_tooltip.tscn")
+	var miner: Miner = _spawn("res://scenes/machines/miner.tscn") as Miner
+	var bus: Node = autoload("EventBus")
+	bus.machine_selected.emit(miner)
+	check(not _hints(tooltip.get_node("%OpRow")).any(func(h: String) -> bool: return h.begins_with("Output blocked")), "not blocked at first")
+	for i: int in miner.mine_ticks + 2:
+		bus.tick_fired.emit(i)
+	check(miner.is_blocked(), "the miner has nowhere to put its ore")
+	check(_hints(tooltip.get_node("%OpRow")).any(func(h: String) -> bool: return h.begins_with("Output blocked")), "so a blocked icon appears")
+	check(_hints(tooltip.get_node("%OpRow")).has("Ticks per unit"), "the mining pace is a clock icon with the number")
+
+
+func test_conveyor_and_collector_panels_use_icons() -> void:
+	var tooltip: MachineTooltip = _spawn("res://scenes/ui/popups/machine_tooltip.tscn")
+	var belt: Conveyor = _spawn("res://scenes/machines/conveyor.tscn") as Conveyor
+	var bus: Node = autoload("EventBus")
+	bus.machine_selected.emit(belt)
+	for pair: Array in [[Vector2i.RIGHT, "right"], [Vector2i.DOWN, "down"], [Vector2i.LEFT, "left"], [Vector2i.UP, "up"]]:
+		belt.facing = pair[0]
+		bus.tick_fired.emit(0)
+		check_eq(_hints(tooltip.get_node("%OpRow")), ["Facing %s" % pair[1]] as Array[String], "facing %s" % pair[1])
+	belt.receive("ore")
+	bus.tick_fired.emit(1)
+	check(_hints(tooltip.get_node("%OpRow")).has("Carrying Ore"), "the carried resource shows as its art")
+	check(not (tooltip.get_node("%Progress") as Control).visible, "a conveyor has no progress bar")
+	var collector: Collector = _spawn("res://scenes/machines/collector.tscn") as Collector
+	bus.machine_selected.emit(collector)
+	collector.receive("ore")
+	bus.tick_fired.emit(2)
+	var entries: Array = _entries(tooltip.get_node("%OpRow"))
+	check_eq([entries[0][2], entries[1][2]], ["Money earned", "Items sold"] as Array[String], "earnings and sales")
+	check_eq([entries[0][1], entries[1][1]], [str(collector.earned), "1"] as Array[String], "as numbers")
+	collector.accepting = false
+	bus.tick_fired.emit(3)
+	check(_hints(tooltip.get_node("%OpRow")).has("Not accepting items"), "and a refusal icon")
+
+
+func test_destroy_shortcut_removes_the_open_machine_and_only_that() -> void:
+	var tooltip: MachineTooltip = _spawn("res://scenes/ui/popups/machine_tooltip.tscn")
+	check(not tooltip.destroy_machine(), "nothing open: nothing to destroy")
+	var collector: Machine = _spawn("res://scenes/machines/collector.tscn")
+	autoload("EventBus").machine_selected.emit(collector)
+	check(not tooltip.destroy_machine() and not collector.is_queued_for_deletion(), "the fixed Collector cannot be destroyed")
+	var belt: Machine = _spawn("res://scenes/machines/conveyor.tscn")
+	autoload("EventBus").machine_selected.emit(belt)
+	check_eq((tooltip.get_node("%DestroyButton") as Button).text, "X", "the button names its key")
+	check(tooltip.destroy_machine(), "the shortcut destroys the open machine")
+	check(belt.is_queued_for_deletion() and not tooltip.is_open(), "it is removed and the panel closes")
+	_nodes.erase(belt)
+
+
+func test_a_blocked_conveyor_shows_the_blocked_icon_and_clears_it() -> void:
+	var tooltip: MachineTooltip = _spawn("res://scenes/ui/popups/machine_tooltip.tscn")
+	var belt: Conveyor = _spawn("res://scenes/machines/conveyor.tscn") as Conveyor
+	var bus: Node = autoload("EventBus")
+	bus.machine_selected.emit(belt)
+	var blocked: Callable = func() -> bool: return _hints(tooltip.get_node("%OpRow")).any(func(h: String) -> bool: return h.begins_with("Output blocked"))
+	check(not blocked.call(), "an empty belt shows no blocked icon")
+	belt.receive("ore")
+	for i: int in 12:
+		bus.tick_fired.emit(i)
+	check(belt.is_blocked() and blocked.call(), "a belt that cannot deliver shows it")
+	belt.clear_contents()
+	bus.tick_fired.emit(13)
+	check(not blocked.call(), "and the icon goes when the belt is emptied")

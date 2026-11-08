@@ -16,6 +16,8 @@ var stock_limit: int = MAX_STOCK
 var progress: int = 0
 
 var _making: String = ""
+## Duration the craft in progress started with, to show how far along it is.
+var _craft_total: int = 0
 var _output: String = ""
 ## True only after a delivery attempt failed; cleared when it succeeds or the contents are cleared.
 var _blocked: bool = false
@@ -56,21 +58,20 @@ func get_state() -> Dictionary:
 	return super.get_state().merged({"product": product_id, "needs": needs, "stock": stock, "working": is_working()})
 
 
-func get_action_text() -> String:
-	var product: ItemData = get_product()
-	if product == null:
-		return "No product"
-	var state: String = "idle"
-	if _blocked:
-		state = "output blocked"
-	elif is_working():
-		state = "working, %d ticks left" % progress
-	return "%s -> %s\nStock: %s\n%s" % [_items_text(product.inputs), product.id, _items_text(stock), state]
+func get_progress() -> float:
+	if progress <= 0 or _craft_total <= 0:
+		return 0.0
+	return clampf(1.0 - float(progress) / float(_craft_total), 0.0, 1.0)
+
+
+func is_blocked() -> bool:
+	return _blocked
 
 
 func clear_contents() -> void:
 	stock.clear()
 	progress = 0
+	_craft_total = 0
 	_making = ""
 	_output = ""
 	_blocked = false
@@ -131,17 +132,9 @@ func _load_data(data: Dictionary) -> void:
 				stock[item] = count
 	_making = _read_item(data, "making", catalog.get_built_by_ids(machine_type))
 	progress = _read_int(data, "progress", 0, 0, _max_saved_progress(_making))
+	_craft_total = progress  # shortcut: the bar of a loaded craft starts empty, the original length is not saved
 	_output = _read_item(data, "output", catalog.get_ids())
 	_blocked = _output != "" and data.get("blocked") == true
-
-
-func _items_text(items: Dictionary) -> String:
-	if items.is_empty():
-		return "empty"
-	var parts: PackedStringArray = []
-	for item: String in items:
-		parts.append("%d %s" % [int(items[item]), item])
-	return ", ".join(parts)
 
 
 func _tick() -> void:
@@ -162,6 +155,7 @@ func _tick() -> void:
 			stock[item] = int(stock[item]) - int(product.inputs[item])
 		_making = product.id
 		progress = _craft_ticks()
+		_craft_total = progress
 
 
 ## Duration of a craft starting now (the product being made). Subclasses can slow it down.

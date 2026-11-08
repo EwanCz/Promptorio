@@ -179,7 +179,7 @@ func test_tooltip_destroy_and_rotate_buttons() -> void:
 	check(_tooltip.is_open(), "tooltip opens on click")
 	check(_tooltip.get_node("%RotateButton").visible, "conveyor can rotate")
 	check(_tooltip.get_node("%DestroyButton").visible, "conveyor can be destroyed")
-	check((_tooltip.get_node("%ActionLabel") as Label).text.begins_with("Facing"), "conveyor action shown")
+	check((_tooltip.get_node("%OpRow") as Control).visible, "the conveyor shows its facing as an icon")
 	_tooltip.get_node("%RotateButton").pressed.emit()
 	check_eq(conveyor.facing, Vector2i.DOWN, "rotate button rotates")
 	_tooltip.get_node("%DestroyButton").pressed.emit()
@@ -225,18 +225,28 @@ func test_tooltip_hides_actions_for_the_collector() -> void:
 	_main.get_node("%GridMap2D").cell_clicked.emit(_game.GRID_SIZE / 2)
 	check(not _tooltip.get_node("%RotateButton").visible, "no rotate on the collector")
 	check(not _tooltip.get_node("%DestroyButton").visible, "no destroy on the collector")
-	check((_tooltip.get_node("%ActionLabel") as Label).text.begins_with("Sold"), "collector shows sales")
+	check((_tooltip.get_node("%OpRow") as Control).visible, "the collector shows its sales as icons")
 
 
-func test_action_text_per_machine() -> void:
+func test_progress_and_blocked_per_machine() -> void:
 	var miner: Miner = _placement.place("miner", _grid.minesites[0])
-	check(miner.get_action_text().contains("every %d ticks" % miner.mine_ticks), "miner rate")
+	check_eq(miner.get_progress(), 0.0, "a new miner has made no progress")
+	_ticks(miner.mine_ticks / 2)
+	check(miner.get_progress() > 0.3 and miner.get_progress() < 0.7, "about half way")
 	var smelter: Smelter = _placement.place("smelter", Vector2i(8, 8))
-	var text: String = smelter.get_action_text()
-	check(text.contains("idle"), "smelter state")
-	check(not text.contains("Temperature") and not text.contains("cooling"), "heat is no longer text in the operation line")
+	check_eq(smelter.get_progress(), 0.0, "an idle smelter has none")
 	smelter.receive("ore")
-	check(smelter.get_action_text().contains("1 ore"), "smelter stock")
+	_ticks(1)
+	var early: float = smelter.get_progress()
+	_ticks(3)
+	check(smelter.get_progress() > early and smelter.get_progress() < 1.0, "a craft fills as it goes")
+	check_eq(_placement.place("conveyor", Vector2i(2, 2)).get_progress(), -1.0, "a conveyor has no job bar")
+	check(not smelter.is_blocked(), "not blocked")
+
+
+func _ticks(count: int) -> void:
+	for i: int in count:
+		autoload("EventBus").tick_fired.emit(i)
 
 
 func test_destroyed_machine_closes_its_open_tooltip() -> void:

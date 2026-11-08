@@ -74,6 +74,7 @@ const BINDINGS: Dictionary = {
 	"select_conveyor": KEY_5,
 	"rotate_placement": KEY_R,
 	"cancel_placement": KEY_ESCAPE,
+	"destroy_machine": KEY_X,
 }
 
 
@@ -107,6 +108,39 @@ func test_actions_select_rotate_and_cancel() -> void:
 	check_eq(_placement.facing, Vector2i.DOWN, "rotate_placement rotates")
 	_main._unhandled_input(_action("cancel_placement"))
 	check_eq(_placement.selected, "", "cancel_placement deselects")
+
+
+func test_destroy_machine_is_bound_to_x_and_delete() -> void:
+	var keys: Array[int] = []
+	for event: InputEvent in InputMap.action_get_events("destroy_machine"):
+		keys.append((event as InputEventKey).physical_keycode)
+	check(keys.has(KEY_X) and keys.has(KEY_DELETE), "X and Delete")
+
+
+func test_destroy_action_removes_the_selected_machine() -> void:
+	var belt: Machine = _placement.place("conveyor", Vector2i(8, 8))
+	_main.get_node("%MachineTooltip").open(belt)
+	_main._unhandled_input(_action("destroy_machine"))
+	check(belt.is_queued_for_deletion(), "the shortcut removed it")
+	check(_game.get_machine_at(Vector2i(8, 8)) == null, "and freed its cell")
+
+
+## Every popup of the UI layer blocks the shortcut, and the shortcut works again once it is closed.
+func test_destroy_shortcut_is_ignored_while_any_popup_is_open() -> void:
+	var popups: Array[Control] = []
+	for popup: Node in _main.get_node("UI").get_children():
+		popups.append(popup as Control)
+	check(popups.size() >= 6, "the UI layer has its popups (%d)" % popups.size())
+	for popup: Control in popups:
+		var belt: Machine = _placement.place("conveyor", Vector2i(8, 8))
+		_main.get_node("%MachineTooltip").open(belt)
+		popup.visible = true
+		_main._unhandled_input(_action("destroy_machine"))
+		check(not belt.is_queued_for_deletion(), "%s open: the machine stays" % popup.name)
+		check(_game.get_machine_at(Vector2i(8, 8)) == belt, "%s open: its cell stays taken" % popup.name)
+		popup.visible = false
+		_main._unhandled_input(_action("destroy_machine"))
+		check(belt.is_queued_for_deletion(), "%s closed: the shortcut works again" % popup.name)
 
 
 func test_each_select_action_picks_its_machine() -> void:

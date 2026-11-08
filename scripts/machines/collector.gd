@@ -29,10 +29,6 @@ func honors_enabled() -> bool:
 	return false
 
 
-func get_action_text() -> String:
-	return "Sold %d items, earned %d" % [sold, earned]
-
-
 func get_state() -> Dictionary:
 	return super.get_state().merged({"accepting": accepting, "sold": sold})
 

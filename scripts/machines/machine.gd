@@ -111,9 +111,15 @@ func rotate_facing() -> void:
 	facing = Vector2i(-facing.y, facing.x)
 
 
-## One line for the tooltip: what the machine is doing right now. Subclasses override.
-func get_action_text() -> String:
-	return ""
+## How far the current job is, 0..1 (Miner: the next unit, craft machines: the current craft). -1 for
+## machines with no such job.
+func get_progress() -> float:
+	return -1.0
+
+
+## True once a delivery of the output failed and the machine is waiting for the way to clear.
+func is_blocked() -> bool:
+	return false
 
 
 ## Discards everything the machine holds (stock, held item, attached chips), frees its grid cell

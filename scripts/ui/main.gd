@@ -49,8 +49,20 @@ func _unhandled_input(event: InputEvent) -> void:
 		_tooltip.rotate_machine()
 		_placement.rotate_facing()
 		get_viewport().set_input_as_handled()
+	elif event.is_action_pressed("destroy_machine"):
+		if not _popup_open() and _tooltip.destroy_machine():
+			get_viewport().set_input_as_handled()
 	elif _placement.handle_input(event):
 		get_viewport().set_input_as_handled()
+
+
+## True while any popup of the UI layer (Resources, Settings, Chip Log, Chip Page, Saves, the pause menu...)
+## is shown: a key then belongs to that popup, never to the map behind it.
+func _popup_open() -> bool:
+	for popup: Node in $UI.get_children():
+		if popup is Control and (popup as Control).visible:
+			return true
+	return false
 
 
 func _on_cell_clicked(cell: Vector2i) -> void:
