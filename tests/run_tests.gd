@@ -75,6 +75,9 @@ func _initialize() -> void:
 	print("--------")
 	print("%d checks, %d failed" % [total_checks, total_failures])
 	print("ALL PASSED" if total_failures == 0 else "FAILED")
+	# A test that pressed a button made the real Sfx play a click: let the audio thread release it before exit.
+	root.get_node("Sfx").call("stop_all")
+	await create_timer(0.5).timeout
 	quit(1 if total_failures > 0 else 0)
 
 

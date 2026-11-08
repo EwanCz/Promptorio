@@ -1,8 +1,130 @@
 [gd_resource type="Resource" script_class="SfxLibrary" format=3]
 
-[ext_resource type="Script" path="res://scripts/core/sfx_cue.gd" id="1_cue"]
-[ext_resource type="Script" path="res://scripts/core/sfx_library.gd" id="2_library"]
+[ext_resource type="Script" path="res://scripts/core/sfx_cue.gd" id="1_whqgd"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/place.ogg" id="2_2l3ws"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/remove.ogg" id="3_pcou2"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/place_rejected.ogg" id="4_rslvb"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/deliver.ogg" id="5_ghmrg"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/craft_done.ogg" id="6_m5vmf"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/sell.ogg" id="7_lqnxj"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/order_complete.ogg" id="8_g3lir"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/chip_ok.ogg" id="9_km2pl"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/chip_none.ogg" id="10_25qd2"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/chip_fail.ogg" id="11_n84vd"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/blocked.ogg" id="12_sf1rx"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/overheat_warn.ogg" id="13_k0ngx"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/explosion.ogg" id="14_qw3p2"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/ui_click.ogg" id="15_qssnc"]
+[ext_resource type="Script" path="res://scripts/core/sfx_library.gd" id="16_vvomv"]
+
+[sub_resource type="Resource" id="Resource_oqmyl"]
+script = ExtResource("1_whqgd")
+id = &"place"
+stream = ExtResource("2_2l3ws")
+pitch_jitter = 0.03
+max_voices = 3
+
+[sub_resource type="Resource" id="Resource_m7hep"]
+script = ExtResource("1_whqgd")
+id = &"remove"
+stream = ExtResource("3_pcou2")
+pitch_jitter = 0.03
+
+[sub_resource type="Resource" id="Resource_yohgf"]
+script = ExtResource("1_whqgd")
+id = &"place_rejected"
+stream = ExtResource("4_rslvb")
+cooldown = 0.2
+max_voices = 1
+ui = true
+
+[sub_resource type="Resource" id="Resource_y1gnt"]
+script = ExtResource("1_whqgd")
+id = &"deliver"
+stream = ExtResource("5_ghmrg")
+volume_db = -2.0
+pitch_jitter = 0.05
+cooldown = 0.5
+max_voices = 1
+
+[sub_resource type="Resource" id="Resource_lk5f2"]
+script = ExtResource("1_whqgd")
+id = &"craft_done"
+stream = ExtResource("6_m5vmf")
+volume_db = -2.0
+pitch_jitter = 0.04
+cooldown = 0.34
+
+[sub_resource type="Resource" id="Resource_bf5p2"]
+script = ExtResource("1_whqgd")
+id = &"sell"
+stream = ExtResource("7_lqnxj")
+volume_db = -2.0
+pitch_jitter = 0.02
+cooldown = 0.25
+
+[sub_resource type="Resource" id="Resource_pp0s3"]
+script = ExtResource("1_whqgd")
+id = &"order_complete"
+stream = ExtResource("8_g3lir")
+volume_db = 2.0
+cooldown = 0.5
+max_voices = 1
+
+[sub_resource type="Resource" id="Resource_iswbn"]
+script = ExtResource("1_whqgd")
+id = &"chip_ok"
+stream = ExtResource("9_km2pl")
+volume_db = -2.0
+pitch_jitter = 0.03
+cooldown = 0.2
+max_voices = 1
+
+[sub_resource type="Resource" id="Resource_enmsm"]
+script = ExtResource("1_whqgd")
+id = &"chip_none"
+stream = ExtResource("10_25qd2")
+volume_db = -2.0
+pitch_jitter = 0.03
+cooldown = 0.2
+max_voices = 1
+
+[sub_resource type="Resource" id="Resource_b47yx"]
+script = ExtResource("1_whqgd")
+id = &"chip_fail"
+stream = ExtResource("11_n84vd")
+cooldown = 0.3
+max_voices = 1
+
+[sub_resource type="Resource" id="Resource_n2rcb"]
+script = ExtResource("1_whqgd")
+id = &"blocked"
+stream = ExtResource("12_sf1rx")
+cooldown = 1.5
+max_voices = 1
+
+[sub_resource type="Resource" id="Resource_n8h7y"]
+script = ExtResource("1_whqgd")
+id = &"overheat_warn"
+stream = ExtResource("13_k0ngx")
+volume_db = 2.0
+cooldown = 1.0
+max_voices = 1
+
+[sub_resource type="Resource" id="Resource_8je86"]
+script = ExtResource("1_whqgd")
+id = &"explosion"
+stream = ExtResource("14_qw3p2")
+volume_db = 3.0
+cooldown = 0.3
+
+[sub_resource type="Resource" id="Resource_n0ixt"]
+script = ExtResource("1_whqgd")
+id = &"ui_click"
+stream = ExtResource("15_qssnc")
+pitch_jitter = 0.02
+ui = true
 
 [resource]
-script = ExtResource("2_library")
-cues = Array[ExtResource("1_cue")]([])
+script = ExtResource("16_vvomv")
+cues = Array[ExtResource("1_whqgd")]([SubResource("Resource_oqmyl"), SubResource("Resource_m7hep"), SubResource("Resource_yohgf"), SubResource("Resource_y1gnt"), SubResource("Resource_lk5f2"), SubResource("Resource_bf5p2"), SubResource("Resource_pp0s3"), SubResource("Resource_iswbn"), SubResource("Resource_enmsm"), SubResource("Resource_b47yx"), SubResource("Resource_n2rcb"), SubResource("Resource_n8h7y"), SubResource("Resource_8je86"), SubResource("Resource_n0ixt")])

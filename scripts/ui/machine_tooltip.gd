@@ -5,6 +5,8 @@ extends PanelContainer
 ## cell is clicked or the machine goes away.
 
 signal log_requested(machine: Machine)
+## The player destroyed a machine; `world_position` is where it stood (its cell center).
+signal machine_destroyed(world_position: Vector2)
 
 const NAME_MIN_WIDTH: int = 80
 ## Resource art is 32 px: shown as it is.
@@ -372,9 +374,11 @@ func _on_rotate_pressed() -> void:
 func _on_destroy_pressed() -> void:
 	var machine: Machine = _machine
 	var refund: int = Placement.refund_for(machine.machine_type)
+	var center: Vector2 = machine.global_position + Vector2.ONE * (GameState.CELL_SIZE / 2.0)
 	close()
 	if machine.destroy():
 		GameState.add_money(refund)
+		machine_destroyed.emit(center)
 
 
 func _on_registry_changed(_chip: Resource) -> void:
