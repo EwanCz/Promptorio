@@ -6,13 +6,23 @@ extends PanelContainer
 signal restart_requested
 signal main_menu_requested
 
-@onready var _resume_button: PixelButton = %ResumeButton
-@onready var _restart_button: PixelButton = %RestartButton
-@onready var _main_menu_button: PixelButton = %MainMenuButton
+## icon name (from Icons.BADGES) per button, the same glyphs the main menu and the Bar use.
+const BUTTON_ICONS: Dictionary = {
+	"ResumeButton": "state_normal",
+	"RestartButton": "rotate",
+	"MainMenuButton": "menu",
+}
+
+@onready var _resume_button: Button = %ResumeButton
+@onready var _restart_button: Button = %RestartButton
+@onready var _main_menu_button: Button = %MainMenuButton
 
 
 func _ready() -> void:
 	visible = false
+	_apply_button_icons()
+	for button: Button in [_resume_button, _restart_button, _main_menu_button]:
+		SfxEvents.attach_click(button)
 	_resume_button.pressed.connect(close)
 	_restart_button.pressed.connect(_on_restart_pressed)
 	_main_menu_button.pressed.connect(_on_main_menu_pressed)
@@ -43,3 +53,12 @@ func _on_restart_pressed() -> void:
 func _on_main_menu_pressed() -> void:
 	close()
 	main_menu_requested.emit()
+
+
+## Gives each button its Icons glyph, scaled crisply like the main menu does.
+func _apply_button_icons() -> void:
+	for button_name: String in BUTTON_ICONS:
+		var button: Button = get_node("%" + button_name)
+		var image: Image = Icons.icon(BUTTON_ICONS[button_name]).get_image()
+		image.resize(Icons.SIZE * Icons.SCALE, Icons.SIZE * Icons.SCALE, Image.INTERPOLATE_NEAREST)
+		button.icon = ImageTexture.create_from_image(image)

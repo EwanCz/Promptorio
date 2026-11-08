@@ -59,6 +59,7 @@ script = ExtResource("2_grid")
 [node name="Machines" type="Node2D" parent="Game/FactoryView/SubViewport/World" unique_id=700926543]
 
 [node name="HoverOverlay" type="Node2D" parent="Game/FactoryView/SubViewport/World" node_paths=PackedStringArray("grid")]
+z_index = 11
 script = ExtResource("17_hover_overlay")
 grid = NodePath("../GridMap2D")
 

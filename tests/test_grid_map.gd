@@ -13,6 +13,18 @@ func after_each() -> void:
 	_main.free()
 
 
+func test_hover_overlay_draws_above_machine_visuals() -> void:
+	var world: Node = _grid.get_parent()
+	var overlay: Node2D = world.get_node("HoverOverlay")
+	var machines: Node2D = world.get_node("Machines")
+	var conveyor: Node2D = load("res://scenes/machines/conveyor.tscn").instantiate()
+	check(overlay.get_index() > machines.get_index(), "hover overlay follows machines in the scene")
+	var item_icon: Node2D = conveyor.get_node("ItemIcon")
+	check(overlay.z_index > conveyor.z_index + item_icon.z_index, "hover overlay draws above conveyor items")
+	check(overlay.z_index > 10, "hover overlay draws above machine indicators and mode sprites")
+	conveyor.free()
+
+
 func test_every_cell_has_a_tile() -> void:
 	_grid._build_ground()
 	var size: Vector2i = autoload("GameState").GRID_SIZE
