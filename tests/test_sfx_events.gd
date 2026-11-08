@@ -205,6 +205,17 @@ func test_a_real_chip_activity_signal_reaches_the_machine_signal() -> void:
 	check_eq(seen, ["none"] as Array[String], "only a finished request is reported")
 
 
+func test_a_chip_outcome_is_reported_while_another_chip_is_pending() -> void:
+	var machine: Machine = _put("smelter", Vector2i(0, 4))
+	var pending: ChipComponent = ChipComponent.new()
+	pending.pending = true
+	machine.chips.append(pending)
+	machine._on_chip_activity("failed")
+	check_eq(_played(), [&"chip_fail"] as Array[StringName], "a completed request sounds even while another is pending")
+	machine.chips.erase(pending)
+	pending.free()
+
+
 func test_a_stalled_machine_plays_blocked_once_with_a_long_hold_off() -> void:
 	var miner: Machine = _put("miner", Vector2i(0, 5))
 	_ticks(miner.mine_ticks + 2)
