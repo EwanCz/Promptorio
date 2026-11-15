@@ -1,22 +1,20 @@
 {
 	"chips": [
 		{
-			"description": "Keeps a Miner running without clogging the line.",
-			"id": 1,
-			"name": "Miner Pacer",
-			"prompt": "Control the Miner. Call at most one tool:\n- If disabled, not normal, blocked, or mode is prospecting or boost, do nothing.\n- If mine_ticks exceeds the allowed minimum for the current resource, call set_mine_ticks with that minimum.\n- Otherwise call start_prospecting. The boost expires even if output becomes blocked."
+			"created_by": 0,
+			"default_timeout": 0,
+			"description": "",
+			"id": 9,
+			"name": "Convoyer",
+			"prompt": "Make sure all smelter have the Smelter Cooler chip.\nadd chip to smelter telling them to smelt gem.\nadd chip to mier telling them to mine diamond."
 		},
 		{
+			"created_by": 0,
+			"default_timeout": 0,
 			"description": "Stops a Smelter from overheating.",
 			"id": 2,
 			"name": "Smelter Cooler",
 			"prompt": "You control a Smelter. Working heats it up, and it explodes if it gets too hot. Cooling is the normal way to manage the heat, but crafts take several times longer while it is on, so use it only when needed. Stopping is for emergencies only, and it is done with set_emergency_stop, never set_enabled.\nCheck the state in this order and call at most one tool:\n- If temperature is 130 or higher and enabled is true, call set_emergency_stop with on=true (emergency pause).\n- If emergency_stop is true and temperature is 80 or lower, call set_emergency_stop with on=false (resume your emergency pause). If enabled is false while emergency_stop is false, keep it disabled; the state does not say why it was disabled.\n- If temperature is 100 or higher and cooling is false, call set_cooling with on=true.\n- If temperature is 70 or lower and cooling is true, call set_cooling with on=false.\n- Otherwise do nothing. Never pause for routine temperature control; the gap between 100 and 70 stops cooling from toggling every turn."
-		},
-		{
-			"description": "Sets how many input items an Assembler keeps in stock.",
-			"id": 3,
-			"name": "Assembler Stocker",
-			"prompt": "Control the Assembler. Call at most one tool:\n- If disabled or not normal, do nothing.\n- If stock_limit exceeds 6, call set_stock_limit with 6.\n- In normal mode, if stock has at least twice each quantity in needs, call set_mode with mode=fast.\n- In fast mode, if stock has less than any quantity in needs, call set_mode with mode=normal.\n- Otherwise do nothing. needs reflects the selected mode; missing stock counts are zero. Mode changes affect the next craft."
 		}
 	],
 	"machines": [
@@ -28,8 +26,8 @@
 			"chips": [],
 			"data": {
 				"accepting": true,
-				"earned": 10,
-				"sold": 1
+				"earned": 1089,
+				"sold": 363
 			},
 			"enabled": true,
 			"facing": [
@@ -37,49 +35,56 @@
 				0
 			],
 			"id": 1,
+			"predefined_behaviors": [],
 			"status": 0,
 			"type": "collector"
 		},
 		{
 			"cell": [
-				3,
+				18,
 				10
 			],
-			"chips": [
-				{
-					"id": 1,
-					"timeout": 150
-				}
-			],
+			"chips": [],
 			"data": {
-				"blocked": false,
 				"held": "",
-				"item": "ore",
-				"mine_ticks": 20,
-				"mode": 0,
-				"mode_ticks_left": 0,
-				"progress": 10
+				"wait": 5
 			},
 			"enabled": true,
 			"facing": [
-				1,
+				-1,
 				0
 			],
 			"id": 2,
+			"predefined_behaviors": [],
 			"status": 0,
-			"type": "miner"
+			"type": "conveyor"
 		},
 		{
 			"cell": [
-				5,
-				8
+				19,
+				10
 			],
-			"chips": [
-				{
-					"id": 1,
-					"timeout": 150
-				}
+			"chips": [],
+			"data": {
+				"held": "",
+				"wait": 5
+			},
+			"enabled": true,
+			"facing": [
+				-1,
+				0
 			],
+			"id": 3,
+			"predefined_behaviors": [],
+			"status": 0,
+			"type": "conveyor"
+		},
+		{
+			"cell": [
+				22,
+				10
+			],
+			"chips": [],
 			"data": {
 				"blocked": false,
 				"held": "",
@@ -87,20 +92,146 @@
 				"mine_ticks": 20,
 				"mode": 0,
 				"mode_ticks_left": 0,
-				"progress": 10
+				"progress": 13
 			},
 			"enabled": true,
 			"facing": [
-				0,
-				1
+				-1,
+				0
 			],
-			"id": 3,
+			"id": 5,
+			"predefined_behaviors": [],
 			"status": 0,
 			"type": "miner"
 		},
 		{
 			"cell": [
-				5,
+				21,
+				10
+			],
+			"chips": [],
+			"data": {
+				"held": "",
+				"wait": 5
+			},
+			"enabled": true,
+			"facing": [
+				-1,
+				0
+			],
+			"id": 6,
+			"predefined_behaviors": [],
+			"status": 0,
+			"type": "conveyor"
+		},
+		{
+			"cell": [
+				17,
+				10
+			],
+			"chips": [],
+			"data": {
+				"held": "",
+				"wait": 5
+			},
+			"enabled": true,
+			"facing": [
+				-1,
+				0
+			],
+			"id": 7,
+			"predefined_behaviors": [],
+			"status": 0,
+			"type": "conveyor"
+		},
+		{
+			"cell": [
+				22,
+				9
+			],
+			"chips": [],
+			"data": {
+				"blocked": false,
+				"held": "ore",
+				"item": "ore",
+				"mine_ticks": 20,
+				"mode": 0,
+				"mode_ticks_left": 0,
+				"progress": 0
+			},
+			"enabled": true,
+			"facing": [
+				-1,
+				0
+			],
+			"id": 8,
+			"predefined_behaviors": [],
+			"status": 0,
+			"type": "miner"
+		},
+		{
+			"cell": [
+				21,
+				9
+			],
+			"chips": [],
+			"data": {
+				"held": "",
+				"wait": 5
+			},
+			"enabled": true,
+			"facing": [
+				-1,
+				0
+			],
+			"id": 9,
+			"predefined_behaviors": [],
+			"status": 0,
+			"type": "conveyor"
+		},
+		{
+			"cell": [
+				20,
+				9
+			],
+			"chips": [],
+			"data": {
+				"held": "ore",
+				"wait": 14
+			},
+			"enabled": true,
+			"facing": [
+				-1,
+				0
+			],
+			"id": 10,
+			"predefined_behaviors": [],
+			"status": 0,
+			"type": "conveyor"
+		},
+		{
+			"cell": [
+				19,
+				9
+			],
+			"chips": [],
+			"data": {
+				"held": "ore",
+				"wait": 29
+			},
+			"enabled": true,
+			"facing": [
+				-1,
+				0
+			],
+			"id": 11,
+			"predefined_behaviors": [],
+			"status": 0,
+			"type": "conveyor"
+		},
+		{
+			"cell": [
+				16,
 				9
 			],
 			"chips": [],
@@ -113,59 +244,98 @@
 				0,
 				1
 			],
-			"id": 4,
+			"id": 14,
+			"predefined_behaviors": [],
 			"status": 0,
 			"type": "conveyor"
 		},
 		{
 			"cell": [
-				4,
-				10
-			],
-			"chips": [],
-			"data": {
-				"held": "ore",
-				"wait": 9
-			},
-			"enabled": true,
-			"facing": [
-				1,
-				0
-			],
-			"id": 5,
-			"status": 0,
-			"type": "conveyor"
-		},
-		{
-			"cell": [
-				5,
-				10
-			],
-			"chips": [],
-			"data": {
-				"held": "ore",
-				"wait": 4
-			},
-			"enabled": true,
-			"facing": [
-				1,
-				0
-			],
-			"id": 6,
-			"status": 0,
-			"type": "conveyor"
-		},
-		{
-			"cell": [
-				6,
-				10
+				18,
+				8
 			],
 			"chips": [
 				{
-					"id": 2,
-					"timeout": 30
+					"assigned_by": 0,
+					"id": 9,
+					"timeout": 100
 				}
 			],
+			"data": {
+				"range": 4
+			},
+			"enabled": true,
+			"facing": [
+				0,
+				1
+			],
+			"id": 15,
+			"predefined_behaviors": [],
+			"status": 0,
+			"type": "orchestrator"
+		},
+		{
+			"cell": [
+				17,
+				9
+			],
+			"chips": [],
+			"data": {
+				"held": "",
+				"wait": 5
+			},
+			"enabled": true,
+			"facing": [
+				-1,
+				0
+			],
+			"id": 17,
+			"predefined_behaviors": [],
+			"status": 0,
+			"type": "conveyor"
+		},
+		{
+			"cell": [
+				18,
+				9
+			],
+			"chips": [
+				{
+					"assigned_by": 15,
+					"id": 2,
+					"timeout": 100
+				}
+			],
+			"data": {
+				"blocked": false,
+				"cooling": true,
+				"emergency_stop": true,
+				"making": "ingot",
+				"output": "",
+				"product": "ingot",
+				"progress": 4,
+				"stock": {
+					"ore": 10
+				},
+				"stock_limit": 10,
+				"temperature": 78.499999999998
+			},
+			"enabled": false,
+			"facing": [
+				-1,
+				0
+			],
+			"id": 19,
+			"predefined_behaviors": [],
+			"status": 0,
+			"type": "smelter"
+		},
+		{
+			"cell": [
+				20,
+				10
+			],
+			"chips": [],
 			"data": {
 				"blocked": false,
 				"cooling": false,
@@ -173,247 +343,82 @@
 				"making": "ingot",
 				"output": "",
 				"product": "ingot",
-				"progress": 7,
+				"progress": 3,
 				"stock": {
-					"ore": 1
+					"ore": 0
 				},
 				"stock_limit": 10,
-				"temperature": 65.0000000000001
+				"temperature": 52.4000000000003
 			},
 			"enabled": true,
 			"facing": [
-				1,
+				-1,
 				0
 			],
-			"id": 7,
+			"id": 20,
+			"predefined_behaviors": [],
 			"status": 0,
 			"type": "smelter"
-		},
-		{
-			"cell": [
-				7,
-				10
-			],
-			"chips": [],
-			"data": {
-				"held": "ingot",
-				"wait": 4
-			},
-			"enabled": true,
-			"facing": [
-				1,
-				0
-			],
-			"id": 8,
-			"status": 0,
-			"type": "conveyor"
-		},
-		{
-			"cell": [
-				8,
-				10
-			],
-			"chips": [
-				{
-					"id": 3,
-					"timeout": 100
-				}
-			],
-			"data": {
-				"blocked": false,
-				"making": "part",
-				"mode": "normal",
-				"output": "",
-				"product": "part",
-				"progress": 23,
-				"stock": {
-					"ingot": 1
-				},
-				"stock_limit": 10
-			},
-			"enabled": true,
-			"facing": [
-				1,
-				0
-			],
-			"id": 9,
-			"status": 0,
-			"type": "assembler"
-		},
-		{
-			"cell": [
-				9,
-				10
-			],
-			"chips": [],
-			"data": {
-				"held": "",
-				"wait": 5
-			},
-			"enabled": true,
-			"facing": [
-				1,
-				0
-			],
-			"id": 10,
-			"status": 0,
-			"type": "conveyor"
-		},
-		{
-			"cell": [
-				10,
-				10
-			],
-			"chips": [],
-			"data": {
-				"held": "part",
-				"wait": 3
-			},
-			"enabled": true,
-			"facing": [
-				1,
-				0
-			],
-			"id": 11,
-			"status": 0,
-			"type": "conveyor"
-		},
-		{
-			"cell": [
-				11,
-				10
-			],
-			"chips": [],
-			"data": {
-				"held": "",
-				"wait": 5
-			},
-			"enabled": true,
-			"facing": [
-				1,
-				0
-			],
-			"id": 12,
-			"status": 0,
-			"type": "conveyor"
-		},
-		{
-			"cell": [
-				12,
-				10
-			],
-			"chips": [],
-			"data": {
-				"held": "",
-				"wait": 5
-			},
-			"enabled": true,
-			"facing": [
-				1,
-				0
-			],
-			"id": 13,
-			"status": 0,
-			"type": "conveyor"
-		},
-		{
-			"cell": [
-				13,
-				10
-			],
-			"chips": [],
-			"data": {
-				"held": "",
-				"wait": 5
-			},
-			"enabled": true,
-			"facing": [
-				1,
-				0
-			],
-			"id": 14,
-			"status": 0,
-			"type": "conveyor"
-		},
-		{
-			"cell": [
-				14,
-				10
-			],
-			"chips": [],
-			"data": {
-				"held": "",
-				"wait": 5
-			},
-			"enabled": true,
-			"facing": [
-				1,
-				0
-			],
-			"id": 15,
-			"status": 0,
-			"type": "conveyor"
-		},
-		{
-			"cell": [
-				15,
-				10
-			],
-			"chips": [],
-			"data": {
-				"held": "",
-				"wait": 5
-			},
-			"enabled": true,
-			"facing": [
-				1,
-				0
-			],
-			"id": 16,
-			"status": 0,
-			"type": "conveyor"
 		}
 	],
 	"minesites": [
 		[
-			3,
-			10
+			11,
+			6
 		],
 		[
-			5,
-			8
-		],
-		[
-			5,
-			7
-		],
-		[
-			3,
-			4
-		],
-		[
-			4,
-			4
-		],
-		[
-			3,
+			11,
 			5
 		],
 		[
-			26,
-			14
+			11,
+			7
 		],
 		[
-			26,
-			15
+			0,
+			18
 		],
 		[
-			27,
-			14
+			0,
+			17
+		],
+		[
+			1,
+			17
+		],
+		[
+			22,
+			10
+		],
+		[
+			22,
+			9
+		],
+		[
+			23,
+			10
+		],
+		[
+			24,
+			12
+		],
+		[
+			24,
+			13
+		],
+		[
+			25,
+			12
 		]
 	],
-	"money": 210,
-	"next_machine_id": 17,
-	"tick_count": 3,
+	"money": 875,
+	"next_machine_id": 21,
+	"order": {
+		"product": "coal",
+		"progress": 0,
+		"quantity": 5,
+		"reward": 20
+	},
+	"tick_count": 4807,
 	"version": 1
 }
