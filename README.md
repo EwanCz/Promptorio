@@ -4,6 +4,20 @@ A 2D factory-building game, built in Godot 4. You place Miners, Smelters, Assemb
 
 The game runs with no API key and no network out of the box. Its offline mock provider returns canned decisions and does not interpret chip prompts. Miners and Smelters also offer predefined offline behaviors that do not use AI.
 
+
+![fullscreen](./assets/examples/fullscreen.png)
+![fullscreen_chip](./assets/examples/fullscreen_chip.png)
+![focus_small_factory](./assets/examples/focus_small_factory.png)
+
+## Context
+
+This game was made during a Hackathon organized by `rubix consulting` and taking place at Epitech Nantes.
+The theme of the hackathon was `learning by playing`.
+It was mainly LLM related, and many LLM tools were given to us to experiment and iterate during the hackathon.
+The main goal was to create a project where Agents/Players were trying to learn.
+In our case, we tried to create a factory-like game where the machines were trying to stay alive based on the prompts that were given to them.
+This project won the `technical prize`, aka second place, at this hackathon.
+
 ## Requirements
 
 - [Godot Engine 4.7](https://godotengine.org/download) or later (the project uses Godot 4.7 features).
