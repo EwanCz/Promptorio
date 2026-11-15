@@ -4,6 +4,11 @@ A 2D factory-building game, built in Godot 4. You place Miners, Smelters, Assemb
 
 The game runs with no API key and no network out of the box. Its offline mock provider returns canned decisions and does not interpret chip prompts. Miners and Smelters also offer predefined offline behaviors that do not use AI.
 
+
+![fullscreen](./assets/examples/fullscreen.png)
+![fullscreen_chip](./assets/examples/fullscreen_chip.png)
+![focus_small_factory](./assets/examples/focus_small_factory.png)
+
 ## Context
 
 This game been made during a Hackaton organized by `rubix consulting` and taking place at Epitech Nantes.
