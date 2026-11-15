@@ -11,12 +11,12 @@ The game runs with no API key and no network out of the box. Its offline mock pr
 
 ## Context
 
-This game been made during a Hackaton organized by `rubix consulting` and taking place at Epitech Nantes.
-The theme of the hackaton was `learning by playing`.
-It was mainly LLM related and many LLM tools were given to us to experiment and iterate during the hackaton.
-The main goal was to create a project were Agent/Player were trying to learn.
-In our case we tried to create a factory like game were the machine were trying to stay alive based on the prompt that were given to them.
-This project won the `technical price` aka second place at this hackaton
+This game was made during a Hackathon organized by `rubix consulting` and taking place at Epitech Nantes.
+The theme of the hackathon was `learning by playing`.
+It was mainly LLM related, and many LLM tools were given to us to experiment and iterate during the hackathon.
+The main goal was to create a project where Agents/Players were trying to learn.
+In our case, we tried to create a factory-like game where the machines were trying to stay alive based on the prompts that were given to them.
+This project won the `technical prize`, aka second place, at this hackathon.
 
 ## Requirements
 
